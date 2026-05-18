@@ -6,6 +6,14 @@
 - `services/api`: FastAPI application
 - `services/worker`: Celery worker
 
+## Prerequisites
+
+- Node.js `20.9.0` or newer. Next.js 16 and Vitest 3 do not support the current local `node v19.2.0`.
+- Docker Desktop or another local Docker runtime that provides `docker compose`.
+- `uv` for Python dependency management on Windows. Official install options include:
+  - `winget install --id=astral-sh.uv -e`
+  - `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`
+
 ## Local development
 
 1. Start dependencies:
