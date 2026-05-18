@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict
 class ProjectCreate(BaseModel):
     name: str
     code: str
+    description: str | None = None
 
 
 class ProjectRead(BaseModel):
