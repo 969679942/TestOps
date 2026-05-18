@@ -3,11 +3,11 @@ name = "testops-worker"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
-  "celery[redis]==5.5.3",
-  "httpx==0.28.1",
-  "pydantic-settings==2.10.0",
-  "python-docx==1.1.2",
-  "pypdf==5.6.0",
-  "pyyaml==6.0.2",
-  "redis==6.2.0"
+  "celery[redis]>=5.5.3",
+  "httpx>=0.28.1",
+  "pydantic-settings>=2.10.0",
+  "python-docx>=1.1.2",
+  "pypdf>=5.6.0",
+  "pyyaml>=6.0.2",
+  "redis>=6.2.0"
 ]
