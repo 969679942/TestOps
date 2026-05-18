@@ -1,6 +1,6 @@
 from app.core.database import Base
-from app.models import project  # noqa: F401
+from app.models import document, project  # noqa: F401
 
 
-def test_task_2_metadata_matches_initial_schema() -> None:
-    assert sorted(Base.metadata.tables) == ["projects"]
+def test_task_3_metadata_matches_schema() -> None:
+    assert sorted(Base.metadata.tables) == ["document_assets", "projects"]
