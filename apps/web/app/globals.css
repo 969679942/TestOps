@@ -1,0 +1,244 @@
+:root {
+  color-scheme: light;
+  --page-bg: #f5f1e8;
+  --panel-bg: #fffdf8;
+  --panel-alt: #f0eadc;
+  --border: #d8ceb8;
+  --border-strong: #b8aa8b;
+  --text: #1f2937;
+  --muted: #5f6b7a;
+  --accent: #17624a;
+  --accent-soft: #dcefe7;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: radial-gradient(circle at top, #fcfaf4 0%, var(--page-bg) 60%);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: transparent;
+  color: var(--text);
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.shell {
+  display: grid;
+  min-height: 100vh;
+  grid-template-columns: 18rem minmax(0, 1fr);
+}
+
+.shell-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  border-right: 1px solid var(--border);
+  background: rgba(255, 253, 248, 0.9);
+  padding: 2rem 1.5rem;
+  backdrop-filter: blur(10px);
+}
+
+.shell-brand {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.shell-kicker {
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.shell-title {
+  margin: 0;
+  font-size: 2rem;
+}
+
+.shell-copy {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.shell-nav-group {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.shell-nav-label {
+  color: var(--muted);
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.shell-nav-link,
+.shell-nav-disabled {
+  display: block;
+  border: 1px solid transparent;
+  border-radius: 0.9rem;
+  padding: 0.85rem 1rem;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.shell-nav-link:hover {
+  border-color: var(--border);
+  background: rgba(220, 239, 231, 0.45);
+}
+
+.shell-nav-link[aria-current="page"] {
+  border-color: var(--border-strong);
+  background: var(--accent-soft);
+}
+
+.shell-nav-disabled {
+  background: rgba(216, 206, 184, 0.24);
+  color: var(--muted);
+}
+
+.shell-main {
+  padding: 2rem;
+}
+
+.shell-panel {
+  display: grid;
+  gap: 2rem;
+  border: 1px solid var(--border);
+  border-radius: 1.5rem;
+  background: rgba(255, 253, 248, 0.9);
+  padding: 2rem;
+  box-shadow: 0 20px 40px rgba(120, 105, 78, 0.08);
+}
+
+.page-header {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.page-header h1,
+.page-header h2 {
+  margin: 0;
+  font-size: clamp(2rem, 3vw, 3rem);
+}
+
+.page-header p {
+  margin: 0;
+  max-width: 42rem;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.project-grid,
+.summary-grid,
+.document-grid,
+.workspace-links {
+  display: grid;
+  gap: 1rem;
+}
+
+.project-grid {
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+}
+
+.card,
+.summary-card,
+.document-card,
+.workspace-link {
+  border: 1px solid var(--border);
+  border-radius: 1.2rem;
+  background: var(--panel-bg);
+  padding: 1.25rem;
+}
+
+.card h2,
+.summary-card h3,
+.document-card h3,
+.workspace-link h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.2rem;
+}
+
+.card p,
+.summary-card p,
+.document-card p,
+.workspace-link p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.card-meta,
+.document-meta,
+.summary-meta {
+  margin-top: 1rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.summary-grid {
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+}
+
+.summary-value {
+  margin: 0.3rem 0 0;
+  font-size: 1.4rem;
+}
+
+.document-grid {
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+}
+
+.workspace-links {
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+}
+
+.workspace-link {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.eyebrow {
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.subtle-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+@media (max-width: 900px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+
+  .shell-sidebar {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .shell-main {
+    padding: 1rem;
+  }
+
+  .shell-panel {
+    padding: 1.5rem;
+  }
+}
