@@ -143,6 +143,7 @@ a {
 .project-grid,
 .summary-grid,
 .document-grid,
+.task-list,
 .workspace-links {
   display: grid;
   gap: 1rem;
@@ -155,6 +156,8 @@ a {
 .card,
 .summary-card,
 .document-card,
+.data-card,
+.task-card,
 .workspace-link {
   border: 1px solid var(--border);
   border-radius: 1.2rem;
@@ -173,6 +176,8 @@ a {
 .card p,
 .summary-card p,
 .document-card p,
+.data-card p,
+.task-card p,
 .workspace-link p {
   margin: 0;
   color: var(--muted);
@@ -200,13 +205,106 @@ a {
   grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
 }
 
+.task-list {
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+}
+
 .workspace-links {
   grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
 }
 
+.data-card,
 .workspace-link {
   display: grid;
   gap: 0.75rem;
+}
+
+.section-heading,
+.task-card {
+  display: grid;
+  gap: 1rem;
+}
+
+.section-heading h3,
+.task-card h3 {
+  margin: 0.35rem 0 0;
+  font-size: 1.25rem;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 38rem;
+}
+
+.data-table th,
+.data-table td {
+  border-top: 1px solid var(--border);
+  padding: 0.9rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.data-table thead th {
+  border-top: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.empty-cell,
+.empty-copy {
+  color: var(--muted);
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  padding: 0.25rem 0.65rem;
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.task-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: start;
+}
+
+.task-meta {
+  display: grid;
+  gap: 0.9rem;
+  margin: 0;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+}
+
+.task-meta dt {
+  color: var(--muted);
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.task-meta dd {
+  margin: 0.35rem 0 0;
+}
+
+.task-error {
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+  color: #8a2d2d;
 }
 
 .eyebrow {
@@ -240,5 +338,13 @@ a {
 
   .shell-panel {
     padding: 1.5rem;
+  }
+
+  .data-table {
+    min-width: 0;
+  }
+
+  .task-card-header {
+    flex-direction: column;
   }
 }

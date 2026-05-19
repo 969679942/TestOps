@@ -58,12 +58,18 @@ export default async function ProjectWorkspacePage({ params }: ProjectPageProps)
           <p>Track source assets, version inputs, and keep evidence ready for generation.</p>
         </a>
 
+        <a className="workspace-link" href={`/projects/${projectId}/generation-tasks`}>
+          <span className="eyebrow">Generation Queue</span>
+          <h3>Generation Tasks</h3>
+          <p>Monitor provider runs, prompt profiles, and document inputs tied to each attempt.</p>
+        </a>
+
         <article className="workspace-link">
-          <span className="eyebrow">Next Up</span>
-          <h3>Generation and Review</h3>
+          <span className="eyebrow">Coming Later</span>
+          <h3>Review Workspace</h3>
           <p>
-            These workspaces are intentionally held for later tasks so the shell can stay
-            focused and stable.
+            Human review remains intentionally out of scope here until the dedicated Task 9
+            workspace lands.
           </p>
         </article>
       </section>

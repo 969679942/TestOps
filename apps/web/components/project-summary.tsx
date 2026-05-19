@@ -1,9 +1,9 @@
 import React from "react";
-import type { ProjectDocumentRecord, ProjectRecord } from "../lib/api";
+import type { DocumentAsset, ProjectRecord } from "../lib/types";
 
 type ProjectSummaryProps = Readonly<{
   project: ProjectRecord;
-  documents: ProjectDocumentRecord[];
+  documents: DocumentAsset[];
   documentsUnavailable?: boolean;
 }>;
 

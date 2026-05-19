@@ -1,7 +1,7 @@
 import React from "react";
 import type { ReactNode } from "react";
 
-import type { ProjectRecord } from "../lib/api";
+import type { ProjectRecord } from "../lib/types";
 
 type AppShellProps = Readonly<{
   children: ReactNode;
@@ -32,6 +32,7 @@ export function AppShell({ children, currentPath, project }: AppShellProps) {
     ? [
         { href: `/projects/${project.id}`, label: "Overview" },
         { href: `/projects/${project.id}/documents`, label: "Documents" },
+        { href: `/projects/${project.id}/generation-tasks`, label: "Generation Tasks" },
       ]
     : [];
 

@@ -1,49 +1,11 @@
-export type ProjectRecord = {
-  id: string;
-  name: string;
-  code: string;
-  description: string | null;
-  status: string;
-  defaultProvider: string;
-  defaultPromptProfile: string;
-};
-
-export type ProjectDocumentRecord = {
-  id: string;
-  projectId: string;
-  type: string;
-  name: string;
-  sourceMode: string;
-  sourceUri: string | null;
-};
-
-export type ProjectListResult =
-  | {
-      kind: "success";
-      projects: ProjectRecord[];
-    }
-  | {
-      kind: "unavailable";
-      projects: ProjectRecord[];
-    }
-  | {
-      kind: "http-error";
-      status: number;
-    };
-
-export type ProjectDocumentListResult =
-  | {
-      kind: "success";
-      documents: ProjectDocumentRecord[];
-    }
-  | {
-      kind: "unavailable";
-      documents: ProjectDocumentRecord[];
-    }
-  | {
-      kind: "http-error";
-      status: number;
-    };
+import type {
+  DocumentAsset,
+  DocumentAssetListResult,
+  GenerationTaskListResult,
+  GenerationTaskRecord,
+  ProjectListResult,
+  ProjectRecord,
+} from "./types";
 
 type ProjectApiRecord = {
   id: number;
@@ -62,6 +24,20 @@ type ProjectDocumentApiRecord = {
   name: string;
   source_mode: string;
   source_uri: string | null;
+};
+
+type GenerationTaskApiRecord = {
+  id: number;
+  project_id: number;
+  status: string;
+  provider: string;
+  model: string;
+  prompt_version: string;
+  input_refs: Record<string, unknown>;
+  started_at: string | null;
+  finished_at: string | null;
+  error_message: string | null;
+  created_at: string;
 };
 
 type RequestResult<T> =
@@ -100,7 +76,7 @@ const demoProjects: ProjectRecord[] = [
   },
 ];
 
-const demoDocuments: Record<string, ProjectDocumentRecord[]> = {
+const demoDocuments: Record<string, DocumentAsset[]> = {
   payments: [
     {
       id: "prd-v2",
@@ -109,6 +85,7 @@ const demoDocuments: Record<string, ProjectDocumentRecord[]> = {
       name: "Payments PRD",
       sourceMode: "upload",
       sourceUri: "prd/payments-v2.pdf",
+      parseStatus: "parsed",
     },
     {
       id: "swagger-checkout",
@@ -117,6 +94,7 @@ const demoDocuments: Record<string, ProjectDocumentRecord[]> = {
       name: "Checkout API Contract",
       sourceMode: "url",
       sourceUri: "https://internal.example/swagger/payments",
+      parseStatus: "ready",
     },
   ],
   "1": [
@@ -127,6 +105,7 @@ const demoDocuments: Record<string, ProjectDocumentRecord[]> = {
       name: "Payments PRD",
       sourceMode: "upload",
       sourceUri: "prd/payments-v2.pdf",
+      parseStatus: "parsed",
     },
     {
       id: "swagger-checkout",
@@ -135,6 +114,7 @@ const demoDocuments: Record<string, ProjectDocumentRecord[]> = {
       name: "Checkout API Contract",
       sourceMode: "url",
       sourceUri: "https://internal.example/swagger/payments",
+      parseStatus: "ready",
     },
   ],
   "account-center": [
@@ -145,6 +125,7 @@ const demoDocuments: Record<string, ProjectDocumentRecord[]> = {
       name: "Account Settings Flows",
       sourceMode: "url",
       sourceUri: "https://internal.example/figma/account-center",
+      parseStatus: "parsed",
     },
   ],
   "2": [
@@ -155,6 +136,108 @@ const demoDocuments: Record<string, ProjectDocumentRecord[]> = {
       name: "Account Settings Flows",
       sourceMode: "url",
       sourceUri: "https://internal.example/figma/account-center",
+      parseStatus: "parsed",
+    },
+  ],
+};
+
+const demoGenerationTasks: Record<string, GenerationTaskRecord[]> = {
+  payments: [
+    {
+      id: "gen-101",
+      projectId: "payments",
+      status: "queued",
+      provider: "cursor",
+      model: "gpt-4.1-mini",
+      promptVersion: "default",
+      inputRefs: {
+        document_ids: ["prd-v2", "swagger-checkout"],
+      },
+      startedAt: null,
+      finishedAt: null,
+      errorMessage: null,
+      createdAt: "2026-05-18T09:30:00Z",
+    },
+    {
+      id: "gen-100",
+      projectId: "payments",
+      status: "failed",
+      provider: "openai",
+      model: "gpt-4.1",
+      promptVersion: "review-heavy",
+      inputRefs: {
+        document_ids: ["prd-v2"],
+      },
+      startedAt: "2026-05-17T18:00:00Z",
+      finishedAt: "2026-05-17T18:02:00Z",
+      errorMessage: "Generation dispatch could not reach the broker.",
+      createdAt: "2026-05-17T17:59:00Z",
+    },
+  ],
+  "1": [
+    {
+      id: "gen-101",
+      projectId: "1",
+      status: "queued",
+      provider: "cursor",
+      model: "gpt-4.1-mini",
+      promptVersion: "default",
+      inputRefs: {
+        document_ids: ["prd-v2", "swagger-checkout"],
+      },
+      startedAt: null,
+      finishedAt: null,
+      errorMessage: null,
+      createdAt: "2026-05-18T09:30:00Z",
+    },
+    {
+      id: "gen-100",
+      projectId: "1",
+      status: "failed",
+      provider: "openai",
+      model: "gpt-4.1",
+      promptVersion: "review-heavy",
+      inputRefs: {
+        document_ids: ["prd-v2"],
+      },
+      startedAt: "2026-05-17T18:00:00Z",
+      finishedAt: "2026-05-17T18:02:00Z",
+      errorMessage: "Generation dispatch could not reach the broker.",
+      createdAt: "2026-05-17T17:59:00Z",
+    },
+  ],
+  "account-center": [
+    {
+      id: "gen-201",
+      projectId: "account-center",
+      status: "succeeded",
+      provider: "openai",
+      model: "gpt-4.1",
+      promptVersion: "review-heavy",
+      inputRefs: {
+        document_ids: ["figma-account"],
+      },
+      startedAt: "2026-05-18T11:00:00Z",
+      finishedAt: "2026-05-18T11:04:00Z",
+      errorMessage: null,
+      createdAt: "2026-05-18T10:58:00Z",
+    },
+  ],
+  "2": [
+    {
+      id: "gen-201",
+      projectId: "2",
+      status: "succeeded",
+      provider: "openai",
+      model: "gpt-4.1",
+      promptVersion: "review-heavy",
+      inputRefs: {
+        document_ids: ["figma-account"],
+      },
+      startedAt: "2026-05-18T11:00:00Z",
+      finishedAt: "2026-05-18T11:04:00Z",
+      errorMessage: null,
+      createdAt: "2026-05-18T10:58:00Z",
     },
   ],
 };
@@ -198,7 +281,7 @@ function mapProject(project: ProjectApiRecord): ProjectRecord {
   };
 }
 
-function mapDocument(document: ProjectDocumentApiRecord): ProjectDocumentRecord {
+function mapDocument(document: ProjectDocumentApiRecord): DocumentAsset {
   return {
     id: String(document.id),
     projectId: String(document.project_id),
@@ -206,6 +289,22 @@ function mapDocument(document: ProjectDocumentApiRecord): ProjectDocumentRecord 
     name: document.name,
     sourceMode: document.source_mode,
     sourceUri: document.source_uri,
+  };
+}
+
+function mapGenerationTask(task: GenerationTaskApiRecord): GenerationTaskRecord {
+  return {
+    id: String(task.id),
+    projectId: String(task.project_id),
+    status: task.status,
+    provider: task.provider,
+    model: task.model,
+    promptVersion: task.prompt_version,
+    inputRefs: task.input_refs,
+    startedAt: task.started_at,
+    finishedAt: task.finished_at,
+    errorMessage: task.error_message,
+    createdAt: task.created_at,
   };
 }
 
@@ -250,9 +349,7 @@ export async function getProject(projectId: string): Promise<ProjectRecord | nul
   return mapProject(result.data);
 }
 
-export async function listProjectDocuments(
-  projectId: string,
-): Promise<ProjectDocumentListResult> {
+export async function listProjectDocuments(projectId: string): Promise<DocumentAssetListResult> {
   const result = await requestJson<ProjectDocumentApiRecord[]>(
     `/projects/${projectId}/documents`,
   );
@@ -271,5 +368,29 @@ export async function listProjectDocuments(
   return {
     kind: "success",
     documents: result.data.map(mapDocument),
+  };
+}
+
+export async function listProjectGenerationTasks(
+  projectId: string,
+): Promise<GenerationTaskListResult> {
+  const result = await requestJson<GenerationTaskApiRecord[]>(
+    `/projects/${projectId}/generation-tasks`,
+  );
+
+  if (result.kind === "unavailable") {
+    return {
+      kind: "unavailable",
+      tasks: demoGenerationTasks[projectId] ?? [],
+    };
+  }
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    tasks: result.data.map(mapGenerationTask),
   };
 }

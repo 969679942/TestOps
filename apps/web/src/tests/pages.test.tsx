@@ -2,21 +2,29 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-const { getProjectMock, listProjectDocumentsMock, listProjectsMock } = vi.hoisted(() => ({
+const {
+  getProjectMock,
+  listProjectDocumentsMock,
+  listProjectGenerationTasksMock,
+  listProjectsMock,
+} = vi.hoisted(() => ({
   getProjectMock: vi.fn(),
   listProjectDocumentsMock: vi.fn(),
+  listProjectGenerationTasksMock: vi.fn(),
   listProjectsMock: vi.fn(),
 }));
 
 vi.mock("../../lib/api", () => ({
   getProject: getProjectMock,
   listProjectDocuments: listProjectDocumentsMock,
+  listProjectGenerationTasks: listProjectGenerationTasksMock,
   listProjects: listProjectsMock,
 }));
 
 import HomePage from "../../app/page";
 import ProjectWorkspacePage from "../../app/projects/[projectId]/page";
 import ProjectDocumentsPage from "../../app/projects/[projectId]/documents/page";
+import ProjectGenerationTasksPage from "../../app/projects/[projectId]/generation-tasks/page";
 import SettingsPage from "../../app/settings/page";
 
 describe("workspace pages", () => {
@@ -75,6 +83,20 @@ describe("workspace pages", () => {
       defaultProvider: "cursor",
       defaultPromptProfile: "default",
     });
+    listProjectDocumentsMock.mockResolvedValue({
+      kind: "success",
+      documents: [
+        {
+          id: "prd-v2",
+          projectId: "1",
+          type: "prd",
+          name: "Payments PRD",
+          sourceMode: "upload",
+          sourceUri: "prd/payments-v2.pdf",
+          parseStatus: "parsed",
+        },
+      ],
+    });
 
     const html = renderToStaticMarkup(
       await ProjectDocumentsPage({
@@ -82,8 +104,52 @@ describe("workspace pages", () => {
       }),
     );
 
-    expect(html).toContain("Document Workspace");
-    expect(html).toContain("Task 7 scaffold");
-    expect(html).not.toContain("document-card");
+    expect(html).toContain("Document Center");
+    expect(html).toContain("Document assets");
+    expect(html).toContain("Payments PRD");
+    expect(html).toContain("Generation Tasks");
+  });
+
+  it("renders generation task history when the route resolves successfully", async () => {
+    getProjectMock.mockResolvedValue({
+      id: "1",
+      name: "Payments Platform",
+      code: "payments",
+      description: "Checkout and settlement flows.",
+      status: "active",
+      defaultProvider: "cursor",
+      defaultPromptProfile: "default",
+    });
+    listProjectGenerationTasksMock.mockResolvedValue({
+      kind: "success",
+      tasks: [
+        {
+          id: "gen-101",
+          projectId: "1",
+          status: "queued",
+          provider: "cursor",
+          model: "gpt-4.1-mini",
+          promptVersion: "default",
+          inputRefs: {
+            document_ids: ["prd-v2", "swagger-checkout"],
+          },
+          startedAt: null,
+          finishedAt: null,
+          errorMessage: null,
+          createdAt: "2026-05-18T09:30:00Z",
+        },
+      ],
+    });
+
+    const html = renderToStaticMarkup(
+      await ProjectGenerationTasksPage({
+        params: Promise.resolve({ projectId: "1" }),
+      }),
+    );
+
+    expect(html).toContain("Generation Queue");
+    expect(html).toContain("Task #gen-101");
+    expect(html).toContain("gpt-4.1-mini");
+    expect(html).toContain("Document Center");
   });
 });
