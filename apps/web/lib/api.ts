@@ -6,6 +6,8 @@ import type {
   ProjectLookupResult,
   ProjectListResult,
   ProjectRecord,
+  TestCaseListResult,
+  TestCaseRecord,
 } from "./types";
 
 type ProjectApiRecord = {
@@ -40,6 +42,27 @@ type GenerationTaskApiRecord = {
   finished_at: string | null;
   error_message: string | null;
   created_at: string;
+};
+
+type StructuredTextFieldApiRecord = {
+  text: string;
+};
+
+type ProjectTestCaseApiRecord = {
+  id: number;
+  project_id: number;
+  title: string;
+  status: string;
+  module: string;
+  feature: string;
+  case_type: string;
+  priority: string;
+  preconditions: string[];
+  steps: StructuredTextFieldApiRecord[];
+  expected_results: StructuredTextFieldApiRecord[];
+  tags: string[];
+  automation_flag: boolean;
+  automation_notes: string | null;
 };
 
 type RequestResult<T> =
@@ -244,6 +267,147 @@ const demoGenerationTasks: Record<string, GenerationTaskRecord[]> = {
   ],
 };
 
+const demoTestCases: Record<string, TestCaseRecord[]> = {
+  payments: [
+    {
+      id: "case-101",
+      projectId: "payments",
+      title: "Create order with saved card",
+      status: "draft",
+      module: "Checkout",
+      feature: "Card payment",
+      caseType: "functional",
+      priority: "high",
+      preconditions: ["Saved Visa card is available on the account."],
+      steps: [
+        { text: "Open the checkout page for an in-stock item." },
+        { text: "Select the saved card and submit the order." },
+      ],
+      expectedResults: [
+        { text: "The order is confirmed successfully." },
+        { text: "A payment authorization record is created." },
+      ],
+      tags: ["smoke", "payments"],
+      automationFlag: true,
+      automationNotes: "Reuse the seeded card fixture before checkout.",
+    },
+    {
+      id: "case-102",
+      projectId: "payments",
+      title: "Decline expired card before capture",
+      status: "in_review",
+      module: "Checkout",
+      feature: "Card validation",
+      caseType: "negative",
+      priority: "medium",
+      preconditions: ["Expired card test data is available."],
+      steps: [
+        { text: "Open the checkout page and enter the expired card details." },
+        { text: "Submit the order." },
+      ],
+      expectedResults: [
+        { text: "The order is blocked before payment capture." },
+        { text: "The user sees a clear card-expired validation message." },
+      ],
+      tags: ["negative", "payments"],
+      automationFlag: false,
+      automationNotes: null,
+    },
+  ],
+  "1": [
+    {
+      id: "case-101",
+      projectId: "1",
+      title: "Create order with saved card",
+      status: "draft",
+      module: "Checkout",
+      feature: "Card payment",
+      caseType: "functional",
+      priority: "high",
+      preconditions: ["Saved Visa card is available on the account."],
+      steps: [
+        { text: "Open the checkout page for an in-stock item." },
+        { text: "Select the saved card and submit the order." },
+      ],
+      expectedResults: [
+        { text: "The order is confirmed successfully." },
+        { text: "A payment authorization record is created." },
+      ],
+      tags: ["smoke", "payments"],
+      automationFlag: true,
+      automationNotes: "Reuse the seeded card fixture before checkout.",
+    },
+    {
+      id: "case-102",
+      projectId: "1",
+      title: "Decline expired card before capture",
+      status: "in_review",
+      module: "Checkout",
+      feature: "Card validation",
+      caseType: "negative",
+      priority: "medium",
+      preconditions: ["Expired card test data is available."],
+      steps: [
+        { text: "Open the checkout page and enter the expired card details." },
+        { text: "Submit the order." },
+      ],
+      expectedResults: [
+        { text: "The order is blocked before payment capture." },
+        { text: "The user sees a clear card-expired validation message." },
+      ],
+      tags: ["negative", "payments"],
+      automationFlag: false,
+      automationNotes: null,
+    },
+  ],
+  "account-center": [
+    {
+      id: "case-201",
+      projectId: "account-center",
+      title: "Update profile email after MFA",
+      status: "draft",
+      module: "Profile",
+      feature: "Email update",
+      caseType: "functional",
+      priority: "high",
+      preconditions: ["User is enrolled in MFA."],
+      steps: [
+        { text: "Open profile settings and start an email change." },
+        { text: "Complete the MFA challenge and save the new email address." },
+      ],
+      expectedResults: [
+        { text: "The email address is updated for the active profile." },
+      ],
+      tags: ["account-center"],
+      automationFlag: true,
+      automationNotes: "Seed an MFA-enrolled profile before editing.",
+    },
+  ],
+  "2": [
+    {
+      id: "case-201",
+      projectId: "2",
+      title: "Update profile email after MFA",
+      status: "draft",
+      module: "Profile",
+      feature: "Email update",
+      caseType: "functional",
+      priority: "high",
+      preconditions: ["User is enrolled in MFA."],
+      steps: [
+        { text: "Open profile settings and start an email change." },
+        { text: "Complete the MFA challenge and save the new email address." },
+      ],
+      expectedResults: [
+        { text: "The email address is updated for the active profile." },
+      ],
+      tags: ["account-center"],
+      automationFlag: true,
+      automationNotes: "Seed an MFA-enrolled profile before editing.",
+    },
+  ],
+};
+
 async function requestJson<T>(path: string): Promise<RequestResult<T>> {
   try {
     const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -308,6 +472,25 @@ function mapGenerationTask(task: GenerationTaskApiRecord): GenerationTaskRecord 
     finishedAt: task.finished_at,
     errorMessage: task.error_message,
     createdAt: task.created_at,
+  };
+}
+
+function mapTestCase(item: ProjectTestCaseApiRecord): TestCaseRecord {
+  return {
+    id: String(item.id),
+    projectId: String(item.project_id),
+    title: item.title,
+    status: item.status,
+    module: item.module,
+    feature: item.feature,
+    caseType: item.case_type,
+    priority: item.priority,
+    preconditions: item.preconditions,
+    steps: item.steps,
+    expectedResults: item.expected_results,
+    tags: item.tags,
+    automationFlag: item.automation_flag,
+    automationNotes: item.automation_notes,
   };
 }
 
@@ -407,5 +590,25 @@ export async function listProjectGenerationTasks(
   return {
     kind: "success",
     tasks: result.data.map(mapGenerationTask),
+  };
+}
+
+export async function listProjectTestCases(projectId: string): Promise<TestCaseListResult> {
+  const result = await requestJson<ProjectTestCaseApiRecord[]>(`/projects/${projectId}/test-cases`);
+
+  if (result.kind === "unavailable") {
+    return {
+      kind: "unavailable",
+      items: demoTestCases[projectId] ?? [],
+    };
+  }
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    items: result.data.map(mapTestCase),
   };
 }

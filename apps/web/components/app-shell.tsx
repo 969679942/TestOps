@@ -33,6 +33,8 @@ export function AppShell({ children, currentPath, project }: AppShellProps) {
         { href: `/projects/${project.id}`, label: "Overview" },
         { href: `/projects/${project.id}/documents`, label: "Documents" },
         { href: `/projects/${project.id}/generation-tasks`, label: "Generation Tasks" },
+        { href: `/projects/${project.id}/test-cases`, label: "Test Cases" },
+        { href: `/projects/${project.id}/review`, label: "Review" },
       ]
     : [];
 

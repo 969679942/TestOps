@@ -5,6 +5,7 @@ import {
   listProjectDocuments,
   listProjectGenerationTasks,
   listProjects,
+  listProjectTestCases,
 } from "../../lib/api";
 
 const fetchMock = vi.fn<typeof fetch>();
@@ -176,6 +177,63 @@ describe("api fallbacks", () => {
           finishedAt: "2026-05-18T09:32:00Z",
           errorMessage: "broker unreachable",
           createdAt: "2026-05-18T09:30:00Z",
+        },
+      ],
+    });
+  });
+
+  it("falls back to demo test cases only when the backend is unavailable", async () => {
+    fetchMock.mockRejectedValue(new Error("connect ECONNREFUSED"));
+
+    await expect(listProjectTestCases("1")).resolves.toMatchObject({
+      kind: "unavailable",
+      items: [
+        { title: "Create order with saved card" },
+        { title: "Decline expired card before capture" },
+      ],
+    });
+  });
+
+  it("maps test case responses from the API", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse([
+        {
+          id: 21,
+          project_id: 1,
+          title: "Create order",
+          status: "draft",
+          module: "Checkout",
+          feature: "Card payment",
+          case_type: "functional",
+          priority: "high",
+          preconditions: ["Saved card exists"],
+          steps: [{ text: "Open checkout" }],
+          expected_results: [{ text: "Order completes" }],
+          tags: ["smoke"],
+          automation_flag: true,
+          automation_notes: "Use checkout fixture",
+        },
+      ]),
+    );
+
+    await expect(listProjectTestCases("1")).resolves.toEqual({
+      kind: "success",
+      items: [
+        {
+          id: "21",
+          projectId: "1",
+          title: "Create order",
+          status: "draft",
+          module: "Checkout",
+          feature: "Card payment",
+          caseType: "functional",
+          priority: "high",
+          preconditions: ["Saved card exists"],
+          steps: [{ text: "Open checkout" }],
+          expectedResults: [{ text: "Order completes" }],
+          tags: ["smoke"],
+          automationFlag: true,
+          automationNotes: "Use checkout fixture",
         },
       ],
     });

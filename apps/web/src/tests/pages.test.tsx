@@ -7,11 +7,13 @@ const {
   listProjectDocumentsMock,
   listProjectGenerationTasksMock,
   listProjectsMock,
+  listProjectTestCasesMock,
 } = vi.hoisted(() => ({
   getProjectMock: vi.fn(),
   listProjectDocumentsMock: vi.fn(),
   listProjectGenerationTasksMock: vi.fn(),
   listProjectsMock: vi.fn(),
+  listProjectTestCasesMock: vi.fn(),
 }));
 
 vi.mock("../../lib/api", () => ({
@@ -19,12 +21,15 @@ vi.mock("../../lib/api", () => ({
   listProjectDocuments: listProjectDocumentsMock,
   listProjectGenerationTasks: listProjectGenerationTasksMock,
   listProjects: listProjectsMock,
+  listProjectTestCases: listProjectTestCasesMock,
 }));
 
 import HomePage from "../../app/page";
 import ProjectWorkspacePage from "../../app/projects/[projectId]/page";
 import ProjectDocumentsPage from "../../app/projects/[projectId]/documents/page";
 import ProjectGenerationTasksPage from "../../app/projects/[projectId]/generation-tasks/page";
+import ProjectReviewPage from "../../app/projects/[projectId]/review/page";
+import ProjectTestCasesPage from "../../app/projects/[projectId]/test-cases/page";
 import SettingsPage from "../../app/settings/page";
 
 describe("workspace pages", () => {
@@ -160,6 +165,77 @@ describe("workspace pages", () => {
     expect(html).toContain("Task #gen-101");
     expect(html).toContain("gpt-4.1-mini");
     expect(html).toContain("Document Center");
+  });
+
+  it("renders the test case route with draft inventory and review navigation", async () => {
+    getProjectMock.mockResolvedValue({
+      kind: "success",
+      project: {
+        id: "1",
+        name: "Payments Platform",
+        code: "payments",
+        description: "Checkout and settlement flows.",
+        status: "active",
+        defaultProvider: "cursor",
+        defaultPromptProfile: "default",
+      },
+    });
+    listProjectTestCasesMock.mockResolvedValue({
+      kind: "success",
+      items: [
+        {
+          id: "case-101",
+          projectId: "1",
+          title: "Create order with saved card",
+          status: "draft",
+          module: "Checkout",
+          feature: "Card payment",
+          caseType: "functional",
+          priority: "high",
+          preconditions: ["Saved card exists"],
+          steps: [{ text: "Open checkout" }],
+          expectedResults: [{ text: "Order completes" }],
+          tags: ["smoke"],
+          automationFlag: true,
+          automationNotes: "Reuse checkout fixture",
+        },
+      ],
+    });
+
+    const html = renderToStaticMarkup(
+      await ProjectTestCasesPage({
+        params: Promise.resolve({ projectId: "1" }),
+      }),
+    );
+
+    expect(html).toContain("Test Case Library");
+    expect(html).toContain("Create order with saved card");
+    expect(html).toContain("Review Workspace");
+  });
+
+  it("renders the review route baseline with no active selection", async () => {
+    getProjectMock.mockResolvedValue({
+      kind: "success",
+      project: {
+        id: "1",
+        name: "Payments Platform",
+        code: "payments",
+        description: "Checkout and settlement flows.",
+        status: "active",
+        defaultProvider: "cursor",
+        defaultPromptProfile: "default",
+      },
+    });
+
+    const html = renderToStaticMarkup(
+      await ProjectReviewPage({
+        params: Promise.resolve({ projectId: "1" }),
+      }),
+    );
+
+    expect(html).toContain("Review Workspace");
+    expect(html).toContain("No test case selected");
+    expect(html).toContain("Test Cases");
   });
 
   it("renders an API error state instead of a false not-found screen for documents", async () => {

@@ -40,6 +40,41 @@ export type GenerationTaskRecord = {
   createdAt: string;
 };
 
+export type StructuredTextField = {
+  text: string;
+};
+
+export type TestCaseRecord = {
+  id: string | number;
+  projectId: string | number;
+  title: string;
+  status: string;
+  module: string;
+  feature: string;
+  caseType: string;
+  priority: string;
+  preconditions: string[];
+  steps: StructuredTextField[];
+  expectedResults: StructuredTextField[];
+  tags: string[];
+  automationFlag: boolean;
+  automationNotes: string | null;
+};
+
+export type TestCaseListResult =
+  | {
+      kind: "success";
+      items: TestCaseRecord[];
+    }
+  | {
+      kind: "unavailable";
+      items: TestCaseRecord[];
+    }
+  | {
+      kind: "http-error";
+      status: number;
+    };
+
 export type ProjectListResult =
   | {
       kind: "success";
