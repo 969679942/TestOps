@@ -43,3 +43,22 @@ def test_create_generation_task_rejects_unknown_provider(client):
     )
 
     assert response.status_code == 422
+
+
+def test_create_generation_task_persists_provider_configuration(client):
+    project = client.post("/projects", json={"name": "Orders", "code": "orders"}).json()
+
+    response = client.post(
+        f"/projects/{project['id']}/generation-tasks",
+        json={
+            "provider": "cursor",
+            "prompt_profile": "smoke",
+            "input_document_ids": [1, 2],
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["status"] == "queued"
+    assert response.json()["provider"] == "cursor"
+    assert response.json()["prompt_version"] == "smoke"
+    assert response.json()["input_refs"] == {"document_ids": [1, 2]}
