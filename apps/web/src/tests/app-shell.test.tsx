@@ -12,7 +12,9 @@ describe("AppShell", () => {
       </AppShell>,
     );
 
-    expect(html).toContain("Projects");
-    expect(html).toContain("Settings");
+    expect(html).toContain('href="/"');
+    expect(html).toContain(">Projects<");
+    expect(html).toContain('href="/settings"');
+    expect(html).toContain(">Settings<");
   });
 });

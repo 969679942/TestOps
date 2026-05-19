@@ -16,7 +16,7 @@ type NavItem = {
 
 const globalNav: NavItem[] = [
   { href: "/", label: "Projects" },
-  { label: "Settings" },
+  { href: "/settings", label: "Settings" },
 ];
 
 function isCurrentPath(currentPath: string | undefined, href: string) {
