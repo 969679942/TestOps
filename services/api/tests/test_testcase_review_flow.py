@@ -1,3 +1,6 @@
+import sqlite3
+
+
 def _create_project(client):
     response = client.post(
         "/projects",
@@ -83,6 +86,7 @@ def test_review_publish_and_handoff_flow(client):
     ]
     assert publish.status_code == 200
     assert publish.json()["status"] == "published"
+    assert publish.json()["published_at"] is not None
     assert published_cases.status_code == 200
     assert published_cases.json() == [
         {
@@ -111,3 +115,91 @@ def test_review_publish_and_handoff_flow(client):
             "published_at": publish.json()["published_at"],
         }
     ]
+
+    reviews_after_publish = client.get(f"/test-cases/{test_case['id']}/reviews")
+
+    assert reviews_after_publish.status_code == 200
+    assert reviews_after_publish.json() == [
+        {
+            "id": approve.json()["id"],
+            "test_case_id": test_case["id"],
+            "reviewer_id": "qa.lead",
+            "action": "approve",
+            "comment": "ready for publish",
+            "created_at": approve.json()["created_at"],
+        },
+        {
+            "id": reviews_after_publish.json()[1]["id"],
+            "test_case_id": test_case["id"],
+            "reviewer_id": "system",
+            "action": "publish",
+            "comment": None,
+            "created_at": reviews_after_publish.json()[1]["created_at"],
+        },
+    ]
+
+
+def _read_test_case_status(test_database_url: str, test_case_id: int) -> str:
+    with sqlite3.connect(test_database_url.removeprefix("sqlite:///")) as connection:
+        row = connection.execute(
+            "SELECT status FROM test_cases WHERE id = ?",
+            (test_case_id,),
+        ).fetchone()
+
+    assert row is not None
+    return row[0]
+
+
+def test_review_actions_preserve_spec_compliant_statuses(client, test_database_url):
+    project = _create_project(client)
+    test_case = _create_test_case(client, project["id"])
+
+    comment = client.post(
+        f"/test-cases/{test_case['id']}/reviews",
+        json={
+            "reviewer_id": "qa.observer",
+            "action": "comment",
+            "comment": "Needs one more pass on wording.",
+        },
+    )
+    comment_status = _read_test_case_status(test_database_url, test_case["id"])
+    request_change = client.post(
+        f"/test-cases/{test_case['id']}/reviews",
+        json={
+            "reviewer_id": "qa.lead",
+            "action": "request_change",
+            "comment": "Clarify the post-submit expected result.",
+        },
+    )
+    request_change_status = _read_test_case_status(test_database_url, test_case["id"])
+    reject = client.post(
+        f"/test-cases/{test_case['id']}/reviews",
+        json={
+            "reviewer_id": "qa.manager",
+            "action": "reject",
+            "comment": "Blocking issue found in the current scenario.",
+        },
+    )
+    reject_status = _read_test_case_status(test_database_url, test_case["id"])
+    reviews = client.get(f"/test-cases/{test_case['id']}/reviews")
+
+    assert comment.status_code == 201
+    assert comment.json()["action"] == "comment"
+    assert comment_status == "draft"
+    assert request_change.status_code == 201
+    assert request_change.json()["action"] == "request_change"
+    assert request_change_status == "needs_update"
+    assert reject.status_code == 201
+    assert reject.json()["action"] == "reject"
+    assert reject_status == "rejected"
+    assert reviews.status_code == 200
+    assert [item["action"] for item in reviews.json()] == [
+        "comment",
+        "request_change",
+        "reject",
+    ]
+
+    published_cases = client.get(f"/projects/{project['id']}/published-test-cases")
+
+    assert published_cases.status_code == 200
+    assert published_cases.json() == []

@@ -4,7 +4,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, StringConstraints
 
 NonEmptyStr = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
-ReviewAction = Literal["approve", "request_changes"]
+ReviewAction = Literal["comment", "request_change", "approve", "reject", "publish"]
 
 
 class ReviewCreate(BaseModel):

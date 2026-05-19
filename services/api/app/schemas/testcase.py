@@ -4,7 +4,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 NonEmptyStr = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
-TestCaseStatus = Literal["draft", "approved", "published"]
+TestCaseStatus = Literal["draft", "needs_update", "approved", "rejected", "published"]
 
 
 class StepItem(BaseModel):
