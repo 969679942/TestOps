@@ -1,15 +1,14 @@
+import importlib.util
 from pathlib import Path
-import tomllib
 
 
-def test_api_pyproject_packages_only_app_module() -> None:
-    pyproject_path = Path(__file__).resolve().parents[2] / "api" / "pyproject.toml"
-    pyproject = tomllib.loads(pyproject_path.read_text())
+def test_installed_api_parser_module_resolves_from_worker_environment() -> None:
+    spec = importlib.util.find_spec("app.modules.parser.swagger_parser")
 
-    assert pyproject["build-system"]["build-backend"] == "setuptools.build_meta"
-    assert any(
-        requirement.startswith("setuptools")
-        for requirement in pyproject["build-system"]["requires"]
-    )
-    assert pyproject["tool"]["setuptools"]["packages"]["find"]["include"] == ["app*"]
-    assert "alembic*" in pyproject["tool"]["setuptools"]["packages"]["find"]["exclude"]
+    assert spec is not None
+    assert spec.origin is not None
+
+    origin = Path(spec.origin).resolve()
+
+    assert origin.name == "swagger_parser.py"
+    assert "site-packages" in {part.lower() for part in origin.parts}

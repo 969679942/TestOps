@@ -13,8 +13,13 @@ dependencies = [
   "testops-api"
 ]
 
+[dependency-groups]
+dev = [
+  "pytest>=8.4.0"
+]
+
 [tool.pytest.ini_options]
-pythonpath = [".", "../api"]
+pythonpath = ["."]
 
 [tool.uv.sources]
 testops-api = { path = "../api" }
