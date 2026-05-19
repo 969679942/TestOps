@@ -131,9 +131,34 @@ def dispatch_generation_task(task_id: int) -> str | None:
     except ModuleNotFoundError:
         return "Generation dispatch client is not installed in the API environment."
 
-    client = Celery("testops_api", broker=settings.redis_url, backend=settings.redis_url)
     try:
-        client.send_task("generation.generate_test_cases", args=[task_id])
+        from redis import Redis
+
+        redis_client = Redis.from_url(
+            settings.redis_url,
+            socket_connect_timeout=0.2,
+            socket_timeout=0.2,
+        )
+        redis_client.ping()
+    except Exception as exc:  # pragma: no cover - depends on broker availability
+        return f"Generation dispatch could not reach the broker: {exc}"
+
+    client = Celery("testops_api", broker=settings.redis_url, backend=settings.redis_url)
+    client.conf.update(
+        broker_connection_retry=False,
+        broker_connection_retry_on_startup=False,
+        broker_connection_timeout=1,
+        broker_transport_options={
+            "socket_connect_timeout": 1,
+            "socket_timeout": 1,
+        },
+    )
+    try:
+        client.send_task(
+            "generation.generate_test_cases",
+            args=[task_id],
+            retry=False,
+        )
     except Exception as exc:  # pragma: no cover - depends on broker availability
         return f"Generation dispatch could not reach the broker: {exc}"
     return None

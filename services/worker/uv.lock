@@ -834,6 +834,7 @@ version = "0.1.0"
 source = { directory = "../api" }
 dependencies = [
     { name = "alembic" },
+    { name = "celery", extra = ["redis"] },
     { name = "fastapi" },
     { name = "psycopg", extra = ["binary"] },
     { name = "pydantic-settings" },
@@ -845,6 +846,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "alembic", specifier = ">=1.16.0" },
+    { name = "celery", extras = ["redis"], specifier = ">=5.5.3" },
     { name = "fastapi", specifier = ">=0.116.0" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2.0" },
     { name = "pydantic-settings", specifier = ">=2.10.0" },
