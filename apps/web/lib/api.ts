@@ -17,6 +17,34 @@ export type ProjectDocumentRecord = {
   sourceUri: string | null;
 };
 
+export type ProjectListResult =
+  | {
+      kind: "success";
+      projects: ProjectRecord[];
+    }
+  | {
+      kind: "unavailable";
+      projects: ProjectRecord[];
+    }
+  | {
+      kind: "http-error";
+      status: number;
+    };
+
+export type ProjectDocumentListResult =
+  | {
+      kind: "success";
+      documents: ProjectDocumentRecord[];
+    }
+  | {
+      kind: "unavailable";
+      documents: ProjectDocumentRecord[];
+    }
+  | {
+      kind: "http-error";
+      status: number;
+    };
+
 type ProjectApiRecord = {
   id: number;
   name: string;
@@ -188,18 +216,24 @@ function getDemoProject(projectId: string): ProjectRecord | null {
   );
 }
 
-export async function listProjects(): Promise<ProjectRecord[]> {
+export async function listProjects(): Promise<ProjectListResult> {
   const result = await requestJson<ProjectApiRecord[]>("/projects");
 
   if (result.kind === "unavailable") {
-    return demoProjects;
+    return {
+      kind: "unavailable",
+      projects: demoProjects,
+    };
   }
 
   if (result.kind !== "success") {
-    return [];
+    return result;
   }
 
-  return result.data.map(mapProject);
+  return {
+    kind: "success",
+    projects: result.data.map(mapProject),
+  };
 }
 
 export async function getProject(projectId: string): Promise<ProjectRecord | null> {
@@ -218,18 +252,24 @@ export async function getProject(projectId: string): Promise<ProjectRecord | nul
 
 export async function listProjectDocuments(
   projectId: string,
-): Promise<ProjectDocumentRecord[]> {
+): Promise<ProjectDocumentListResult> {
   const result = await requestJson<ProjectDocumentApiRecord[]>(
     `/projects/${projectId}/documents`,
   );
 
   if (result.kind === "unavailable") {
-    return demoDocuments[projectId] ?? [];
+    return {
+      kind: "unavailable",
+      documents: demoDocuments[projectId] ?? [],
+    };
   }
 
   if (result.kind !== "success") {
-    return [];
+    return result;
   }
 
-  return result.data.map(mapDocument);
+  return {
+    kind: "success",
+    documents: result.data.map(mapDocument),
+  };
 }

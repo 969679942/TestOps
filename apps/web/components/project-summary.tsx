@@ -4,6 +4,7 @@ import type { ProjectDocumentRecord, ProjectRecord } from "../lib/api";
 type ProjectSummaryProps = Readonly<{
   project: ProjectRecord;
   documents: ProjectDocumentRecord[];
+  documentsUnavailable?: boolean;
 }>;
 
 function titleCase(value: string) {
@@ -13,7 +14,11 @@ function titleCase(value: string) {
     .join(" ");
 }
 
-export function ProjectSummary({ project, documents }: ProjectSummaryProps) {
+export function ProjectSummary({
+  project,
+  documents,
+  documentsUnavailable = false,
+}: ProjectSummaryProps) {
   return (
     <section className="summary-grid" aria-label="Project summary">
       <article className="summary-card">
@@ -33,7 +38,9 @@ export function ProjectSummary({ project, documents }: ProjectSummaryProps) {
 
       <article className="summary-card">
         <span className="eyebrow">Source Documents</span>
-        <p className="summary-value">{documents.length}</p>
+        <p className="summary-value">
+          {documentsUnavailable ? "Unavailable" : documents.length}
+        </p>
       </article>
     </section>
   );

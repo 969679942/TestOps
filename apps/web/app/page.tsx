@@ -3,7 +3,7 @@ import { AppShell } from "../components/app-shell";
 import { listProjects } from "../lib/api";
 
 export default async function HomePage() {
-  const projects = await listProjects();
+  const projectList = await listProjects();
 
   return (
     <AppShell currentPath="/">
@@ -17,15 +17,24 @@ export default async function HomePage() {
       </section>
 
       <section className="project-grid" aria-label="Projects">
-        {projects.map((project) => (
-          <a key={project.id} className="card" href={`/projects/${project.id}`}>
-            <h2>{project.name}</h2>
-            <p>{project.description ?? "No project description yet."}</p>
-            <div className="card-meta">
-              <strong>{project.code}</strong> - provider {project.defaultProvider}
-            </div>
-          </a>
-        ))}
+        {projectList.kind === "http-error" ? (
+          <article className="card">
+            <h2>Projects are temporarily unavailable</h2>
+            <p>
+              The workspace API returned an error while loading the project directory.
+            </p>
+          </article>
+        ) : (
+          projectList.projects.map((project) => (
+            <a key={project.id} className="card" href={`/projects/${project.id}`}>
+              <h2>{project.name}</h2>
+              <p>{project.description ?? "No project description yet."}</p>
+              <div className="card-meta">
+                <strong>{project.code}</strong> - provider {project.defaultProvider}
+              </div>
+            </a>
+          ))
+        )}
       </section>
     </AppShell>
   );

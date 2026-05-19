@@ -25,7 +25,8 @@ export default async function ProjectWorkspacePage({ params }: ProjectPageProps)
     );
   }
 
-  const documents = await listProjectDocuments(projectId);
+  const documentList = await listProjectDocuments(projectId);
+  const documents = documentList.kind === "http-error" ? [] : documentList.documents;
 
   return (
     <AppShell currentPath={`/projects/${projectId}`} project={project}>
@@ -38,7 +39,17 @@ export default async function ProjectWorkspacePage({ params }: ProjectPageProps)
         </p>
       </section>
 
-      <ProjectSummary project={project} documents={documents} />
+      <ProjectSummary
+        project={project}
+        documents={documents}
+        documentsUnavailable={documentList.kind === "http-error"}
+      />
+
+      {documentList.kind === "http-error" ? (
+        <section>
+          <p>Source documents are temporarily unavailable because the API returned an error.</p>
+        </section>
+      ) : null}
 
       <section className="workspace-links" aria-label="Workspace sections">
         <a className="workspace-link" href={`/projects/${projectId}/documents`}>

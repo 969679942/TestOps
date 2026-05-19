@@ -26,16 +26,28 @@ describe("api fallbacks", () => {
   it("keeps a successful empty project list empty", async () => {
     fetchMock.mockResolvedValue(jsonResponse([]));
 
-    await expect(listProjects()).resolves.toEqual([]);
+    await expect(listProjects()).resolves.toEqual({
+      kind: "success",
+      projects: [],
+    });
   });
 
   it("falls back to demo projects only when the backend is unavailable", async () => {
     fetchMock.mockRejectedValue(new Error("connect ECONNREFUSED"));
 
-    await expect(listProjects()).resolves.toMatchObject([
-      { code: "payments" },
-      { code: "account-center" },
-    ]);
+    await expect(listProjects()).resolves.toMatchObject({
+      kind: "unavailable",
+      projects: [{ code: "payments" }, { code: "account-center" }],
+    });
+  });
+
+  it("distinguishes project list http errors from empty success", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ detail: "boom" }, 503));
+
+    await expect(listProjects()).resolves.toEqual({
+      kind: "http-error",
+      status: 503,
+    });
   });
 
   it("returns null when a project record is missing", async () => {
@@ -56,15 +68,27 @@ describe("api fallbacks", () => {
   it("keeps a successful empty document list empty", async () => {
     fetchMock.mockResolvedValue(jsonResponse([]));
 
-    await expect(listProjectDocuments("1")).resolves.toEqual([]);
+    await expect(listProjectDocuments("1")).resolves.toEqual({
+      kind: "success",
+      documents: [],
+    });
   });
 
   it("falls back to demo documents only when the backend is unavailable", async () => {
     fetchMock.mockRejectedValue(new Error("connect ECONNREFUSED"));
 
-    await expect(listProjectDocuments("1")).resolves.toMatchObject([
-      { name: "Payments PRD" },
-      { name: "Checkout API Contract" },
-    ]);
+    await expect(listProjectDocuments("1")).resolves.toMatchObject({
+      kind: "unavailable",
+      documents: [{ name: "Payments PRD" }, { name: "Checkout API Contract" }],
+    });
+  });
+
+  it("distinguishes document list http errors from empty success", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ detail: "boom" }, 502));
+
+    await expect(listProjectDocuments("1")).resolves.toEqual({
+      kind: "http-error",
+      status: 502,
+    });
   });
 });
