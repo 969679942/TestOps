@@ -1,4 +1,9 @@
 import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy.exc import IntegrityError
+
+from app.core.database import get_session
+from app.main import app
 
 
 def test_client_uses_migrated_test_database(client, test_database_url):
@@ -44,6 +49,48 @@ def test_create_project_rejects_duplicate_code(client):
 
     assert first_response.status_code == 201
     assert second_response.status_code == 409
+
+
+def test_create_project_maps_commit_time_duplicate_integrity_error_to_conflict():
+    class DuplicateCommitSession:
+        def __init__(self) -> None:
+            self.rolled_back = False
+
+        def scalar(self, _query):
+            return None
+
+        def add(self, _project) -> None:
+            pass
+
+        def commit(self) -> None:
+            raise IntegrityError(
+                "insert",
+                {},
+                Exception(
+                    'duplicate key value violates unique constraint "projects_code_key"'
+                ),
+            )
+
+        def rollback(self) -> None:
+            self.rolled_back = True
+
+    session = DuplicateCommitSession()
+
+    def override_get_session():
+        yield session
+
+    app.dependency_overrides[get_session] = override_get_session
+    try:
+        with TestClient(app, raise_server_exceptions=False) as test_client:
+            response = test_client.post(
+                "/projects",
+                json={"name": "Core Banking", "code": "core-banking"},
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert session.rolled_back is True
+    assert response.status_code == 409
 
 
 @pytest.mark.parametrize(

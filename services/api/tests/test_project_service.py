@@ -15,6 +15,9 @@ class BrokenSession:
     def commit(self) -> None:
         raise IntegrityError("insert", {}, Exception("boom"))
 
+    def rollback(self) -> None:
+        pass
+
 
 def test_create_project_propagates_unexpected_integrity_error():
     payload = ProjectCreate(name="Core Banking", code="core-banking")
