@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_session
@@ -13,4 +13,10 @@ def create_project(
     payload: ProjectCreate,
     session: Session = Depends(get_session),
 ) -> ProjectRead:
-    return project_service.create_project(session, payload)
+    try:
+        return project_service.create_project(session, payload)
+    except project_service.ProjectConflictError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Project with this name or code already exists",
+        ) from exc

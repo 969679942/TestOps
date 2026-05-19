@@ -17,11 +17,6 @@ depends_on: Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    bind = op.get_bind()
-    inspector = sa.inspect(bind)
-    if "document_assets" in inspector.get_table_names():
-        return
-
     op.create_table(
         "document_assets",
         sa.Column("id", sa.Integer(), primary_key=True),

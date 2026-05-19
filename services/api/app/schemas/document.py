@@ -1,10 +1,14 @@
-from pydantic import BaseModel, ConfigDict
+from typing import Annotated
+
+from pydantic import BaseModel, ConfigDict, StringConstraints
+
+NonEmptyStr = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
 
 class DocumentCreate(BaseModel):
-    type: str
-    name: str
-    source_mode: str
+    type: NonEmptyStr
+    name: NonEmptyStr
+    source_mode: NonEmptyStr
     source_uri: str | None = None
 
 

@@ -1,11 +1,14 @@
+from typing import Annotated
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, StringConstraints
+
+NonEmptyStr = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
 
 class ProjectCreate(BaseModel):
-    name: str
-    code: str
+    name: NonEmptyStr
+    code: NonEmptyStr
     description: str | None = None
 
 
