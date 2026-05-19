@@ -58,6 +58,12 @@ def add_review(
     payload: ReviewCreate,
 ) -> TestCaseReview:
     test_case = get_test_case_or_404(session, test_case_id)
+    if test_case.status == "published":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Published test cases cannot be reviewed",
+        )
+
     review = TestCaseReview(
         test_case_id=test_case.id,
         reviewer_id=payload.reviewer_id,

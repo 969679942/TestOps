@@ -5,11 +5,12 @@ from pydantic import BaseModel, ConfigDict, StringConstraints
 
 NonEmptyStr = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 ReviewAction = Literal["comment", "request_change", "approve", "reject", "publish"]
+PublicReviewAction = Literal["comment", "request_change", "approve", "reject"]
 
 
 class ReviewCreate(BaseModel):
     reviewer_id: NonEmptyStr
-    action: ReviewAction
+    action: PublicReviewAction
     comment: str | None = None
 
 

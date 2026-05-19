@@ -203,3 +203,52 @@ def test_review_actions_preserve_spec_compliant_statuses(client, test_database_u
 
     assert published_cases.status_code == 200
     assert published_cases.json() == []
+
+
+def test_review_endpoint_rejects_client_publish_action(client):
+    project = _create_project(client)
+    test_case = _create_test_case(client, project["id"])
+
+    response = client.post(
+        f"/test-cases/{test_case['id']}/reviews",
+        json={
+            "reviewer_id": "qa.lead",
+            "action": "publish",
+            "comment": "attempting to bypass dedicated publish flow",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_review_endpoint_rejects_mutating_actions_after_publish(client, test_database_url):
+    project = _create_project(client)
+    test_case = _create_test_case(client, project["id"])
+
+    approve = client.post(
+        f"/test-cases/{test_case['id']}/reviews",
+        json={
+            "reviewer_id": "qa.lead",
+            "action": "approve",
+            "comment": "ready for publish",
+        },
+    )
+    publish = client.post(f"/test-cases/{test_case['id']}/publish")
+    post_publish_review = client.post(
+        f"/test-cases/{test_case['id']}/reviews",
+        json={
+            "reviewer_id": "qa.manager",
+            "action": "reject",
+            "comment": "should not mutate a published case",
+        },
+    )
+    reviews = client.get(f"/test-cases/{test_case['id']}/reviews")
+
+    assert approve.status_code == 201
+    assert publish.status_code == 200
+    assert post_publish_review.status_code == 409
+    assert post_publish_review.json() == {
+        "detail": "Published test cases cannot be reviewed"
+    }
+    assert _read_test_case_status(test_database_url, test_case["id"]) == "published"
+    assert [item["action"] for item in reviews.json()] == ["approve", "publish"]
