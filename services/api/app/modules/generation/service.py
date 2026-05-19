@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import HTTPException, status
@@ -16,6 +17,10 @@ from app.schemas.generation import GenerationTaskCreate
 
 class GenerationValidationError(ValueError):
     pass
+
+
+def _utcnow() -> datetime:
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 def _normalize_text_items(
@@ -169,6 +174,8 @@ def record_dispatch_issue(
     task: GenerationTask,
     message: str,
 ) -> GenerationTask:
+    task.status = "failed"
+    task.finished_at = _utcnow()
     task.error_message = message
     session.add(task)
     session.commit()

@@ -65,11 +65,6 @@ def generate_test_cases(generation_task_id: int) -> dict[str, Any]:
             task.finished_at = _utcnow()
             task.error_message = str(exc)
             session.commit()
-
-        return {
-            "generation_task_id": generation_task_id,
-            "status": "failed",
-            "error": str(exc),
-        }
+        raise
     finally:
         session.close()

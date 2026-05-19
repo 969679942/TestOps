@@ -45,8 +45,15 @@ def test_create_generation_task_rejects_unknown_provider(client):
     assert response.status_code == 422
 
 
-def test_create_generation_task_persists_provider_configuration(client):
+def test_create_generation_task_persists_provider_configuration(client, monkeypatch):
     project = client.post("/projects", json={"name": "Orders", "code": "orders"}).json()
+
+    generation_service = _load_generation_service_module()
+    monkeypatch.setattr(
+        generation_service,
+        "dispatch_generation_task",
+        lambda task_id: None,
+    )
 
     response = client.post(
         f"/projects/{project['id']}/generation-tasks",
@@ -62,3 +69,27 @@ def test_create_generation_task_persists_provider_configuration(client):
     assert response.json()["provider"] == "cursor"
     assert response.json()["prompt_version"] == "smoke"
     assert response.json()["input_refs"] == {"document_ids": [1, 2]}
+
+
+def test_create_generation_task_marks_dispatch_failures(client, monkeypatch):
+    project = client.post("/projects", json={"name": "Billing", "code": "billing"}).json()
+
+    generation_service = _load_generation_service_module()
+    monkeypatch.setattr(
+        generation_service,
+        "dispatch_generation_task",
+        lambda task_id: "broker unreachable",
+    )
+
+    response = client.post(
+        f"/projects/{project['id']}/generation-tasks",
+        json={
+            "provider": "cursor",
+            "prompt_profile": "smoke",
+            "input_document_ids": [9],
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["status"] == "failed"
+    assert response.json()["error_message"] == "broker unreachable"
