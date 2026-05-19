@@ -1,6 +1,22 @@
 import pytest
 
 
+def test_client_uses_migrated_test_database(client, test_database_url):
+    import sqlite3
+
+    with sqlite3.connect(test_database_url.removeprefix("sqlite:///")) as connection:
+        tables = {
+            row[0]
+            for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table'"
+            )
+        }
+
+    assert "alembic_version" in tables
+    assert "projects" in tables
+    assert "document_assets" in tables
+
+
 def test_create_project(client):
     response = client.post(
         "/projects",
