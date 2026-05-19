@@ -8,6 +8,14 @@ from app.schemas.document import DocumentCreate, DocumentRead
 router = APIRouter(tags=["documents"])
 
 
+@router.get("/projects/{project_id}/documents", response_model=list[DocumentRead])
+def list_document_assets(
+    project_id: int,
+    session: Session = Depends(get_session),
+) -> list[DocumentRead]:
+    return document_service.list_assets(session, project_id)
+
+
 @router.post(
     "/projects/{project_id}/documents",
     response_model=DocumentRead,

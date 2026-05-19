@@ -11,10 +11,21 @@ type ProjectPageProps = {
 
 export default async function ProjectWorkspacePage({ params }: ProjectPageProps) {
   const { projectId } = await params;
-  const [project, documents] = await Promise.all([
-    getProject(projectId),
-    listProjectDocuments(projectId),
-  ]);
+  const project = await getProject(projectId);
+
+  if (!project) {
+    return (
+      <AppShell currentPath={`/projects/${projectId}`}>
+        <section className="page-header">
+          <span className="eyebrow">Project Workspace</span>
+          <h2>Project not found</h2>
+          <p>The requested project is unavailable or no longer exists.</p>
+        </section>
+      </AppShell>
+    );
+  }
+
+  const documents = await listProjectDocuments(projectId);
 
   return (
     <AppShell currentPath={`/projects/${projectId}`} project={project}>

@@ -1,3 +1,4 @@
+from fastapi import HTTPException, status
 from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -48,4 +49,19 @@ def create_project(session: Session, payload: ProjectCreate) -> Project:
             raise ProjectConflictError from exc
         raise
     session.refresh(project)
+    return project
+
+
+def list_projects(session: Session) -> list[Project]:
+    return list(session.scalars(select(Project).order_by(Project.id)))
+
+
+def get_project(session: Session, project_id: int) -> Project:
+    project = session.scalar(select(Project).where(Project.id == project_id))
+    if project is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found",
+        )
+
     return project
