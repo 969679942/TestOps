@@ -13,3 +13,4 @@ class DocumentAsset(Base):
     name: Mapped[str] = mapped_column(String(255))
     source_mode: Mapped[str] = mapped_column(String(32))
     source_uri: Mapped[str | None] = mapped_column(Text())
+    parse_status: Mapped[str] = mapped_column(String(32), default="uploaded")

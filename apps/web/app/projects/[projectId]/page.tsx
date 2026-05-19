@@ -11,15 +11,41 @@ type ProjectPageProps = {
 
 export default async function ProjectWorkspacePage({ params }: ProjectPageProps) {
   const { projectId } = await params;
-  const project = await getProject(projectId);
+  const projectResult = await getProject(projectId);
 
-  if (!project) {
+  if (projectResult.kind === "not-found") {
     return (
       <AppShell currentPath={`/projects/${projectId}`}>
         <section className="page-header">
           <span className="eyebrow">Project Workspace</span>
           <h2>Project not found</h2>
           <p>The requested project is unavailable or no longer exists.</p>
+        </section>
+      </AppShell>
+    );
+  }
+
+  if (projectResult.kind === "http-error") {
+    return (
+      <AppShell currentPath={`/projects/${projectId}`}>
+        <section className="page-header">
+          <span className="eyebrow">Project Workspace</span>
+          <h2>Project unavailable</h2>
+          <p>The requested project could not be loaded because the API returned an error.</p>
+        </section>
+      </AppShell>
+    );
+  }
+
+  const project = projectResult.project;
+
+  if (project === null) {
+    return (
+      <AppShell currentPath={`/projects/${projectId}`}>
+        <section className="page-header">
+          <span className="eyebrow">Project Workspace</span>
+          <h2>Project unavailable</h2>
+          <p>The requested project could not be loaded because the API is unavailable.</p>
         </section>
       </AppShell>
     );

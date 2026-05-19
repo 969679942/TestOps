@@ -21,3 +21,4 @@ class DocumentRead(BaseModel):
     name: str
     source_mode: str
     source_uri: str | None
+    parse_status: str

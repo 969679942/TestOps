@@ -54,6 +54,23 @@ export type ProjectListResult =
       status: number;
     };
 
+export type ProjectLookupResult =
+  | {
+      kind: "success";
+      project: ProjectRecord;
+    }
+  | {
+      kind: "unavailable";
+      project: ProjectRecord | null;
+    }
+  | {
+      kind: "not-found";
+    }
+  | {
+      kind: "http-error";
+      status: number;
+    };
+
 export type DocumentAssetListResult =
   | {
       kind: "success";

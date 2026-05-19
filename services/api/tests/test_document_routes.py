@@ -16,6 +16,7 @@ def test_create_document_asset(client):
 
     assert response.status_code == 201
     assert response.json()["type"] == "figma"
+    assert response.json()["parse_status"] == "uploaded"
 
 
 def test_list_document_assets_returns_project_documents(client):
@@ -48,6 +49,10 @@ def test_list_document_assets_returns_project_documents(client):
     assert [document["name"] for document in response.json()] == [
         "Checkout UI",
         "Checkout API",
+    ]
+    assert [document["parse_status"] for document in response.json()] == [
+        "uploaded",
+        "uploaded",
     ]
 
 

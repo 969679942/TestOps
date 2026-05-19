@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models.generation import GenerationTask
 from app.models.project import Project
+from app.modules.project import service as project_service
 from app.modules.provider import UnknownProviderError, resolve_provider
 from app.schemas.generation import GenerationTaskCreate
 
@@ -128,6 +129,17 @@ def create_task(
     session.commit()
     session.refresh(task)
     return task
+
+
+def list_tasks(session: Session, project_id: int) -> list[GenerationTask]:
+    project_service.get_project(session, project_id)
+    return list(
+        session.scalars(
+            select(GenerationTask)
+            .where(GenerationTask.project_id == project_id)
+            .order_by(GenerationTask.created_at.desc(), GenerationTask.id.desc())
+        )
+    )
 
 
 def dispatch_generation_task(task_id: int) -> str | None:

@@ -49,13 +49,16 @@ describe("workspace pages", () => {
 
   it("renders document availability instead of a zero count on document list http errors", async () => {
     getProjectMock.mockResolvedValue({
-      id: "1",
-      name: "Payments Platform",
-      code: "payments",
-      description: "Checkout and settlement flows.",
-      status: "active",
-      defaultProvider: "cursor",
-      defaultPromptProfile: "default",
+      kind: "success",
+      project: {
+        id: "1",
+        name: "Payments Platform",
+        code: "payments",
+        description: "Checkout and settlement flows.",
+        status: "active",
+        defaultProvider: "cursor",
+        defaultPromptProfile: "default",
+      },
     });
     listProjectDocumentsMock.mockResolvedValue({
       kind: "http-error",
@@ -75,13 +78,16 @@ describe("workspace pages", () => {
 
   it("renders the documents route as a Task 7 scaffold", async () => {
     getProjectMock.mockResolvedValue({
-      id: "1",
-      name: "Payments Platform",
-      code: "payments",
-      description: "Checkout and settlement flows.",
-      status: "active",
-      defaultProvider: "cursor",
-      defaultPromptProfile: "default",
+      kind: "success",
+      project: {
+        id: "1",
+        name: "Payments Platform",
+        code: "payments",
+        description: "Checkout and settlement flows.",
+        status: "active",
+        defaultProvider: "cursor",
+        defaultPromptProfile: "default",
+      },
     });
     listProjectDocumentsMock.mockResolvedValue({
       kind: "success",
@@ -112,13 +118,16 @@ describe("workspace pages", () => {
 
   it("renders generation task history when the route resolves successfully", async () => {
     getProjectMock.mockResolvedValue({
-      id: "1",
-      name: "Payments Platform",
-      code: "payments",
-      description: "Checkout and settlement flows.",
-      status: "active",
-      defaultProvider: "cursor",
-      defaultPromptProfile: "default",
+      kind: "success",
+      project: {
+        id: "1",
+        name: "Payments Platform",
+        code: "payments",
+        description: "Checkout and settlement flows.",
+        status: "active",
+        defaultProvider: "cursor",
+        defaultPromptProfile: "default",
+      },
     });
     listProjectGenerationTasksMock.mockResolvedValue({
       kind: "success",
@@ -151,5 +160,39 @@ describe("workspace pages", () => {
     expect(html).toContain("Task #gen-101");
     expect(html).toContain("gpt-4.1-mini");
     expect(html).toContain("Document Center");
+  });
+
+  it("renders an API error state instead of a false not-found screen for documents", async () => {
+    getProjectMock.mockResolvedValue({
+      kind: "http-error",
+      status: 503,
+    });
+
+    const html = renderToStaticMarkup(
+      await ProjectDocumentsPage({
+        params: Promise.resolve({ projectId: "1" }),
+      }),
+    );
+
+    expect(html).toContain("Project unavailable");
+    expect(html).toContain("could not be loaded because the API returned an error");
+    expect(html).not.toContain("Project not found");
+  });
+
+  it("renders an API error state instead of a false not-found screen for generation tasks", async () => {
+    getProjectMock.mockResolvedValue({
+      kind: "http-error",
+      status: 503,
+    });
+
+    const html = renderToStaticMarkup(
+      await ProjectGenerationTasksPage({
+        params: Promise.resolve({ projectId: "1" }),
+      }),
+    );
+
+    expect(html).toContain("Project unavailable");
+    expect(html).toContain("could not be loaded because the API returned an error");
+    expect(html).not.toContain("Project not found");
   });
 });

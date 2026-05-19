@@ -3,6 +3,7 @@ import type {
   DocumentAssetListResult,
   GenerationTaskListResult,
   GenerationTaskRecord,
+  ProjectLookupResult,
   ProjectListResult,
   ProjectRecord,
 } from "./types";
@@ -24,6 +25,7 @@ type ProjectDocumentApiRecord = {
   name: string;
   source_mode: string;
   source_uri: string | null;
+  parse_status: string;
 };
 
 type GenerationTaskApiRecord = {
@@ -289,6 +291,7 @@ function mapDocument(document: ProjectDocumentApiRecord): DocumentAsset {
     name: document.name,
     sourceMode: document.source_mode,
     sourceUri: document.source_uri,
+    parseStatus: document.parse_status,
   };
 }
 
@@ -335,18 +338,30 @@ export async function listProjects(): Promise<ProjectListResult> {
   };
 }
 
-export async function getProject(projectId: string): Promise<ProjectRecord | null> {
+export async function getProject(projectId: string): Promise<ProjectLookupResult> {
   const result = await requestJson<ProjectApiRecord>(`/projects/${projectId}`);
 
   if (result.kind === "unavailable") {
-    return getDemoProject(projectId);
+    return {
+      kind: "unavailable",
+      project: getDemoProject(projectId),
+    };
   }
 
-  if (result.kind !== "success") {
-    return null;
+  if (result.kind === "http-error") {
+    if (result.status === 404) {
+      return {
+        kind: "not-found",
+      };
+    }
+
+    return result;
   }
 
-  return mapProject(result.data);
+  return {
+    kind: "success",
+    project: mapProject(result.data),
+  };
 }
 
 export async function listProjectDocuments(projectId: string): Promise<DocumentAssetListResult> {
