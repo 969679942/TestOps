@@ -90,14 +90,13 @@ export default async function ProjectWorkspacePage({ params }: ProjectPageProps)
           <p>Monitor provider runs, prompt profiles, and document inputs tied to each attempt.</p>
         </a>
 
-        <article className="workspace-link">
-          <span className="eyebrow">Coming Later</span>
+        <a className="workspace-link" href={`/projects/${projectId}/review`}>
+          <span className="eyebrow">Review Queue</span>
           <h3>Review Workspace</h3>
           <p>
-            Human review remains intentionally out of scope here until the dedicated Task 9
-            workspace lands.
+            Open generated cases for structured review before approval and publishing.
           </p>
-        </article>
+        </a>
       </section>
     </AppShell>
   );

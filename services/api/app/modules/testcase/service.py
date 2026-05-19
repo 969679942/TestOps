@@ -9,6 +9,8 @@ from app.models.testcase import TestCase, TestCaseReview
 from app.modules.review import service as review_service
 from app.schemas.testcase import TestCaseCreate
 
+REVIEW_QUEUE_STATUSES = ("draft", "needs_update", "approved")
+
 
 def _get_project_or_404(session: Session, project_id: int) -> Project:
     project = session.scalar(select(Project).where(Project.id == project_id))
@@ -50,6 +52,19 @@ def create_test_case(
     session.commit()
     session.refresh(test_case)
     return test_case
+
+
+def list_test_cases(session: Session, project_id: int) -> list[TestCase]:
+    _get_project_or_404(session, project_id)
+    cases = session.scalars(
+        select(TestCase)
+        .where(
+            TestCase.project_id == project_id,
+            TestCase.status.in_(REVIEW_QUEUE_STATUSES),
+        )
+        .order_by(TestCase.id)
+    )
+    return list(cases)
 
 
 def publish_case(session: Session, test_case_id: int) -> TestCase:

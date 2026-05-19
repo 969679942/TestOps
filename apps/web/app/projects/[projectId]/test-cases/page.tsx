@@ -13,7 +13,7 @@ type ProjectTestCasesPageProps = {
 
 function getCounts(items: TestCaseRecord[]) {
   return {
-    inReview: items.filter((item) => item.status === "in_review").length,
+    needsUpdate: items.filter((item) => item.status === "needs_update").length,
     automationCandidates: items.filter((item) => item.automationFlag).length,
   };
 }
@@ -65,6 +65,7 @@ export default async function ProjectTestCasesPage({
   const testCaseList = await listProjectTestCases(projectId);
   const items = testCaseList.kind === "http-error" ? [] : testCaseList.items;
   const counts = getCounts(items);
+  const countsUnavailable = testCaseList.kind === "http-error";
 
   return (
     <AppShell currentPath={`/projects/${projectId}/test-cases`} project={project}>
@@ -82,12 +83,16 @@ export default async function ProjectTestCasesPage({
           </p>
         </article>
         <article className="summary-card">
-          <span className="eyebrow">In Review</span>
-          <p className="summary-value">{counts.inReview}</p>
+          <span className="eyebrow">Needs Update</span>
+          <p className="summary-value">
+            {countsUnavailable ? "Unavailable" : counts.needsUpdate}
+          </p>
         </article>
         <article className="summary-card">
           <span className="eyebrow">Automation Candidates</span>
-          <p className="summary-value">{counts.automationCandidates}</p>
+          <p className="summary-value">
+            {countsUnavailable ? "Unavailable" : counts.automationCandidates}
+          </p>
         </article>
       </section>
 
@@ -103,7 +108,7 @@ export default async function ProjectTestCasesPage({
         </section>
       ) : null}
 
-      <TestCaseTable items={items} />
+      {countsUnavailable ? null : <TestCaseTable items={items} />}
 
       <section className="workspace-links" aria-label="Test case follow-up">
         <a className="workspace-link" href={`/projects/${projectId}/review`}>

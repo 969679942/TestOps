@@ -35,7 +35,7 @@ describe("ReviewEditor", () => {
     );
 
     expect(html).toContain("Review draft");
-    expect(html).toContain("<textarea");
-    expect(html).toContain("Open order page");
+    expect(html).toContain('name="step-1"');
+    expect(html).toContain(">Open order page</textarea>");
   });
 });

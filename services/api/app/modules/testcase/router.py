@@ -8,6 +8,14 @@ from app.schemas.testcase import TestCaseCreate, TestCaseRead
 router = APIRouter(tags=["testcases"])
 
 
+@router.get("/projects/{project_id}/test-cases", response_model=list[TestCaseRead])
+def list_test_cases(
+    project_id: int,
+    session: Session = Depends(get_session),
+) -> list[TestCaseRead]:
+    return testcase_service.list_test_cases(session, project_id)
+
+
 @router.post(
     "/projects/{project_id}/test-cases",
     response_model=TestCaseRead,

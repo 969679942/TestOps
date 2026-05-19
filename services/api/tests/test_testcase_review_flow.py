@@ -139,6 +139,93 @@ def test_review_publish_and_handoff_flow(client):
     ]
 
 
+def test_list_test_cases_returns_project_drafts(client):
+    project = _create_project(client)
+    first_case = _create_test_case(client, project["id"])
+    second_case = client.post(
+        f"/projects/{project['id']}/test-cases",
+        json={
+            "title": "Reject invalid promo code",
+            "module": "Checkout",
+            "feature": "Promotions",
+            "case_type": "negative",
+            "priority": "medium",
+            "preconditions": ["User has items in cart"],
+            "steps": [
+                {"text": "Open the checkout page"},
+                {"text": "Apply an expired promo code"},
+            ],
+            "expected_results": [
+                {"text": "The expired promo code is rejected."},
+            ],
+            "tags": ["checkout", "negative"],
+            "automation_flag": False,
+            "automation_notes": None,
+        },
+    )
+    response = client.get(f"/projects/{project['id']}/test-cases")
+
+    assert second_case.status_code == 201
+    assert response.status_code == 200
+    assert [item["title"] for item in response.json()] == [
+        first_case["title"],
+        "Reject invalid promo code",
+    ]
+
+
+def test_list_test_cases_returns_404_for_missing_project(client):
+    response = client.get("/projects/9999/test-cases")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Project not found"}
+
+
+def test_list_test_cases_excludes_closed_cases(client):
+    project = _create_project(client)
+    published_case = _create_test_case(client, project["id"])
+    rejected_case = client.post(
+        f"/projects/{project['id']}/test-cases",
+        json={
+            "title": "Reject invalid promo code",
+            "module": "Checkout",
+            "feature": "Promotions",
+            "case_type": "negative",
+            "priority": "medium",
+            "preconditions": ["User has items in cart"],
+            "steps": [{"text": "Open the checkout page"}],
+            "expected_results": [{"text": "The invalid promo code is rejected."}],
+            "tags": ["checkout", "negative"],
+            "automation_flag": False,
+            "automation_notes": None,
+        },
+    ).json()
+
+    approve = client.post(
+        f"/test-cases/{published_case['id']}/reviews",
+        json={
+            "reviewer_id": "qa.lead",
+            "action": "approve",
+            "comment": "ready for publish",
+        },
+    )
+    reject = client.post(
+        f"/test-cases/{rejected_case['id']}/reviews",
+        json={
+            "reviewer_id": "qa.lead",
+            "action": "reject",
+            "comment": "not a valid scenario",
+        },
+    )
+    publish = client.post(f"/test-cases/{published_case['id']}/publish")
+    response = client.get(f"/projects/{project['id']}/test-cases")
+
+    assert approve.status_code == 201
+    assert reject.status_code == 201
+    assert publish.status_code == 200
+    assert response.status_code == 200
+    assert response.json() == []
+
+
 def _read_test_case_status(test_database_url: str, test_case_id: int) -> str:
     with sqlite3.connect(test_database_url.removeprefix("sqlite:///")) as connection:
         row = connection.execute(

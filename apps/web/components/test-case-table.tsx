@@ -60,7 +60,7 @@ export function TestCaseTable({ items }: TestCaseTableProps) {
                   <td>
                     <a
                       className="table-link"
-                      href={`/projects/${item.projectId}/review`}
+                      href={`/projects/${item.projectId}/review?caseId=${item.id}`}
                     >
                       Open review
                     </a>

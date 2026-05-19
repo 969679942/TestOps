@@ -226,16 +226,68 @@ describe("workspace pages", () => {
         defaultPromptProfile: "default",
       },
     });
+    listProjectTestCasesMock.mockResolvedValue({
+      kind: "success",
+      items: [],
+    });
 
     const html = renderToStaticMarkup(
       await ProjectReviewPage({
         params: Promise.resolve({ projectId: "1" }),
+        searchParams: Promise.resolve({}),
       }),
     );
 
     expect(html).toContain("Review Workspace");
     expect(html).toContain("No test case selected");
     expect(html).toContain("Test Cases");
+  });
+
+  it("renders the selected test case inside the review workspace", async () => {
+    getProjectMock.mockResolvedValue({
+      kind: "success",
+      project: {
+        id: "1",
+        name: "Payments Platform",
+        code: "payments",
+        description: "Checkout and settlement flows.",
+        status: "active",
+        defaultProvider: "cursor",
+        defaultPromptProfile: "default",
+      },
+    });
+    listProjectTestCasesMock.mockResolvedValue({
+      kind: "success",
+      items: [
+        {
+          id: "case-101",
+          projectId: "1",
+          title: "Create order with saved card",
+          status: "draft",
+          module: "Checkout",
+          feature: "Card payment",
+          caseType: "functional",
+          priority: "high",
+          preconditions: ["Saved card exists"],
+          steps: [{ text: "Open order page" }],
+          expectedResults: [{ text: "Order completes" }],
+          tags: ["smoke"],
+          automationFlag: true,
+          automationNotes: "Reuse checkout fixture",
+        },
+      ],
+    });
+
+    const html = renderToStaticMarkup(
+      await ProjectReviewPage({
+        params: Promise.resolve({ projectId: "1" }),
+        searchParams: Promise.resolve({ caseId: "case-101" }),
+      }),
+    );
+
+    expect(html).toContain("Review draft");
+    expect(html).toContain('name="step-1"');
+    expect(html).not.toContain("No test case selected");
   });
 
   it("renders an API error state instead of a false not-found screen for documents", async () => {
@@ -270,5 +322,64 @@ describe("workspace pages", () => {
     expect(html).toContain("Project unavailable");
     expect(html).toContain("could not be loaded because the API returned an error");
     expect(html).not.toContain("Project not found");
+  });
+
+  it("renders unavailable counts instead of zeroes for test case http errors", async () => {
+    getProjectMock.mockResolvedValue({
+      kind: "success",
+      project: {
+        id: "1",
+        name: "Payments Platform",
+        code: "payments",
+        description: "Checkout and settlement flows.",
+        status: "active",
+        defaultProvider: "cursor",
+        defaultPromptProfile: "default",
+      },
+    });
+    listProjectTestCasesMock.mockResolvedValue({
+      kind: "http-error",
+      status: 503,
+    });
+
+    const html = renderToStaticMarkup(
+      await ProjectTestCasesPage({
+        params: Promise.resolve({ projectId: "1" }),
+      }),
+    );
+
+    expect(html).toContain("Test cases are temporarily unavailable");
+    expect(html).toContain(">Unavailable<");
+    expect(html).not.toContain(">0<");
+  });
+
+  it("renders a review API error state instead of a false no-selection editor", async () => {
+    getProjectMock.mockResolvedValue({
+      kind: "success",
+      project: {
+        id: "1",
+        name: "Payments Platform",
+        code: "payments",
+        description: "Checkout and settlement flows.",
+        status: "active",
+        defaultProvider: "cursor",
+        defaultPromptProfile: "default",
+      },
+    });
+    listProjectTestCasesMock.mockResolvedValue({
+      kind: "http-error",
+      status: 503,
+    });
+
+    const html = renderToStaticMarkup(
+      await ProjectReviewPage({
+        params: Promise.resolve({ projectId: "1" }),
+        searchParams: Promise.resolve({ caseId: "case-101" }),
+      }),
+    );
+
+    expect(html).toContain("Test cases are temporarily unavailable");
+    expect(html).not.toContain("No test case selected");
+    expect(html).not.toContain("Review draft");
   });
 });
