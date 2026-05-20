@@ -93,19 +93,19 @@ Run: `cd services/api; uv run pytest tests/test_cursor_provider.py -q`
 - Create: `services/api/alembic/versions/0006_add_document_versions_and_generation_outputs.py`
 - Test: `services/api/tests/test_document_upload_flow.py`
 
-- [ ] **Step 1: Write failing tests for file upload and URL version creation**
+- [x] **Step 1: Write failing tests for file upload and URL version creation**
 
 Verify a document version is created with storage path/checksum and initial parse status.
 
-- [ ] **Step 2: Add ORM and migration**
+- [x] **Step 2: Add ORM and migration**
 
 Add `DocumentVersion` with `document_asset_id`, `version_no`, `storage_path`, `checksum`, `parse_status`, `parse_summary`, and `structured_metadata`.
 
-- [ ] **Step 3: Add service/router endpoints**
+- [x] **Step 3: Add service/router endpoints**
 
 Add `POST /documents/{document_id}/versions` for upload or URL metadata and `POST /document-versions/{version_id}/parse`.
 
-- [ ] **Step 4: Run document API tests**
+- [x] **Step 4: Run document API tests**
 
 Run: `cd services/api; uv run pytest tests/test_document_routes.py tests/test_document_upload_flow.py -q`
 

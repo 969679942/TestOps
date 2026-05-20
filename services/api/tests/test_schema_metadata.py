@@ -5,6 +5,7 @@ from app.models import document, generation, project, testcase  # noqa: F401
 def test_registered_model_metadata_matches_schema() -> None:
     assert sorted(Base.metadata.tables) == [
         "document_assets",
+        "document_versions",
         "generation_tasks",
         "projects",
         "test_case_reviews",
