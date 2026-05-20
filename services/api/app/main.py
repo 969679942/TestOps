@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+from app.modules.automation.router import router as automation_router
 from app.modules.document.router import router as document_router
 from app.modules.generation.router import router as generation_router
 from app.modules.project.router import router as project_router
@@ -8,6 +9,7 @@ from app.modules.testcase.router import router as testcase_router
 
 app = FastAPI(title="TestOps API")
 
+app.include_router(automation_router)
 app.include_router(project_router)
 app.include_router(document_router)
 app.include_router(generation_router)
