@@ -4,24 +4,36 @@ import { describe, expect, it, vi } from "vitest";
 
 const {
   getProjectMock,
+  createDocumentVersionMock,
+  createGenerationTaskMock,
+  createProjectDocumentMock,
   listProjectDocumentsMock,
   listProjectGenerationTasksMock,
   listProjectsMock,
   listProjectTestCasesMock,
+  parseDocumentVersionMock,
 } = vi.hoisted(() => ({
   getProjectMock: vi.fn(),
+  createDocumentVersionMock: vi.fn(),
+  createGenerationTaskMock: vi.fn(),
+  createProjectDocumentMock: vi.fn(),
   listProjectDocumentsMock: vi.fn(),
   listProjectGenerationTasksMock: vi.fn(),
   listProjectsMock: vi.fn(),
   listProjectTestCasesMock: vi.fn(),
+  parseDocumentVersionMock: vi.fn(),
 }));
 
 vi.mock("../../lib/api", () => ({
+  createDocumentVersion: createDocumentVersionMock,
+  createGenerationTask: createGenerationTaskMock,
+  createProjectDocument: createProjectDocumentMock,
   getProject: getProjectMock,
   listProjectDocuments: listProjectDocumentsMock,
   listProjectGenerationTasks: listProjectGenerationTasksMock,
   listProjects: listProjectsMock,
   listProjectTestCases: listProjectTestCasesMock,
+  parseDocumentVersion: parseDocumentVersionMock,
 }));
 
 import HomePage from "../../app/page";
@@ -134,6 +146,9 @@ describe("workspace pages", () => {
 
     expect(html).toContain("Document Center");
     expect(html).toContain("Document assets");
+    expect(html).toContain("Attach source document");
+    expect(html).toContain("Paste document content");
+    expect(html).toContain("Trigger parse after save");
     expect(html).toContain("Payments PRD");
     expect(html).toContain("Generation Tasks");
   });
@@ -179,6 +194,8 @@ describe("workspace pages", () => {
     );
 
     expect(html).toContain("Generation Queue");
+    expect(html).toContain("Queue generation run");
+    expect(html).toContain("Input document IDs");
     expect(html).toContain("Task #gen-101");
     expect(html).toContain("gpt-4.1-mini");
     expect(html).toContain("Document Center");

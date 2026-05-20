@@ -22,6 +22,18 @@ export type DocumentAsset = {
   parseStatus?: string;
 };
 
+export type DocumentVersionRecord = {
+  id: string | number;
+  documentAssetId: string | number;
+  versionNo: number;
+  storagePath: string | null;
+  checksum: string | null;
+  sourceUri: string | null;
+  parseStatus: string;
+  parseSummary: string | null;
+  structuredMetadata: Record<string, unknown>;
+};
+
 export type GenerationTaskStatus = LooseString<
   "queued" | "running" | "succeeded" | "failed"
 >;

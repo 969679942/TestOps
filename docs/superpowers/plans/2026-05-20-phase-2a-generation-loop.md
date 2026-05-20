@@ -136,19 +136,19 @@ Run: `cd services/worker; uv run pytest tests/test_parse_task.py -q`
 - Modify: `apps/web/app/projects/[projectId]/generation-tasks/page.tsx`
 - Test: `apps/web/src/tests/pages.test.tsx`
 
-- [ ] **Step 1: Write failing page tests for upload/create-generation forms**
+- [x] **Step 1: Write failing page tests for upload/create-generation forms**
 
 Assert the document page renders upload/link controls and the generation page renders a create task action.
 
-- [ ] **Step 2: Add API helpers**
+- [x] **Step 2: Add API helpers**
 
 Add helpers for creating document assets, creating versions, triggering parse, and creating generation tasks.
 
-- [ ] **Step 3: Add server actions/forms**
+- [x] **Step 3: Add server actions/forms**
 
 Use simple server forms first; keep the UI intentionally small and traceable.
 
-- [ ] **Step 4: Run frontend tests**
+- [x] **Step 4: Run frontend tests**
 
 Run: `cd apps/web; npm test`
 Run: `cd apps/web; npx tsc --noEmit`

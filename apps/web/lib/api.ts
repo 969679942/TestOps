@@ -1,6 +1,7 @@
 import type {
   DocumentAsset,
   DocumentAssetListResult,
+  DocumentVersionRecord,
   GenerationTaskListResult,
   GenerationTaskRecord,
   ProjectLookupResult,
@@ -28,6 +29,18 @@ type ProjectDocumentApiRecord = {
   source_mode: string;
   source_uri: string | null;
   parse_status: string;
+};
+
+type DocumentVersionApiRecord = {
+  id: number;
+  document_asset_id: number;
+  version_no: number;
+  storage_path: string | null;
+  checksum: string | null;
+  source_uri: string | null;
+  parse_status: string;
+  parse_summary: string | null;
+  structured_metadata: Record<string, unknown>;
 };
 
 type GenerationTaskApiRecord = {
@@ -77,6 +90,26 @@ type RequestResult<T> =
   | {
       kind: "unavailable";
     };
+
+export type CreateProjectDocumentPayload = {
+  type: string;
+  name: string;
+  source_mode: string;
+  source_uri?: string | null;
+};
+
+export type CreateDocumentVersionPayload = {
+  filename?: string | null;
+  content?: string | null;
+  source_uri?: string | null;
+};
+
+export type CreateGenerationTaskPayload = {
+  input_document_ids: number[];
+  provider?: string | null;
+  model?: string | null;
+  prompt_profile?: string | null;
+};
 
 const API_BASE_URL = process.env.TESTOPS_API_BASE_URL ?? "http://127.0.0.1:8000";
 
@@ -408,12 +441,17 @@ const demoTestCases: Record<string, TestCaseRecord[]> = {
   ],
 };
 
-async function requestJson<T>(path: string): Promise<RequestResult<T>> {
+async function requestJson<T>(
+  path: string,
+  init?: RequestInit,
+): Promise<RequestResult<T>> {
   try {
     const response = await fetch(`${API_BASE_URL}${path}`, {
+      ...init,
       cache: "no-store",
       headers: {
         Accept: "application/json",
+        ...(init?.headers ?? {}),
       },
     });
 
@@ -433,6 +471,19 @@ async function requestJson<T>(path: string): Promise<RequestResult<T>> {
       kind: "unavailable",
     };
   }
+}
+
+async function postJson<T>(
+  path: string,
+  body?: Record<string, unknown>,
+): Promise<RequestResult<T>> {
+  return requestJson<T>(path, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
 }
 
 function mapProject(project: ProjectApiRecord): ProjectRecord {
@@ -456,6 +507,20 @@ function mapDocument(document: ProjectDocumentApiRecord): DocumentAsset {
     sourceMode: document.source_mode,
     sourceUri: document.source_uri,
     parseStatus: document.parse_status,
+  };
+}
+
+function mapDocumentVersion(version: DocumentVersionApiRecord): DocumentVersionRecord {
+  return {
+    id: String(version.id),
+    documentAssetId: String(version.document_asset_id),
+    versionNo: version.version_no,
+    storagePath: version.storage_path,
+    checksum: version.checksum,
+    sourceUri: version.source_uri,
+    parseStatus: version.parse_status,
+    parseSummary: version.parse_summary,
+    structuredMetadata: version.structured_metadata,
   };
 }
 
@@ -569,6 +634,61 @@ export async function listProjectDocuments(projectId: string): Promise<DocumentA
   };
 }
 
+export async function createProjectDocument(
+  projectId: string,
+  payload: CreateProjectDocumentPayload,
+): Promise<RequestResult<DocumentAsset>> {
+  const result = await postJson<ProjectDocumentApiRecord>(
+    `/projects/${projectId}/documents`,
+    payload,
+  );
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: mapDocument(result.data),
+  };
+}
+
+export async function createDocumentVersion(
+  documentId: string,
+  payload: CreateDocumentVersionPayload,
+): Promise<RequestResult<DocumentVersionRecord>> {
+  const result = await postJson<DocumentVersionApiRecord>(
+    `/documents/${documentId}/versions`,
+    payload,
+  );
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: mapDocumentVersion(result.data),
+  };
+}
+
+export async function parseDocumentVersion(
+  versionId: string,
+): Promise<RequestResult<DocumentVersionRecord>> {
+  const result = await postJson<DocumentVersionApiRecord>(
+    `/document-versions/${versionId}/parse`,
+  );
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: mapDocumentVersion(result.data),
+  };
+}
+
 export async function listProjectGenerationTasks(
   projectId: string,
 ): Promise<GenerationTaskListResult> {
@@ -590,6 +710,25 @@ export async function listProjectGenerationTasks(
   return {
     kind: "success",
     tasks: result.data.map(mapGenerationTask),
+  };
+}
+
+export async function createGenerationTask(
+  projectId: string,
+  payload: CreateGenerationTaskPayload,
+): Promise<RequestResult<GenerationTaskRecord>> {
+  const result = await postJson<GenerationTaskApiRecord>(
+    `/projects/${projectId}/generation-tasks`,
+    payload,
+  );
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: mapGenerationTask(result.data),
   };
 }
 

@@ -1,11 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  createDocumentVersion,
+  createGenerationTask,
+  createProjectDocument,
   getProject,
   listProjectDocuments,
   listProjectGenerationTasks,
   listProjects,
   listProjectTestCases,
+  parseDocumentVersion,
 } from "../../lib/api";
 
 const fetchMock = vi.fn<typeof fetch>();
@@ -143,6 +147,85 @@ describe("api fallbacks", () => {
     });
   });
 
+  it("creates a project document through the API", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        id: 7,
+        project_id: 1,
+        type: "prd",
+        name: "Checkout PRD",
+        source_mode: "upload",
+        source_uri: null,
+        parse_status: "uploaded",
+      }),
+    );
+
+    await expect(
+      createProjectDocument("1", {
+        type: "prd",
+        name: "Checkout PRD",
+        source_mode: "upload",
+        source_uri: null,
+      }),
+    ).resolves.toMatchObject({
+      kind: "success",
+      data: {
+        id: "7",
+        name: "Checkout PRD",
+      },
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/projects/1/documents",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          type: "prd",
+          name: "Checkout PRD",
+          source_mode: "upload",
+          source_uri: null,
+        }),
+      }),
+    );
+  });
+
+  it("creates and parses document versions through the API", async () => {
+    const versionResponse = {
+      id: 12,
+      document_asset_id: 7,
+      version_no: 1,
+      storage_path: "var/artifacts/prd.md",
+      checksum: "abc",
+      source_uri: null,
+      parse_status: "queued",
+      parse_summary: null,
+      structured_metadata: {},
+    };
+    fetchMock.mockResolvedValueOnce(jsonResponse(versionResponse));
+    fetchMock.mockResolvedValueOnce(jsonResponse(versionResponse));
+
+    await expect(
+      createDocumentVersion("7", {
+        filename: "prd.md",
+        content: "# Checkout",
+        source_uri: null,
+      }),
+    ).resolves.toMatchObject({
+      kind: "success",
+      data: {
+        id: "12",
+        documentAssetId: "7",
+        versionNo: 1,
+      },
+    });
+    await expect(parseDocumentVersion("12")).resolves.toMatchObject({
+      kind: "success",
+      data: {
+        id: "12",
+        parseStatus: "queued",
+      },
+    });
+  });
+
   it("maps generation task responses from the API", async () => {
     fetchMock.mockResolvedValue(
       jsonResponse([
@@ -179,6 +262,40 @@ describe("api fallbacks", () => {
           createdAt: "2026-05-18T09:30:00Z",
         },
       ],
+    });
+  });
+
+  it("creates generation tasks through the API", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        id: 11,
+        project_id: 1,
+        status: "queued",
+        provider: "cursor",
+        model: "cursor-default",
+        prompt_version: "default",
+        input_refs: { document_ids: [7] },
+        started_at: null,
+        finished_at: null,
+        error_message: null,
+        created_at: "2026-05-18T09:30:00Z",
+      }),
+    );
+
+    await expect(
+      createGenerationTask("1", {
+        input_document_ids: [7],
+        provider: "cursor",
+        model: null,
+        prompt_profile: null,
+      }),
+    ).resolves.toMatchObject({
+      kind: "success",
+      data: {
+        id: "11",
+        provider: "cursor",
+        inputRefs: { document_ids: [7] },
+      },
     });
   });
 

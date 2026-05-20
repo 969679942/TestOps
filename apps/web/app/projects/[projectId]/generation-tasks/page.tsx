@@ -1,8 +1,13 @@
 import React from "react";
+import { revalidatePath } from "next/cache";
 
 import { AppShell } from "../../../../components/app-shell";
 import { GenerationTaskList } from "../../../../components/generation-task-list";
-import { getProject, listProjectGenerationTasks } from "../../../../lib/api";
+import {
+  createGenerationTask,
+  getProject,
+  listProjectGenerationTasks,
+} from "../../../../lib/api";
 import { copy, localizedHref, normalizeLocale, type LocaleSearchParams } from "../../../../lib/i18n";
 
 type ProjectGenerationTasksPageProps = {
@@ -61,6 +66,50 @@ export default async function ProjectGenerationTasksPage({
 
   const taskList = await listProjectGenerationTasks(projectId);
   const tasks = taskList.kind === "http-error" ? [] : taskList.tasks;
+  const actionText =
+    locale === "zh"
+      ? {
+          title: "创建生成任务",
+          copy: "输入文档 ID，选择 provider/model 后排队生成测试用例草稿。",
+          documentIds: "输入文档 IDs",
+          provider: "Provider",
+          model: "模型",
+          promptProfile: "提示词配置",
+          submit: "排队生成",
+        }
+      : {
+          title: "Queue generation run",
+          copy: "Enter document IDs and optional provider/model details to create a draft-generation task.",
+          documentIds: "Input document IDs",
+          provider: "Provider",
+          model: "Model",
+          promptProfile: "Prompt profile",
+          submit: "Queue generation",
+        };
+
+  async function createGenerationAction(formData: FormData) {
+    "use server";
+
+    const read = (name: string) => {
+      const value = formData.get(name);
+      return typeof value === "string" ? value.trim() : "";
+    };
+    const inputDocumentIds = read("inputDocumentIds")
+      .split(/[\s,]+/)
+      .map((value) => Number.parseInt(value, 10))
+      .filter((value) => Number.isInteger(value) && value > 0);
+    const provider = read("provider");
+    const model = read("model");
+    const promptProfile = read("promptProfile");
+
+    await createGenerationTask(projectId, {
+      input_document_ids: inputDocumentIds,
+      provider: provider || null,
+      model: model || null,
+      prompt_profile: promptProfile || null,
+    });
+    revalidatePath(`/projects/${projectId}/generation-tasks`);
+  }
 
   return (
     <AppShell
@@ -102,6 +151,47 @@ export default async function ProjectGenerationTasksPage({
           <p>{t.generationPage.error}</p>
         </section>
       ) : null}
+
+      <section className="data-card">
+        <div className="section-heading">
+          <div>
+            <span className="eyebrow">{t.generationPage.eyebrow}</span>
+            <h3>{actionText.title}</h3>
+          </div>
+          <p>{actionText.copy}</p>
+        </div>
+        <form action={createGenerationAction} className="review-stack">
+          <div className="form-grid">
+            <label className="form-field">
+              <span>{actionText.documentIds}</span>
+              <input className="field-input" name="inputDocumentIds" placeholder="1, 2, 3" />
+            </label>
+            <label className="form-field">
+              <span>{actionText.provider}</span>
+              <select className="field-input" name="provider" defaultValue="">
+                <option value="">Project default</option>
+                <option value="cursor">Cursor</option>
+                <option value="openai">OpenAI</option>
+              </select>
+            </label>
+            <label className="form-field">
+              <span>{actionText.model}</span>
+              <input className="field-input" name="model" placeholder={project.defaultProvider} />
+            </label>
+            <label className="form-field">
+              <span>{actionText.promptProfile}</span>
+              <input
+                className="field-input"
+                name="promptProfile"
+                placeholder={project.defaultPromptProfile}
+              />
+            </label>
+          </div>
+          <button className="primary-button" type="submit">
+            {actionText.submit}
+          </button>
+        </form>
+      </section>
 
       <GenerationTaskList items={tasks} locale={locale} />
 

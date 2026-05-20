@@ -354,6 +354,29 @@ a {
   resize: vertical;
 }
 
+.inline-check {
+  display: inline-flex;
+  gap: 0.6rem;
+  align-items: center;
+  color: var(--muted);
+}
+
+.primary-button {
+  width: fit-content;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: var(--accent);
+  padding: 0.8rem 1.2rem;
+  color: #fffefb;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.primary-button:hover {
+  background: #114b39;
+}
+
 .status-pill {
   display: inline-flex;
   align-items: center;
