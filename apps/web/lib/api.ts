@@ -1,4 +1,5 @@
 import type {
+  AutomationGenerationRecord,
   DocumentAsset,
   DocumentAssetListResult,
   DocumentVersionRecord,
@@ -77,6 +78,20 @@ type ProjectTestCaseApiRecord = {
   tags: string[];
   automation_flag: boolean;
   automation_notes: string | null;
+};
+
+type AutomationGenerationApiRecord = {
+  id: number;
+  test_case_id: number;
+  status: string;
+  framework: string;
+  language: string;
+  pattern: string;
+  artifact_root: string | null;
+  artifact_paths: Record<string, unknown>;
+  error_message: string | null;
+  created_at: string;
+  completed_at: string | null;
 };
 
 type ReviewApiRecord = {
@@ -588,6 +603,24 @@ function mapTestCase(item: ProjectTestCaseApiRecord): TestCaseRecord {
   };
 }
 
+function mapAutomationGeneration(
+  item: AutomationGenerationApiRecord,
+): AutomationGenerationRecord {
+  return {
+    id: String(item.id),
+    testCaseId: String(item.test_case_id),
+    status: item.status,
+    framework: item.framework,
+    language: item.language,
+    pattern: item.pattern,
+    artifactRoot: item.artifact_root,
+    artifactPaths: item.artifact_paths,
+    errorMessage: item.error_message,
+    createdAt: item.created_at,
+    completedAt: item.completed_at,
+  };
+}
+
 function getDemoProject(projectId: string): ProjectRecord | null {
   return (
     demoProjects.find((project) => project.id === projectId || project.code === projectId) ??
@@ -778,6 +811,47 @@ export async function listProjectTestCases(projectId: string): Promise<TestCaseL
   return {
     kind: "success",
     items: result.data.map(mapTestCase),
+  };
+}
+
+export async function listProjectPublishedTestCases(
+  projectId: string,
+): Promise<TestCaseListResult> {
+  const result = await requestJson<ProjectTestCaseApiRecord[]>(
+    `/projects/${projectId}/published-test-cases`,
+  );
+
+  if (result.kind === "unavailable") {
+    return {
+      kind: "unavailable",
+      items: [],
+    };
+  }
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    items: result.data.map(mapTestCase),
+  };
+}
+
+export async function createAutomationGeneration(
+  testCaseId: string,
+): Promise<RequestResult<AutomationGenerationRecord>> {
+  const result = await postJson<AutomationGenerationApiRecord>(
+    `/test-cases/${testCaseId}/automation-generations`,
+  );
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: mapAutomationGeneration(result.data),
   };
 }
 

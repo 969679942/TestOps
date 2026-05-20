@@ -1,8 +1,14 @@
 import React from "react";
+import { revalidatePath } from "next/cache";
 
 import { AppShell } from "../../../../components/app-shell";
 import { TestCaseTable } from "../../../../components/test-case-table";
-import { getProject, listProjectTestCases } from "../../../../lib/api";
+import {
+  createAutomationGeneration,
+  getProject,
+  listProjectPublishedTestCases,
+  listProjectTestCases,
+} from "../../../../lib/api";
 import { copy, localizedHref, normalizeLocale, type LocaleSearchParams } from "../../../../lib/i18n";
 import type { TestCaseRecord } from "../../../../lib/types";
 
@@ -68,9 +74,40 @@ export default async function ProjectTestCasesPage({
   }
 
   const testCaseList = await listProjectTestCases(projectId);
+  const publishedCaseList = await listProjectPublishedTestCases(projectId);
   const items = testCaseList.kind === "http-error" ? [] : testCaseList.items;
+  const publishedItems =
+    publishedCaseList.kind === "http-error" ? [] : publishedCaseList.items;
   const counts = getCounts(items);
   const countsUnavailable = testCaseList.kind === "http-error";
+  const automationText =
+    locale === "zh"
+      ? {
+          eyebrow: "自动化交接",
+          title: "已发布用例自动化交接",
+          copy: "已发布用例可以生成 Playwright + TypeScript + POM 自动化资产。",
+          empty: "暂无可生成自动化资产的已发布用例。",
+          action: "生成自动化",
+        }
+      : {
+          eyebrow: "Automation handoff",
+          title: "Published automation handoff",
+          copy: "Published cases can generate Playwright + TypeScript + POM automation assets.",
+          empty: "No published cases are ready for automation generation yet.",
+          action: "Generate automation",
+        };
+
+  async function generateAutomationAction(formData: FormData) {
+    "use server";
+
+    const value = formData.get("testCaseId");
+    if (typeof value !== "string" || !value.trim()) {
+      return;
+    }
+
+    await createAutomationGeneration(value.trim());
+    revalidatePath(`/projects/${projectId}/test-cases`);
+  }
 
   return (
     <AppShell
@@ -118,6 +155,38 @@ export default async function ProjectTestCasesPage({
       ) : null}
 
       {countsUnavailable ? null : <TestCaseTable items={items} locale={locale} />}
+
+      <section className="data-card">
+        <div className="section-heading">
+          <div>
+            <span className="eyebrow">{automationText.eyebrow}</span>
+            <h3>{automationText.title}</h3>
+          </div>
+          <p>{automationText.copy}</p>
+        </div>
+        {publishedItems.length ? (
+          <div className="automation-list">
+            {publishedItems.map((item) => (
+              <article className="automation-card" key={item.id}>
+                <div>
+                  <strong>{item.title}</strong>
+                  <p>
+                    {item.module} / {item.feature}
+                  </p>
+                </div>
+                <form action={generateAutomationAction}>
+                  <input name="testCaseId" type="hidden" value={String(item.id)} />
+                  <button className="secondary-button" type="submit">
+                    {automationText.action}
+                  </button>
+                </form>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="empty-copy">{automationText.empty}</p>
+        )}
+      </section>
 
       <section className="workspace-links" aria-label={t.testCasesPage.followUp}>
         <a className="workspace-link" href={localizedHref(`/projects/${projectId}/review`, locale)}>

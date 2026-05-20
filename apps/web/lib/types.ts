@@ -87,6 +87,20 @@ export type TestCaseMutationPayload = {
   automation_notes: string | null;
 };
 
+export type AutomationGenerationRecord = {
+  id: string | number;
+  testCaseId: string | number;
+  status: string;
+  framework: string;
+  language: string;
+  pattern: string;
+  artifactRoot: string | null;
+  artifactPaths: Record<string, unknown>;
+  errorMessage: string | null;
+  createdAt: string;
+  completedAt: string | null;
+};
+
 export type TestCaseListResult =
   | {
       kind: "success";

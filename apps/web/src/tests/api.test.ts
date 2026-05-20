@@ -2,12 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   addTestCaseReview,
+  createAutomationGeneration,
   createDocumentVersion,
   createGenerationTask,
   createProjectDocument,
   getProject,
   listProjectDocuments,
   listProjectGenerationTasks,
+  listProjectPublishedTestCases,
   listProjects,
   listProjectTestCases,
   parseDocumentVersion,
@@ -357,6 +359,79 @@ describe("api fallbacks", () => {
         },
       ],
     });
+  });
+
+  it("maps published test case responses from the API", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse([
+        {
+          id: 22,
+          project_id: 1,
+          title: "Published checkout case",
+          status: "published",
+          module: "Checkout",
+          feature: "Card payment",
+          case_type: "functional",
+          priority: "high",
+          preconditions: ["Saved card exists"],
+          steps: [{ text: "Open checkout" }],
+          expected_results: [{ text: "Order completes" }],
+          tags: ["smoke"],
+          automation_flag: true,
+          automation_notes: "Use checkout fixture",
+        },
+      ]),
+    );
+
+    await expect(listProjectPublishedTestCases("1")).resolves.toMatchObject({
+      kind: "success",
+      items: [
+        {
+          id: "22",
+          status: "published",
+          title: "Published checkout case",
+        },
+      ],
+    });
+  });
+
+  it("creates automation generations through the API", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        id: 5,
+        test_case_id: 22,
+        status: "completed",
+        framework: "playwright",
+        language: "typescript",
+        pattern: "pom",
+        artifact_root: "var/artifacts/automation",
+        artifact_paths: {
+          spec: "var/artifacts/automation/tests/published.spec.ts",
+          page_object: "var/artifacts/automation/pages/published.page.ts",
+        },
+        error_message: null,
+        created_at: "2026-05-20T10:00:00Z",
+        completed_at: "2026-05-20T10:00:01Z",
+      }, 201),
+    );
+
+    await expect(createAutomationGeneration("22")).resolves.toMatchObject({
+      kind: "success",
+      data: {
+        id: "5",
+        testCaseId: "22",
+        status: "completed",
+        artifactPaths: {
+          spec: "var/artifacts/automation/tests/published.spec.ts",
+        },
+      },
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/test-cases/22/automation-generations",
+      expect.objectContaining({
+        method: "POST",
+      }),
+    );
   });
 
   it("updates test case drafts through the API", async () => {

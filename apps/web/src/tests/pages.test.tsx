@@ -7,10 +7,12 @@ const {
   createDocumentVersionMock,
   createGenerationTaskMock,
   createProjectDocumentMock,
+  createAutomationGenerationMock,
   addTestCaseReviewMock,
   listProjectDocumentsMock,
   listProjectGenerationTasksMock,
   listProjectsMock,
+  listProjectPublishedTestCasesMock,
   listProjectTestCasesMock,
   parseDocumentVersionMock,
   publishTestCaseMock,
@@ -20,10 +22,12 @@ const {
   createDocumentVersionMock: vi.fn(),
   createGenerationTaskMock: vi.fn(),
   createProjectDocumentMock: vi.fn(),
+  createAutomationGenerationMock: vi.fn(),
   addTestCaseReviewMock: vi.fn(),
   listProjectDocumentsMock: vi.fn(),
   listProjectGenerationTasksMock: vi.fn(),
   listProjectsMock: vi.fn(),
+  listProjectPublishedTestCasesMock: vi.fn(),
   listProjectTestCasesMock: vi.fn(),
   parseDocumentVersionMock: vi.fn(),
   publishTestCaseMock: vi.fn(),
@@ -35,10 +39,12 @@ vi.mock("../../lib/api", () => ({
   createDocumentVersion: createDocumentVersionMock,
   createGenerationTask: createGenerationTaskMock,
   createProjectDocument: createProjectDocumentMock,
+  createAutomationGeneration: createAutomationGenerationMock,
   getProject: getProjectMock,
   listProjectDocuments: listProjectDocumentsMock,
   listProjectGenerationTasks: listProjectGenerationTasksMock,
   listProjects: listProjectsMock,
+  listProjectPublishedTestCases: listProjectPublishedTestCasesMock,
   listProjectTestCases: listProjectTestCasesMock,
   parseDocumentVersion: parseDocumentVersionMock,
   publishTestCase: publishTestCaseMock,
@@ -244,6 +250,27 @@ describe("workspace pages", () => {
         },
       ],
     });
+    listProjectPublishedTestCasesMock.mockResolvedValue({
+      kind: "success",
+      items: [
+        {
+          id: "case-201",
+          projectId: "1",
+          title: "Published wallet checkout",
+          status: "published",
+          module: "Checkout",
+          feature: "Wallet payment",
+          caseType: "functional",
+          priority: "high",
+          preconditions: ["Wallet balance exists"],
+          steps: [{ text: "Open checkout" }],
+          expectedResults: [{ text: "Order completes" }],
+          tags: ["wallet"],
+          automationFlag: true,
+          automationNotes: "Use wallet fixture",
+        },
+      ],
+    });
 
     const html = renderToStaticMarkup(
       await ProjectTestCasesPage({
@@ -253,6 +280,9 @@ describe("workspace pages", () => {
 
     expect(html).toContain("Test Case Library");
     expect(html).toContain("Create order with saved card");
+    expect(html).toContain("Published automation handoff");
+    expect(html).toContain("Published wallet checkout");
+    expect(html).toContain("Generate automation");
     expect(html).toContain("Review Workspace");
   });
 
@@ -384,6 +414,10 @@ describe("workspace pages", () => {
       },
     });
     listProjectTestCasesMock.mockResolvedValue({
+      kind: "http-error",
+      status: 503,
+    });
+    listProjectPublishedTestCasesMock.mockResolvedValue({
       kind: "http-error",
       status: 503,
     });

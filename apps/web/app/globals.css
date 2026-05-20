@@ -221,6 +221,26 @@ a {
   grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
 }
 
+.automation-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.automation-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: #fffefb;
+  padding: 1rem;
+}
+
+.automation-card p {
+  margin-top: 0.35rem;
+}
+
 .data-card,
 .workspace-link {
   display: grid;
