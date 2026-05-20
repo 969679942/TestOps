@@ -131,6 +131,47 @@ def test_create_and_list_automation_runs(client, monkeypatch, tmp_path):
     assert body[0]["status"] == "queued"
 
 
+def test_update_automation_run_result(client, monkeypatch, tmp_path):
+    monkeypatch.setattr(automation_service.settings, "artifact_storage_root", str(tmp_path))
+    project = _create_project(client)
+    test_case = _create_published_test_case(client, project["id"])
+    generated = client.post(f"/test-cases/{test_case['id']}/automation-generations")
+    assert generated.status_code == 201
+    created = client.post(f"/automation-generations/{generated.json()['id']}/runs")
+    assert created.status_code == 201
+
+    response = client.patch(
+        f"/automation-runs/{created.json()['id']}",
+        json={
+            "status": "failed",
+            "report_path": "automation/reports/run-1/index.html",
+            "summary": {
+                "passed": 3,
+                "failed": 1,
+                "duration_ms": 1240,
+            },
+            "error_message": "Locator timeout on checkout submit button",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "failed"
+    assert body["report_path"] == "automation/reports/run-1/index.html"
+    assert body["summary"] == {
+        "passed": 3,
+        "failed": 1,
+        "duration_ms": 1240,
+    }
+    assert body["error_message"] == "Locator timeout on checkout submit button"
+    assert body["finished_at"] is not None
+
+    listed = client.get(f"/projects/{project['id']}/automation-runs")
+    assert listed.status_code == 200
+    assert listed.json()[0]["status"] == "failed"
+    assert listed.json()[0]["summary"]["failed"] == 1
+
+
 def test_generate_automation_rejects_unpublished_case(client):
     project = _create_project(client)
     created = client.post(

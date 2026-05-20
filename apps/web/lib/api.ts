@@ -158,6 +158,13 @@ export type CreateReviewPayload = {
   comment?: string | null;
 };
 
+export type UpdateAutomationRunPayload = {
+  status: "queued" | "running" | "passed" | "failed";
+  report_path?: string | null;
+  summary?: Record<string, unknown>;
+  error_message?: string | null;
+};
+
 const API_BASE_URL = process.env.TESTOPS_API_BASE_URL ?? "http://127.0.0.1:8000";
 
 const demoProjects: ProjectRecord[] = [
@@ -939,6 +946,25 @@ export async function createAutomationRun(
 ): Promise<RequestResult<AutomationRunRecord>> {
   const result = await postJson<AutomationRunApiRecord>(
     `/automation-generations/${generationId}/runs`,
+  );
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: mapAutomationRun(result.data),
+  };
+}
+
+export async function updateAutomationRun(
+  runId: string,
+  payload: UpdateAutomationRunPayload,
+): Promise<RequestResult<AutomationRunRecord>> {
+  const result = await patchJson<AutomationRunApiRecord>(
+    `/automation-runs/${runId}`,
+    payload,
   );
 
   if (result.kind !== "success") {

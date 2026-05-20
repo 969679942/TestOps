@@ -8,6 +8,7 @@ from app.schemas.automation import (
     AutomationGenerationRead,
     AutomationRunCreate,
     AutomationRunRead,
+    AutomationRunUpdate,
 )
 
 router = APIRouter(tags=["automation"])
@@ -67,3 +68,15 @@ def create_automation_run(
         generation_id,
         payload or AutomationRunCreate(),
     )
+
+
+@router.patch(
+    "/automation-runs/{run_id}",
+    response_model=AutomationRunRead,
+)
+def update_automation_run(
+    run_id: int,
+    payload: AutomationRunUpdate,
+    session: Session = Depends(get_session),
+) -> AutomationRunRead:
+    return automation_service.update_run(session, run_id, payload)

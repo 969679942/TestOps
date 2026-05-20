@@ -307,14 +307,17 @@ describe("workspace pages", () => {
         {
           id: "run-901",
           automationGenerationId: "gen-501",
-          status: "queued",
+          status: "failed",
           triggerMode: "manual",
-          reportPath: null,
-          summary: {},
-          errorMessage: null,
+          reportPath: "automation/reports/run-901/index.html",
+          summary: {
+            passed: 3,
+            failed: 1,
+          },
+          errorMessage: "Locator timeout",
           createdAt: "2026-05-20T10:02:00Z",
-          startedAt: null,
-          finishedAt: null,
+          startedAt: "2026-05-20T10:02:01Z",
+          finishedAt: "2026-05-20T10:02:10Z",
         },
       ],
     });
@@ -335,7 +338,11 @@ describe("workspace pages", () => {
     expect(html).toContain("published.page.ts");
     expect(html).toContain("Run automation");
     expect(html).toContain("Latest automation run");
-    expect(html).toContain("queued");
+    expect(html).toContain("failed");
+    expect(html).toContain("automation/reports/run-901/index.html");
+    expect(html).toContain("Passed 3");
+    expect(html).toContain("Failed 1");
+    expect(html).toContain("Locator timeout");
     expect(html).toContain("Review Workspace");
   });
 

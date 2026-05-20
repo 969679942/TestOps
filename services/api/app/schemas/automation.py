@@ -30,6 +30,13 @@ class AutomationRunCreate(BaseModel):
     trigger_mode: Literal["manual", "scheduled"] = "manual"
 
 
+class AutomationRunUpdate(BaseModel):
+    status: Literal["queued", "running", "passed", "failed"]
+    report_path: str | None = None
+    summary: dict[str, Any] = {}
+    error_message: str | None = None
+
+
 class AutomationRunRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

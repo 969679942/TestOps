@@ -77,6 +77,11 @@ function getLatestRunsByGeneration(items: AutomationRunRecord[]) {
   return latestByGeneration;
 }
 
+function getSummaryNumber(summary: Record<string, unknown>, key: string) {
+  const value = summary[key];
+  return typeof value === "number" || typeof value === "string" ? String(value) : null;
+}
+
 export default async function ProjectTestCasesPage({
   params,
   searchParams,
@@ -163,6 +168,10 @@ export default async function ProjectTestCasesPage({
           latestRun: "\u6700\u65b0\u81ea\u52a8\u5316\u8fd0\u884c",
           run: "\u8fd0\u884c\u81ea\u52a8\u5316",
           trigger: "\u89e6\u53d1\u65b9\u5f0f",
+          report: "\u62a5\u544a",
+          passed: "\u901a\u8fc7",
+          failed: "\u5931\u8d25",
+          error: "\u5931\u8d25\u539f\u56e0",
         }
       : {
           latest: "Latest automation artifact",
@@ -171,6 +180,10 @@ export default async function ProjectTestCasesPage({
           latestRun: "Latest automation run",
           run: "Run automation",
           trigger: "Trigger",
+          report: "Report",
+          passed: "Passed",
+          failed: "Failed",
+          error: "Failure reason",
         };
 
   async function generateAutomationAction(formData: FormData) {
@@ -264,6 +277,10 @@ export default async function ProjectTestCasesPage({
                 latestGeneration === undefined
                   ? undefined
                   : latestRunsByGeneration.get(String(latestGeneration.id));
+              const passedCount =
+                latestRun === undefined ? null : getSummaryNumber(latestRun.summary, "passed");
+              const failedCount =
+                latestRun === undefined ? null : getSummaryNumber(latestRun.summary, "failed");
 
               return (
                 <article className="automation-card" key={item.id}>
@@ -285,10 +302,29 @@ export default async function ProjectTestCasesPage({
                             : artifactText.noArtifacts}
                         </p>
                         {latestRun ? (
-                          <p>
-                            <strong>{artifactText.latestRun}</strong>: {latestRun.status} -{" "}
-                            {artifactText.trigger} {latestRun.triggerMode}
-                          </p>
+                          <>
+                            <p>
+                              <strong>{artifactText.latestRun}</strong>: {latestRun.status} -{" "}
+                              {artifactText.trigger} {latestRun.triggerMode}
+                            </p>
+                            {latestRun.reportPath ? (
+                              <p>
+                                {artifactText.report}: {latestRun.reportPath}
+                              </p>
+                            ) : null}
+                            {passedCount || failedCount ? (
+                              <p>
+                                {passedCount ? `${artifactText.passed} ${passedCount}` : null}
+                                {passedCount && failedCount ? " / " : null}
+                                {failedCount ? `${artifactText.failed} ${failedCount}` : null}
+                              </p>
+                            ) : null}
+                            {latestRun.errorMessage ? (
+                              <p>
+                                {artifactText.error}: {latestRun.errorMessage}
+                              </p>
+                            ) : null}
+                          </>
                         ) : null}
                       </div>
                     ) : null}

@@ -17,6 +17,7 @@ import {
   listProjectTestCases,
   parseDocumentVersion,
   publishTestCase,
+  updateAutomationRun,
   updateTestCase,
 } from "../../lib/api";
 
@@ -545,6 +546,67 @@ describe("api fallbacks", () => {
       "http://127.0.0.1:8000/automation-generations/5/runs",
       expect.objectContaining({
         method: "POST",
+      }),
+    );
+  });
+
+  it("updates automation run results through the API", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        id: 9,
+        automation_generation_id: 5,
+        status: "failed",
+        trigger_mode: "manual",
+        report_path: "automation/reports/run-9/index.html",
+        summary: {
+          passed: 3,
+          failed: 1,
+          duration_ms: 1240,
+        },
+        error_message: "Locator timeout",
+        created_at: "2026-05-20T10:01:00Z",
+        started_at: "2026-05-20T10:01:02Z",
+        finished_at: "2026-05-20T10:01:10Z",
+      }),
+    );
+
+    await expect(
+      updateAutomationRun("9", {
+        status: "failed",
+        report_path: "automation/reports/run-9/index.html",
+        summary: {
+          passed: 3,
+          failed: 1,
+          duration_ms: 1240,
+        },
+        error_message: "Locator timeout",
+      }),
+    ).resolves.toMatchObject({
+      kind: "success",
+      data: {
+        id: "9",
+        status: "failed",
+        reportPath: "automation/reports/run-9/index.html",
+        summary: {
+          failed: 1,
+        },
+        errorMessage: "Locator timeout",
+      },
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/automation-runs/9",
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({
+          status: "failed",
+          report_path: "automation/reports/run-9/index.html",
+          summary: {
+            passed: 3,
+            failed: 1,
+            duration_ms: 1240,
+          },
+          error_message: "Locator timeout",
+        }),
       }),
     );
   });

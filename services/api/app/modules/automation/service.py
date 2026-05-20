@@ -13,7 +13,11 @@ from app.models.project import Project
 from app.models.testcase import TestCase
 from app.modules.automation.generator import generate_playwright_pom_files
 from app.modules.document.storage import LocalArtifactStorage
-from app.schemas.automation import AutomationGenerationCreate, AutomationRunCreate
+from app.schemas.automation import (
+    AutomationGenerationCreate,
+    AutomationRunCreate,
+    AutomationRunUpdate,
+)
 
 
 def _utcnow() -> datetime:
@@ -50,6 +54,16 @@ def _get_generation(session: Session, generation_id: int) -> AutomationGeneratio
             detail="Automation generation not found",
         )
     return generation
+
+
+def _get_run(session: Session, run_id: int) -> AutomationRun:
+    run = session.scalar(select(AutomationRun).where(AutomationRun.id == run_id))
+    if run is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Automation run not found",
+        )
+    return run
 
 
 def list_project_generations(
@@ -108,6 +122,30 @@ def list_project_runs(
             .order_by(AutomationRun.created_at.desc(), AutomationRun.id.desc())
         )
     )
+
+
+def update_run(
+    session: Session,
+    run_id: int,
+    payload: AutomationRunUpdate,
+) -> AutomationRun:
+    run = _get_run(session, run_id)
+    run.status = payload.status
+    run.report_path = payload.report_path
+    run.summary = payload.summary
+    run.error_message = payload.error_message
+
+    if payload.status == "running" and run.started_at is None:
+        run.started_at = _utcnow()
+    if payload.status in {"passed", "failed"}:
+        if run.started_at is None:
+            run.started_at = _utcnow()
+        run.finished_at = _utcnow()
+
+    session.add(run)
+    session.commit()
+    session.refresh(run)
+    return run
 
 
 def create_generation(
