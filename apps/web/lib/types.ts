@@ -101,6 +101,20 @@ export type AutomationGenerationRecord = {
   completedAt: string | null;
 };
 
+export type AutomationGenerationListResult =
+  | {
+      kind: "success";
+      items: AutomationGenerationRecord[];
+    }
+  | {
+      kind: "unavailable";
+      items: AutomationGenerationRecord[];
+    }
+  | {
+      kind: "http-error";
+      status: number;
+    };
+
 export type TestCaseListResult =
   | {
       kind: "success";

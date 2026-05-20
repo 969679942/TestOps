@@ -83,6 +83,24 @@ def test_generate_automation_artifacts_for_published_case(client, monkeypatch, t
     assert "CheckoutPage" in page_path.read_text(encoding="utf-8")
 
 
+def test_list_project_automation_generations(client, monkeypatch, tmp_path):
+    monkeypatch.setattr(automation_service.settings, "artifact_storage_root", str(tmp_path))
+    project = _create_project(client)
+    test_case = _create_published_test_case(client, project["id"])
+    generated = client.post(f"/test-cases/{test_case['id']}/automation-generations")
+    assert generated.status_code == 201
+
+    response = client.get(f"/projects/{project['id']}/automation-generations")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 1
+    assert body[0]["id"] == generated.json()["id"]
+    assert body[0]["test_case_id"] == test_case["id"]
+    assert body[0]["status"] == "completed"
+    assert sorted(body[0]["artifact_paths"]) == ["page_object", "spec"]
+
+
 def test_generate_automation_rejects_unpublished_case(client):
     project = _create_project(client)
     created = client.post(

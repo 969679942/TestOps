@@ -8,6 +8,7 @@ import {
   createProjectDocument,
   getProject,
   listProjectDocuments,
+  listProjectAutomationGenerations,
   listProjectGenerationTasks,
   listProjectPublishedTestCases,
   listProjects,
@@ -430,6 +431,49 @@ describe("api fallbacks", () => {
       "http://127.0.0.1:8000/test-cases/22/automation-generations",
       expect.objectContaining({
         method: "POST",
+      }),
+    );
+  });
+
+  it("maps project automation generation history from the API", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse([
+        {
+          id: 5,
+          test_case_id: 22,
+          status: "completed",
+          framework: "playwright",
+          language: "typescript",
+          pattern: "pom",
+          artifact_root: "var/artifacts/automation",
+          artifact_paths: {
+            spec: "var/artifacts/automation/tests/published.spec.ts",
+            page_object: "var/artifacts/automation/pages/published.page.ts",
+          },
+          error_message: null,
+          created_at: "2026-05-20T10:00:00Z",
+          completed_at: "2026-05-20T10:00:01Z",
+        },
+      ]),
+    );
+
+    await expect(listProjectAutomationGenerations("1")).resolves.toMatchObject({
+      kind: "success",
+      items: [
+        {
+          id: "5",
+          testCaseId: "22",
+          status: "completed",
+          artifactPaths: {
+            spec: "var/artifacts/automation/tests/published.spec.ts",
+          },
+        },
+      ],
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/projects/1/automation-generations",
+      expect.objectContaining({
+        cache: "no-store",
       }),
     );
   });

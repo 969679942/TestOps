@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models.automation import AutomationGeneration
+from app.models.project import Project
 from app.models.testcase import TestCase
 from app.modules.automation.generator import generate_playwright_pom_files
 from app.modules.document.storage import LocalArtifactStorage
@@ -27,6 +28,31 @@ def _get_test_case(session: Session, test_case_id: int) -> TestCase:
             detail="Test case not found",
         )
     return test_case
+
+
+def _get_project(session: Session, project_id: int) -> Project:
+    project = session.scalar(select(Project).where(Project.id == project_id))
+    if project is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found",
+        )
+    return project
+
+
+def list_project_generations(
+    session: Session,
+    project_id: int,
+) -> list[AutomationGeneration]:
+    _get_project(session, project_id)
+    return list(
+        session.scalars(
+            select(AutomationGeneration)
+            .join(TestCase, AutomationGeneration.test_case_id == TestCase.id)
+            .where(TestCase.project_id == project_id)
+            .order_by(AutomationGeneration.created_at.desc(), AutomationGeneration.id.desc())
+        )
+    )
 
 
 def create_generation(

@@ -8,6 +8,17 @@ from app.schemas.automation import AutomationGenerationCreate, AutomationGenerat
 router = APIRouter(tags=["automation"])
 
 
+@router.get(
+    "/projects/{project_id}/automation-generations",
+    response_model=list[AutomationGenerationRead],
+)
+def list_project_automation_generations(
+    project_id: int,
+    session: Session = Depends(get_session),
+) -> list[AutomationGenerationRead]:
+    return automation_service.list_project_generations(session, project_id)
+
+
 @router.post(
     "/test-cases/{test_case_id}/automation-generations",
     response_model=AutomationGenerationRead,

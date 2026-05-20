@@ -9,6 +9,7 @@ const {
   createProjectDocumentMock,
   createAutomationGenerationMock,
   addTestCaseReviewMock,
+  listProjectAutomationGenerationsMock,
   listProjectDocumentsMock,
   listProjectGenerationTasksMock,
   listProjectsMock,
@@ -24,6 +25,7 @@ const {
   createProjectDocumentMock: vi.fn(),
   createAutomationGenerationMock: vi.fn(),
   addTestCaseReviewMock: vi.fn(),
+  listProjectAutomationGenerationsMock: vi.fn(),
   listProjectDocumentsMock: vi.fn(),
   listProjectGenerationTasksMock: vi.fn(),
   listProjectsMock: vi.fn(),
@@ -41,6 +43,7 @@ vi.mock("../../lib/api", () => ({
   createProjectDocument: createProjectDocumentMock,
   createAutomationGeneration: createAutomationGenerationMock,
   getProject: getProjectMock,
+  listProjectAutomationGenerations: listProjectAutomationGenerationsMock,
   listProjectDocuments: listProjectDocumentsMock,
   listProjectGenerationTasks: listProjectGenerationTasksMock,
   listProjects: listProjectsMock,
@@ -271,6 +274,27 @@ describe("workspace pages", () => {
         },
       ],
     });
+    listProjectAutomationGenerationsMock.mockResolvedValue({
+      kind: "success",
+      items: [
+        {
+          id: "gen-501",
+          testCaseId: "case-201",
+          status: "completed",
+          framework: "playwright",
+          language: "typescript",
+          pattern: "pom",
+          artifactRoot: "var/artifacts/automation",
+          artifactPaths: {
+            spec: "var/artifacts/automation/tests/published.spec.ts",
+            page_object: "var/artifacts/automation/pages/published.page.ts",
+          },
+          errorMessage: null,
+          createdAt: "2026-05-20T10:00:00Z",
+          completedAt: "2026-05-20T10:00:01Z",
+        },
+      ],
+    });
 
     const html = renderToStaticMarkup(
       await ProjectTestCasesPage({
@@ -283,6 +307,9 @@ describe("workspace pages", () => {
     expect(html).toContain("Published automation handoff");
     expect(html).toContain("Published wallet checkout");
     expect(html).toContain("Generate automation");
+    expect(html).toContain("Latest automation artifact");
+    expect(html).toContain("published.spec.ts");
+    expect(html).toContain("published.page.ts");
     expect(html).toContain("Review Workspace");
   });
 
@@ -418,6 +445,10 @@ describe("workspace pages", () => {
       status: 503,
     });
     listProjectPublishedTestCasesMock.mockResolvedValue({
+      kind: "http-error",
+      status: 503,
+    });
+    listProjectAutomationGenerationsMock.mockResolvedValue({
       kind: "http-error",
       status: 503,
     });

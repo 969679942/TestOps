@@ -6,11 +6,12 @@ import { TestCaseTable } from "../../../../components/test-case-table";
 import {
   createAutomationGeneration,
   getProject,
+  listProjectAutomationGenerations,
   listProjectPublishedTestCases,
   listProjectTestCases,
 } from "../../../../lib/api";
 import { copy, localizedHref, normalizeLocale, type LocaleSearchParams } from "../../../../lib/i18n";
-import type { TestCaseRecord } from "../../../../lib/types";
+import type { AutomationGenerationRecord, TestCaseRecord } from "../../../../lib/types";
 
 type ProjectTestCasesPageProps = {
   params: Promise<{
@@ -24,6 +25,33 @@ function getCounts(items: TestCaseRecord[]) {
     needsUpdate: items.filter((item) => item.status === "needs_update").length,
     automationCandidates: items.filter((item) => item.automationFlag).length,
   };
+}
+
+function getArtifactNames(paths: Record<string, unknown>) {
+  return Object.values(paths)
+    .filter(
+      (value): value is string | number =>
+        typeof value === "string" || typeof value === "number",
+    )
+    .map((value) => String(value).split(/[\\/]/).at(-1) ?? String(value))
+    .filter(Boolean);
+}
+
+function getLatestGenerationsByCase(items: AutomationGenerationRecord[]) {
+  const latestByCase = new Map<string, AutomationGenerationRecord>();
+
+  for (const item of items) {
+    const testCaseId = String(item.testCaseId);
+    const current = latestByCase.get(testCaseId);
+    if (
+      current === undefined ||
+      Date.parse(item.createdAt) > Date.parse(current.createdAt)
+    ) {
+      latestByCase.set(testCaseId, item);
+    }
+  }
+
+  return latestByCase;
 }
 
 export default async function ProjectTestCasesPage({
@@ -75,9 +103,13 @@ export default async function ProjectTestCasesPage({
 
   const testCaseList = await listProjectTestCases(projectId);
   const publishedCaseList = await listProjectPublishedTestCases(projectId);
+  const automationGenerationList = await listProjectAutomationGenerations(projectId);
   const items = testCaseList.kind === "http-error" ? [] : testCaseList.items;
   const publishedItems =
     publishedCaseList.kind === "http-error" ? [] : publishedCaseList.items;
+  const automationGenerations =
+    automationGenerationList.kind === "http-error" ? [] : automationGenerationList.items;
+  const latestGenerationsByCase = getLatestGenerationsByCase(automationGenerations);
   const counts = getCounts(items);
   const countsUnavailable = testCaseList.kind === "http-error";
   const automationText =
@@ -95,6 +127,18 @@ export default async function ProjectTestCasesPage({
           copy: "Published cases can generate Playwright + TypeScript + POM automation assets.",
           empty: "No published cases are ready for automation generation yet.",
           action: "Generate automation",
+        };
+  const artifactText =
+    locale === "zh"
+      ? {
+          latest: "\u6700\u65b0\u81ea\u52a8\u5316\u4ea7\u7269",
+          generated: "\u5df2\u751f\u6210",
+          noArtifacts: "\u6682\u65e0\u4ea7\u7269\u8def\u5f84",
+        }
+      : {
+          latest: "Latest automation artifact",
+          generated: "Generated",
+          noArtifacts: "No artifact paths yet",
         };
 
   async function generateAutomationAction(formData: FormData) {
@@ -166,22 +210,44 @@ export default async function ProjectTestCasesPage({
         </div>
         {publishedItems.length ? (
           <div className="automation-list">
-            {publishedItems.map((item) => (
-              <article className="automation-card" key={item.id}>
-                <div>
-                  <strong>{item.title}</strong>
-                  <p>
-                    {item.module} / {item.feature}
-                  </p>
-                </div>
-                <form action={generateAutomationAction}>
-                  <input name="testCaseId" type="hidden" value={String(item.id)} />
-                  <button className="secondary-button" type="submit">
-                    {automationText.action}
-                  </button>
-                </form>
-              </article>
-            ))}
+            {publishedItems.map((item) => {
+              const latestGeneration = latestGenerationsByCase.get(String(item.id));
+              const artifactNames =
+                latestGeneration === undefined
+                  ? []
+                  : getArtifactNames(latestGeneration.artifactPaths);
+
+              return (
+                <article className="automation-card" key={item.id}>
+                  <div>
+                    <strong>{item.title}</strong>
+                    <p>
+                      {item.module} / {item.feature}
+                    </p>
+                    {latestGeneration ? (
+                      <div className="table-detail">
+                        <strong>{artifactText.latest}</strong>
+                        <p>
+                          {latestGeneration.status} - {artifactText.generated}{" "}
+                          {latestGeneration.completedAt ?? latestGeneration.createdAt}
+                        </p>
+                        <p>
+                          {artifactNames.length
+                            ? artifactNames.join(", ")
+                            : artifactText.noArtifacts}
+                        </p>
+                      </div>
+                    ) : null}
+                  </div>
+                  <form action={generateAutomationAction}>
+                    <input name="testCaseId" type="hidden" value={String(item.id)} />
+                    <button className="secondary-button" type="submit">
+                      {automationText.action}
+                    </button>
+                  </form>
+                </article>
+              );
+            })}
           </div>
         ) : (
           <p className="empty-copy">{automationText.empty}</p>

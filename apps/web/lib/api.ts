@@ -1,4 +1,5 @@
 import type {
+  AutomationGenerationListResult,
   AutomationGenerationRecord,
   DocumentAsset,
   DocumentAssetListResult,
@@ -835,6 +836,30 @@ export async function listProjectPublishedTestCases(
   return {
     kind: "success",
     items: result.data.map(mapTestCase),
+  };
+}
+
+export async function listProjectAutomationGenerations(
+  projectId: string,
+): Promise<AutomationGenerationListResult> {
+  const result = await requestJson<AutomationGenerationApiRecord[]>(
+    `/projects/${projectId}/automation-generations`,
+  );
+
+  if (result.kind === "unavailable") {
+    return {
+      kind: "unavailable",
+      items: [],
+    };
+  }
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    items: result.data.map(mapAutomationGeneration),
   };
 }
 
