@@ -85,7 +85,8 @@ a {
 }
 
 .shell-nav-link,
-.shell-nav-disabled {
+.shell-nav-disabled,
+.shell-language-link {
   display: block;
   border: 1px solid transparent;
   border-radius: 0.9rem;
@@ -106,6 +107,13 @@ a {
 .shell-nav-disabled {
   background: rgba(216, 206, 184, 0.24);
   color: var(--muted);
+}
+
+.shell-language-link {
+  border-color: var(--border);
+  background: #fffefb;
+  color: var(--accent);
+  font-weight: 700;
 }
 
 .shell-main {

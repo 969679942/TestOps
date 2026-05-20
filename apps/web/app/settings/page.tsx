@@ -1,16 +1,21 @@
 import React from "react";
 import { AppShell } from "../../components/app-shell";
+import { copy, normalizeLocale, type LocaleSearchParams } from "../../lib/i18n";
 
-export default function SettingsPage() {
+type SettingsPageProps = Readonly<{
+  searchParams?: Promise<LocaleSearchParams>;
+}>;
+
+export default async function SettingsPage({ searchParams }: SettingsPageProps = {}) {
+  const locale = normalizeLocale((await searchParams)?.lang);
+  const t = copy[locale].settings;
+
   return (
-    <AppShell currentPath="/settings">
+    <AppShell currentPath="/settings" locale={locale}>
       <section className="page-header">
-        <span className="eyebrow">Settings</span>
-        <h2>Project defaults and workspace preferences</h2>
-        <p>
-          This placeholder keeps the global shell navigation valid while settings workflows
-          stay out of scope for Task 7.
-        </p>
+        <span className="eyebrow">{t.eyebrow}</span>
+        <h2>{t.title}</h2>
+        <p>{t.description}</p>
       </section>
     </AppShell>
   );

@@ -1,9 +1,11 @@
 import React from "react";
 
+import { copy, localizedHref, type Locale } from "../lib/i18n";
 import type { TestCaseRecord } from "../lib/types";
 
 type TestCaseTableProps = Readonly<{
   items: TestCaseRecord[];
+  locale?: Locale;
 }>;
 
 function formatLabel(value: string, fallback: string) {
@@ -18,26 +20,28 @@ function formatLabel(value: string, fallback: string) {
     .join(" ");
 }
 
-export function TestCaseTable({ items }: TestCaseTableProps) {
+export function TestCaseTable({ items, locale = "en" }: TestCaseTableProps) {
+  const t = copy[locale].components;
+
   return (
     <section className="data-card">
       <div className="section-heading">
         <div>
-          <span className="eyebrow">Draft Inventory</span>
-          <h3>Test case drafts</h3>
+          <span className="eyebrow">{t.draftInventory}</span>
+          <h3>{t.testCaseDrafts}</h3>
         </div>
-        <p>Keep generated cases visible before they move into human review and publishing.</p>
+        <p>{t.testCaseIntro}</p>
       </div>
 
       <div className="table-scroll">
         <table className="data-table" aria-label="Project test cases">
           <thead>
             <tr>
-              <th scope="col">Title</th>
-              <th scope="col">Module</th>
-              <th scope="col">Priority</th>
-              <th scope="col">Status</th>
-              <th scope="col">Review</th>
+              <th scope="col">{t.title}</th>
+              <th scope="col">{t.module}</th>
+              <th scope="col">{t.priority}</th>
+              <th scope="col">{t.status}</th>
+              <th scope="col">{t.review}</th>
             </tr>
           </thead>
           <tbody>
@@ -47,22 +51,25 @@ export function TestCaseTable({ items }: TestCaseTableProps) {
                   <td>
                     <strong>{item.title}</strong>
                     <div className="table-detail">
-                      {formatLabel(item.caseType, "Case")} for {item.feature}
+                      {formatLabel(item.caseType, t.case)} for {item.feature}
                     </div>
                   </td>
                   <td>{item.module}</td>
-                  <td>{formatLabel(item.priority, "Unspecified")}</td>
+                  <td>{formatLabel(item.priority, t.unspecified)}</td>
                   <td>
                     <span className="status-pill">
-                      {formatLabel(item.status, "Draft")}
+                      {formatLabel(item.status, t.draft)}
                     </span>
                   </td>
                   <td>
                     <a
                       className="table-link"
-                      href={`/projects/${item.projectId}/review?caseId=${item.id}`}
+                      href={localizedHref(
+                        `/projects/${item.projectId}/review?caseId=${item.id}`,
+                        locale,
+                      )}
                     >
-                      Open review
+                      {t.openReview}
                     </a>
                   </td>
                 </tr>
@@ -70,7 +77,7 @@ export function TestCaseTable({ items }: TestCaseTableProps) {
             ) : (
               <tr>
                 <td colSpan={5} className="empty-cell">
-                  No generated test cases are available for review yet.
+                  {t.noCases}
                 </td>
               </tr>
             )}

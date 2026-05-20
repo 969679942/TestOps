@@ -2,26 +2,31 @@ import React from "react";
 import { AppShell } from "../../../../components/app-shell";
 import { DocumentTable } from "../../../../components/document-table";
 import { getProject, listProjectDocuments } from "../../../../lib/api";
+import { copy, localizedHref, normalizeLocale, type LocaleSearchParams } from "../../../../lib/i18n";
 
 type ProjectDocumentsPageProps = {
   params: Promise<{
     projectId: string;
   }>;
+  searchParams?: Promise<LocaleSearchParams>;
 };
 
 export default async function ProjectDocumentsPage({
   params,
+  searchParams,
 }: ProjectDocumentsPageProps) {
   const { projectId } = await params;
+  const locale = normalizeLocale((await searchParams)?.lang);
+  const t = copy[locale];
   const projectResult = await getProject(projectId);
 
   if (projectResult.kind === "not-found") {
     return (
-      <AppShell currentPath={`/projects/${projectId}/documents`}>
+      <AppShell currentPath={`/projects/${projectId}/documents`} locale={locale}>
         <section className="page-header">
-          <span className="eyebrow">Document Workspace</span>
-          <h2>Project not found</h2>
-          <p>The requested project is unavailable or no longer exists.</p>
+          <span className="eyebrow">{t.documentsPage.workspace}</span>
+          <h2>{t.states.projectNotFound}</h2>
+          <p>{t.states.projectNotFoundCopy}</p>
         </section>
       </AppShell>
     );
@@ -29,11 +34,11 @@ export default async function ProjectDocumentsPage({
 
   if (projectResult.kind === "http-error") {
     return (
-      <AppShell currentPath={`/projects/${projectId}/documents`}>
+      <AppShell currentPath={`/projects/${projectId}/documents`} locale={locale}>
         <section className="page-header">
-          <span className="eyebrow">Document Center</span>
-          <h2>Project unavailable</h2>
-          <p>The requested project could not be loaded because the API returned an error.</p>
+          <span className="eyebrow">{t.documentsPage.eyebrow}</span>
+          <h2>{t.states.projectUnavailable}</h2>
+          <p>{t.states.apiError}</p>
         </section>
       </AppShell>
     );
@@ -43,11 +48,11 @@ export default async function ProjectDocumentsPage({
 
   if (project === null) {
     return (
-      <AppShell currentPath={`/projects/${projectId}/documents`}>
+      <AppShell currentPath={`/projects/${projectId}/documents`} locale={locale}>
         <section className="page-header">
-          <span className="eyebrow">Document Center</span>
-          <h2>Project unavailable</h2>
-          <p>The requested project could not be loaded because the API is unavailable.</p>
+          <span className="eyebrow">{t.documentsPage.eyebrow}</span>
+          <h2>{t.states.projectUnavailable}</h2>
+          <p>{t.states.apiUnavailable}</p>
         </section>
       </AppShell>
     );
@@ -57,60 +62,61 @@ export default async function ProjectDocumentsPage({
   const documents = documentList.kind === "http-error" ? [] : documentList.documents;
 
   return (
-    <AppShell currentPath={`/projects/${projectId}/documents`} project={project}>
+    <AppShell
+      currentPath={`/projects/${projectId}/documents`}
+      locale={locale}
+      project={project}
+    >
       <section className="page-header">
-        <span className="eyebrow">Document Center</span>
+        <span className="eyebrow">{t.documentsPage.eyebrow}</span>
         <h2>{project.name}</h2>
-        <p>
-          Manage PRD, Figma, and Swagger inputs so generation runs always have grounded source
-          evidence.
-        </p>
+        <p>{t.documentsPage.description}</p>
       </section>
 
-      <section className="summary-grid" aria-label="Document summary">
+      <section className="summary-grid" aria-label={t.documentsPage.summary}>
         <article className="summary-card">
-          <span className="eyebrow">Documents</span>
+          <span className="eyebrow">{t.documentsPage.documents}</span>
           <p className="summary-value">
-            {documentList.kind === "http-error" ? "Unavailable" : documents.length}
+            {documentList.kind === "http-error" ? t.states.unavailable : documents.length}
           </p>
         </article>
         <article className="summary-card">
-          <span className="eyebrow">Project Provider</span>
+          <span className="eyebrow">{t.documentsPage.projectProvider}</span>
           <p className="summary-value">{project.defaultProvider}</p>
         </article>
         <article className="summary-card">
-          <span className="eyebrow">Prompt Profile</span>
+          <span className="eyebrow">{t.documentsPage.promptProfile}</span>
           <p className="summary-value">{project.defaultPromptProfile}</p>
         </article>
       </section>
 
       {documentList.kind === "unavailable" ? (
         <section>
-          <p>Showing fallback document data because the API is currently unavailable.</p>
+          <p>{t.documentsPage.fallback}</p>
         </section>
       ) : null}
 
       {documentList.kind === "http-error" ? (
         <section>
-          <p>Documents are temporarily unavailable because the API returned an error.</p>
+          <p>{t.documentsPage.error}</p>
         </section>
       ) : null}
 
-      <DocumentTable items={documents} />
+      <DocumentTable items={documents} locale={locale} />
 
-      <section className="workspace-links" aria-label="Document follow-up">
-        <a className="workspace-link" href={`/projects/${projectId}/generation-tasks`}>
-          <span className="eyebrow">Next Step</span>
-          <h3>Generation Tasks</h3>
-          <p>Use queued runs to turn the current source set into draft test cases.</p>
+      <section className="workspace-links" aria-label={t.documentsPage.followUp}>
+        <a
+          className="workspace-link"
+          href={localizedHref(`/projects/${projectId}/generation-tasks`, locale)}
+        >
+          <span className="eyebrow">{t.documentsPage.nextStep}</span>
+          <h3>{t.documentsPage.generationTasks}</h3>
+          <p>{t.documentsPage.nextCopy}</p>
         </a>
         <article className="workspace-link">
-          <span className="eyebrow">Traceability</span>
-          <h3>Source Visibility</h3>
-          <p>
-            Keep input names, locations, and parse readiness visible before drafts move into
-            review.
-          </p>
+          <span className="eyebrow">{t.documentsPage.traceability}</span>
+          <h3>{t.documentsPage.sourceVisibility}</h3>
+          <p>{t.documentsPage.sourceCopy}</p>
         </article>
       </section>
     </AppShell>

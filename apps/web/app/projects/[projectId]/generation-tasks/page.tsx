@@ -3,26 +3,31 @@ import React from "react";
 import { AppShell } from "../../../../components/app-shell";
 import { GenerationTaskList } from "../../../../components/generation-task-list";
 import { getProject, listProjectGenerationTasks } from "../../../../lib/api";
+import { copy, localizedHref, normalizeLocale, type LocaleSearchParams } from "../../../../lib/i18n";
 
 type ProjectGenerationTasksPageProps = {
   params: Promise<{
     projectId: string;
   }>;
+  searchParams?: Promise<LocaleSearchParams>;
 };
 
 export default async function ProjectGenerationTasksPage({
   params,
+  searchParams,
 }: ProjectGenerationTasksPageProps) {
   const { projectId } = await params;
+  const locale = normalizeLocale((await searchParams)?.lang);
+  const t = copy[locale];
   const projectResult = await getProject(projectId);
 
   if (projectResult.kind === "not-found") {
     return (
-      <AppShell currentPath={`/projects/${projectId}/generation-tasks`}>
+      <AppShell currentPath={`/projects/${projectId}/generation-tasks`} locale={locale}>
         <section className="page-header">
-          <span className="eyebrow">Generation Queue</span>
-          <h2>Project not found</h2>
-          <p>The requested project is unavailable or no longer exists.</p>
+          <span className="eyebrow">{t.generationPage.eyebrow}</span>
+          <h2>{t.states.projectNotFound}</h2>
+          <p>{t.states.projectNotFoundCopy}</p>
         </section>
       </AppShell>
     );
@@ -30,11 +35,11 @@ export default async function ProjectGenerationTasksPage({
 
   if (projectResult.kind === "http-error") {
     return (
-      <AppShell currentPath={`/projects/${projectId}/generation-tasks`}>
+      <AppShell currentPath={`/projects/${projectId}/generation-tasks`} locale={locale}>
         <section className="page-header">
-          <span className="eyebrow">Generation Queue</span>
-          <h2>Project unavailable</h2>
-          <p>The requested project could not be loaded because the API returned an error.</p>
+          <span className="eyebrow">{t.generationPage.eyebrow}</span>
+          <h2>{t.states.projectUnavailable}</h2>
+          <p>{t.states.apiError}</p>
         </section>
       </AppShell>
     );
@@ -44,11 +49,11 @@ export default async function ProjectGenerationTasksPage({
 
   if (project === null) {
     return (
-      <AppShell currentPath={`/projects/${projectId}/generation-tasks`}>
+      <AppShell currentPath={`/projects/${projectId}/generation-tasks`} locale={locale}>
         <section className="page-header">
-          <span className="eyebrow">Generation Queue</span>
-          <h2>Project unavailable</h2>
-          <p>The requested project could not be loaded because the API is unavailable.</p>
+          <span className="eyebrow">{t.generationPage.eyebrow}</span>
+          <h2>{t.states.projectUnavailable}</h2>
+          <p>{t.states.apiUnavailable}</p>
         </section>
       </AppShell>
     );
@@ -58,57 +63,61 @@ export default async function ProjectGenerationTasksPage({
   const tasks = taskList.kind === "http-error" ? [] : taskList.tasks;
 
   return (
-    <AppShell currentPath={`/projects/${projectId}/generation-tasks`} project={project}>
+    <AppShell
+      currentPath={`/projects/${projectId}/generation-tasks`}
+      locale={locale}
+      project={project}
+    >
       <section className="page-header">
-        <span className="eyebrow">Generation Queue</span>
+        <span className="eyebrow">{t.generationPage.eyebrow}</span>
         <h2>{project.name}</h2>
-        <p>
-          Track queued, completed, and failed generation runs alongside the document inputs that
-          produced them.
-        </p>
+        <p>{t.generationPage.description}</p>
       </section>
 
-      <section className="summary-grid" aria-label="Generation summary">
+      <section className="summary-grid" aria-label={t.generationPage.summary}>
         <article className="summary-card">
-          <span className="eyebrow">Tasks</span>
+          <span className="eyebrow">{t.generationPage.tasks}</span>
           <p className="summary-value">
-            {taskList.kind === "http-error" ? "Unavailable" : tasks.length}
+            {taskList.kind === "http-error" ? t.states.unavailable : tasks.length}
           </p>
         </article>
         <article className="summary-card">
-          <span className="eyebrow">Default Provider</span>
+          <span className="eyebrow">{t.generationPage.defaultProvider}</span>
           <p className="summary-value">{project.defaultProvider}</p>
         </article>
         <article className="summary-card">
-          <span className="eyebrow">Prompt Profile</span>
+          <span className="eyebrow">{t.generationPage.promptProfile}</span>
           <p className="summary-value">{project.defaultPromptProfile}</p>
         </article>
       </section>
 
       {taskList.kind === "unavailable" ? (
         <section>
-          <p>Showing fallback generation history because the API is currently unavailable.</p>
+          <p>{t.generationPage.fallback}</p>
         </section>
       ) : null}
 
       {taskList.kind === "http-error" ? (
         <section>
-          <p>Generation tasks are temporarily unavailable because the API returned an error.</p>
+          <p>{t.generationPage.error}</p>
         </section>
       ) : null}
 
-      <GenerationTaskList items={tasks} />
+      <GenerationTaskList items={tasks} locale={locale} />
 
-      <section className="workspace-links" aria-label="Generation follow-up">
-        <a className="workspace-link" href={`/projects/${projectId}/documents`}>
-          <span className="eyebrow">Inputs</span>
-          <h3>Document Center</h3>
-          <p>Verify source coverage before retrying a failed run or queuing a new one.</p>
+      <section className="workspace-links" aria-label={t.generationPage.followUp}>
+        <a
+          className="workspace-link"
+          href={localizedHref(`/projects/${projectId}/documents`, locale)}
+        >
+          <span className="eyebrow">{t.generationPage.inputs}</span>
+          <h3>{t.generationPage.documentCenter}</h3>
+          <p>{t.generationPage.inputsCopy}</p>
         </a>
         <article className="workspace-link">
-          <span className="eyebrow">Later Task</span>
-          <h3>Review Workspace</h3>
-          <p>Draft case review remains intentionally staged for the follow-up UI task.</p>
+          <span className="eyebrow">{t.generationPage.laterTask}</span>
+          <h3>{t.generationPage.reviewWorkspace}</h3>
+          <p>{t.generationPage.reviewCopy}</p>
         </article>
       </section>
     </AppShell>

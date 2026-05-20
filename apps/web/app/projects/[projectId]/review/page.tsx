@@ -3,6 +3,7 @@ import React from "react";
 import { AppShell } from "../../../../components/app-shell";
 import { ReviewEditor } from "../../../../components/review-editor";
 import { getProject, listProjectTestCases } from "../../../../lib/api";
+import { copy, localizedHref, normalizeLocale } from "../../../../lib/i18n";
 
 type ProjectReviewPageProps = {
   params: Promise<{
@@ -10,6 +11,7 @@ type ProjectReviewPageProps = {
   }>;
   searchParams?: Promise<{
     caseId?: string;
+    lang?: string | string[];
   }>;
 };
 
@@ -19,15 +21,17 @@ export default async function ProjectReviewPage({
 }: ProjectReviewPageProps) {
   const { projectId } = await params;
   const resolvedSearchParams = searchParams ? await searchParams : {};
+  const locale = normalizeLocale(resolvedSearchParams.lang);
+  const t = copy[locale];
   const projectResult = await getProject(projectId);
 
   if (projectResult.kind === "not-found") {
     return (
-      <AppShell currentPath={`/projects/${projectId}/review`}>
+      <AppShell currentPath={`/projects/${projectId}/review`} locale={locale}>
         <section className="page-header">
-          <span className="eyebrow">Review Workspace</span>
-          <h2>Project not found</h2>
-          <p>The requested project is unavailable or no longer exists.</p>
+          <span className="eyebrow">{t.reviewPage.eyebrow}</span>
+          <h2>{t.states.projectNotFound}</h2>
+          <p>{t.states.projectNotFoundCopy}</p>
         </section>
       </AppShell>
     );
@@ -35,11 +39,11 @@ export default async function ProjectReviewPage({
 
   if (projectResult.kind === "http-error") {
     return (
-      <AppShell currentPath={`/projects/${projectId}/review`}>
+      <AppShell currentPath={`/projects/${projectId}/review`} locale={locale}>
         <section className="page-header">
-          <span className="eyebrow">Review Workspace</span>
-          <h2>Project unavailable</h2>
-          <p>The requested project could not be loaded because the API returned an error.</p>
+          <span className="eyebrow">{t.reviewPage.eyebrow}</span>
+          <h2>{t.states.projectUnavailable}</h2>
+          <p>{t.states.apiError}</p>
         </section>
       </AppShell>
     );
@@ -49,11 +53,11 @@ export default async function ProjectReviewPage({
 
   if (project === null) {
     return (
-      <AppShell currentPath={`/projects/${projectId}/review`}>
+      <AppShell currentPath={`/projects/${projectId}/review`} locale={locale}>
         <section className="page-header">
-          <span className="eyebrow">Review Workspace</span>
-          <h2>Project unavailable</h2>
-          <p>The requested project could not be loaded because the API is unavailable.</p>
+          <span className="eyebrow">{t.reviewPage.eyebrow}</span>
+          <h2>{t.states.projectUnavailable}</h2>
+          <p>{t.states.apiUnavailable}</p>
         </section>
       </AppShell>
     );
@@ -67,37 +71,43 @@ export default async function ProjectReviewPage({
   const canRenderEditor = testCaseList.kind !== "http-error";
 
   return (
-    <AppShell currentPath={`/projects/${projectId}/review`} project={project}>
+    <AppShell currentPath={`/projects/${projectId}/review`} locale={locale} project={project}>
       <section className="page-header">
-        <span className="eyebrow">Review Workspace</span>
+        <span className="eyebrow">{t.reviewPage.eyebrow}</span>
         <h2>{project.name}</h2>
-        <p>Review and refine generated test cases before they move into approval and publishing.</p>
+        <p>{t.reviewPage.description}</p>
       </section>
 
       {testCaseList.kind === "unavailable" ? (
         <section>
-          <p>Showing fallback review data because the API is currently unavailable.</p>
+          <p>{t.reviewPage.fallback}</p>
         </section>
       ) : null}
 
       {testCaseList.kind === "http-error" ? (
         <section>
-          <p>Test cases are temporarily unavailable because the API returned an error.</p>
+          <p>{t.reviewPage.error}</p>
         </section>
       ) : null}
 
-      {canRenderEditor ? <ReviewEditor item={selectedItem} /> : null}
+      {canRenderEditor ? <ReviewEditor item={selectedItem} locale={locale} /> : null}
 
-      <section className="workspace-links" aria-label="Review follow-up">
-        <a className="workspace-link" href={`/projects/${projectId}/test-cases`}>
-          <span className="eyebrow">Queue</span>
-          <h3>Test Cases</h3>
-          <p>Pick a generated draft from the library when you are ready to start a review pass.</p>
+      <section className="workspace-links" aria-label={t.reviewPage.followUp}>
+        <a
+          className="workspace-link"
+          href={localizedHref(`/projects/${projectId}/test-cases`, locale)}
+        >
+          <span className="eyebrow">{t.reviewPage.queue}</span>
+          <h3>{t.reviewPage.testCases}</h3>
+          <p>{t.reviewPage.queueCopy}</p>
         </a>
-        <a className="workspace-link" href={`/projects/${projectId}/documents`}>
-          <span className="eyebrow">Traceability</span>
-          <h3>Document Center</h3>
-          <p>Check the current source evidence when a reviewer needs to confirm input coverage.</p>
+        <a
+          className="workspace-link"
+          href={localizedHref(`/projects/${projectId}/documents`, locale)}
+        >
+          <span className="eyebrow">{t.reviewPage.traceability}</span>
+          <h3>{t.reviewPage.documentCenter}</h3>
+          <p>{t.reviewPage.documentCopy}</p>
         </a>
       </section>
     </AppShell>

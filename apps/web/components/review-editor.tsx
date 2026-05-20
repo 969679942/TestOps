@@ -1,9 +1,11 @@
 import React from "react";
 
+import { copy, type Locale } from "../lib/i18n";
 import type { StructuredTextField, TestCaseRecord } from "../lib/types";
 
 type ReviewEditorProps = Readonly<{
   item: TestCaseRecord | null;
+  locale?: Locale;
 }>;
 
 type TextFieldListProps = Readonly<{
@@ -43,13 +45,15 @@ function TextFieldList({ items, label, prefix }: TextFieldListProps) {
   );
 }
 
-export function ReviewEditor({ item }: ReviewEditorProps) {
+export function ReviewEditor({ item, locale = "en" }: ReviewEditorProps) {
+  const t = copy[locale].components;
+
   if (!item) {
     return (
       <section className="review-empty-state">
-        <span className="eyebrow">Review Workspace</span>
-        <h3>No test case selected</h3>
-        <p>Choose a draft from the review queue to inspect steps, expected results, and notes.</p>
+        <span className="eyebrow">{t.reviewWorkspace}</span>
+        <h3>{t.noSelection}</h3>
+        <p>{t.noSelectionCopy}</p>
       </section>
     );
   }
@@ -58,35 +62,35 @@ export function ReviewEditor({ item }: ReviewEditorProps) {
     <section className="review-editor">
       <div className="section-heading">
         <div>
-          <span className="eyebrow">Review Draft</span>
-          <h3>Review draft</h3>
+          <span className="eyebrow">{t.reviewDraft}</span>
+          <h3>{t.reviewDraftTitle}</h3>
         </div>
-        <p>Adjust case details before approval so the published version stays traceable.</p>
+        <p>{t.reviewDraftCopy}</p>
       </div>
 
       <div className="form-grid">
         <label className="form-field">
-          <span>Title</span>
+          <span>{t.title}</span>
           <input className="field-input" name="title" defaultValue={item.title} />
         </label>
         <label className="form-field">
-          <span>Module</span>
+          <span>{t.module}</span>
           <input className="field-input" name="module" defaultValue={item.module} />
         </label>
         <label className="form-field">
-          <span>Feature</span>
+          <span>{t.feature}</span>
           <input className="field-input" name="feature" defaultValue={item.feature} />
         </label>
         <label className="form-field">
-          <span>Case Type</span>
+          <span>{t.caseType}</span>
           <input className="field-input" name="caseType" defaultValue={item.caseType} />
         </label>
         <label className="form-field">
-          <span>Priority</span>
+          <span>{t.priority}</span>
           <input className="field-input" name="priority" defaultValue={item.priority} />
         </label>
         <label className="form-field">
-          <span>Status</span>
+          <span>{t.status}</span>
           <input className="field-input" name="status" defaultValue={item.status} />
         </label>
       </div>
@@ -94,15 +98,15 @@ export function ReviewEditor({ item }: ReviewEditorProps) {
       <section className="review-section">
         <div className="section-heading">
           <div>
-            <span className="eyebrow">Preconditions</span>
-            <h3>Preconditions</h3>
+            <span className="eyebrow">{t.preconditions}</span>
+            <h3>{t.preconditions}</h3>
           </div>
         </div>
 
         <div className="review-stack">
           {item.preconditions.map((value, index) => (
             <label key={`precondition-${index + 1}`} className="form-field">
-              <span>Precondition {index + 1}</span>
+              <span>{t.precondition} {index + 1}</span>
               <input
                 className="field-input"
                 name={`precondition-${index + 1}`}
@@ -113,30 +117,30 @@ export function ReviewEditor({ item }: ReviewEditorProps) {
         </div>
       </section>
 
-      <TextFieldList items={item.steps} label="Steps" prefix="Step" />
+      <TextFieldList items={item.steps} label={t.steps} prefix={t.step} />
       <TextFieldList
         items={item.expectedResults}
-        label="Expected Results"
-        prefix="Expected result"
+        label={t.expectedResults}
+        prefix={t.expectedResult}
       />
 
       <div className="form-grid">
         <label className="form-field">
-          <span>Tags</span>
+          <span>{t.tags}</span>
           <input className="field-input" name="tags" defaultValue={item.tags.join(", ")} />
         </label>
         <label className="form-field">
-          <span>Automation Candidate</span>
+          <span>{t.automationCandidate}</span>
           <input
             className="field-input"
             name="automationFlag"
-            defaultValue={item.automationFlag ? "Yes" : "No"}
+            defaultValue={item.automationFlag ? t.yes : t.no}
           />
         </label>
       </div>
 
       <label className="form-field">
-        <span>Automation Notes</span>
+        <span>{t.automationNotes}</span>
         <textarea
           className="field-textarea"
           name="automationNotes"

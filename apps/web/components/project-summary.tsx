@@ -1,10 +1,12 @@
 import React from "react";
+import { copy, type Locale } from "../lib/i18n";
 import type { DocumentAsset, ProjectRecord } from "../lib/types";
 
 type ProjectSummaryProps = Readonly<{
   project: ProjectRecord;
   documents: DocumentAsset[];
   documentsUnavailable?: boolean;
+  locale?: Locale;
 }>;
 
 function titleCase(value: string) {
@@ -18,28 +20,31 @@ export function ProjectSummary({
   project,
   documents,
   documentsUnavailable = false,
+  locale = "en",
 }: ProjectSummaryProps) {
+  const t = copy[locale];
+
   return (
     <section className="summary-grid" aria-label="Project summary">
       <article className="summary-card">
-        <span className="eyebrow">Project Code</span>
+        <span className="eyebrow">{t.components.projectCode}</span>
         <p className="summary-value">{project.code}</p>
       </article>
 
       <article className="summary-card">
-        <span className="eyebrow">Status</span>
+        <span className="eyebrow">{t.components.status}</span>
         <p className="summary-value">{titleCase(project.status)}</p>
       </article>
 
       <article className="summary-card">
-        <span className="eyebrow">Default Provider</span>
+        <span className="eyebrow">{t.components.defaultProvider}</span>
         <p className="summary-value">{project.defaultProvider}</p>
       </article>
 
       <article className="summary-card">
-        <span className="eyebrow">Source Documents</span>
+        <span className="eyebrow">{t.components.sourceDocuments}</span>
         <p className="summary-value">
-          {documentsUnavailable ? "Unavailable" : documents.length}
+          {documentsUnavailable ? t.states.unavailable : documents.length}
         </p>
       </article>
     </section>

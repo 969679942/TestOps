@@ -1,9 +1,11 @@
 import React from "react";
 
+import { copy, type Locale } from "../lib/i18n";
 import type { DocumentAsset } from "../lib/types";
 
 type DocumentTableProps = Readonly<{
   items: DocumentAsset[];
+  locale?: Locale;
 }>;
 
 function formatLabel(value: string | undefined, fallback: string) {
@@ -18,25 +20,27 @@ function formatLabel(value: string | undefined, fallback: string) {
     .join(" ");
 }
 
-export function DocumentTable({ items }: DocumentTableProps) {
+export function DocumentTable({ items, locale = "en" }: DocumentTableProps) {
+  const t = copy[locale].components;
+
   return (
     <section className="data-card">
       <div className="section-heading">
         <div>
-          <span className="eyebrow">Source Inventory</span>
-          <h3>Document assets</h3>
+          <span className="eyebrow">{t.sourceInventory}</span>
+          <h3>{t.documentAssets}</h3>
         </div>
-        <p>PRD, Figma, and Swagger inputs stay visible here before each generation run.</p>
+        <p>{t.documentIntro}</p>
       </div>
 
       <div className="table-scroll">
         <table className="data-table" aria-label="Project documents">
           <thead>
             <tr>
-              <th scope="col">Name</th>
-              <th scope="col">Type</th>
-              <th scope="col">Source</th>
-              <th scope="col">Parse Status</th>
+              <th scope="col">{t.name}</th>
+              <th scope="col">{t.type}</th>
+              <th scope="col">{t.source}</th>
+              <th scope="col">{t.parseStatus}</th>
             </tr>
           </thead>
           <tbody>
@@ -44,11 +48,11 @@ export function DocumentTable({ items }: DocumentTableProps) {
               items.map((item) => (
                 <tr key={item.id}>
                   <td>{item.name}</td>
-                  <td>{formatLabel(item.type, "Unknown")}</td>
-                  <td>{item.sourceUri ?? "Stored in workspace"}</td>
+                  <td>{formatLabel(item.type, t.unknown)}</td>
+                  <td>{item.sourceUri ?? t.stored}</td>
                   <td>
                     <span className="status-pill">
-                      {formatLabel(item.parseStatus, "Pending parse")}
+                      {formatLabel(item.parseStatus, t.pendingParse)}
                     </span>
                   </td>
                 </tr>
@@ -56,7 +60,7 @@ export function DocumentTable({ items }: DocumentTableProps) {
             ) : (
               <tr>
                 <td colSpan={4} className="empty-cell">
-                  No source documents have been attached to this project yet.
+                  {t.noDocuments}
                 </td>
               </tr>
             )}

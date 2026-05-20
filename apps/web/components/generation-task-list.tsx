@@ -1,9 +1,11 @@
 import React from "react";
 
+import { copy, type Locale } from "../lib/i18n";
 import type { GenerationTaskRecord } from "../lib/types";
 
 type GenerationTaskListProps = Readonly<{
   items: GenerationTaskRecord[];
+  locale?: Locale;
 }>;
 
 function formatLabel(value: string) {
@@ -19,20 +21,20 @@ function getDocumentCount(inputRefs: Record<string, unknown>) {
   return Array.isArray(documentIds) ? documentIds.length : 0;
 }
 
-export function GenerationTaskList({ items }: GenerationTaskListProps) {
+export function GenerationTaskList({ items, locale = "en" }: GenerationTaskListProps) {
+  const t = copy[locale].components;
+
   if (!items.length) {
     return (
       <section className="data-card">
         <div className="section-heading">
           <div>
-            <span className="eyebrow">Queue</span>
-            <h3>Generation tasks</h3>
+            <span className="eyebrow">{t.queue}</span>
+            <h3>{t.generationTasks}</h3>
           </div>
-          <p>Run histories will appear here once a generation task is created.</p>
+          <p>{t.taskIntro}</p>
         </div>
-        <p className="empty-copy">
-          No generation tasks have been queued for this project yet.
-        </p>
+        <p className="empty-copy">{t.noTasks}</p>
       </section>
     );
   }
@@ -43,7 +45,7 @@ export function GenerationTaskList({ items }: GenerationTaskListProps) {
         <article key={item.id} className="task-card">
           <div className="task-card-header">
             <div>
-              <span className="eyebrow">Task #{item.id}</span>
+              <span className="eyebrow">{t.task} #{item.id}</span>
               <h3>{formatLabel(item.status)}</h3>
             </div>
             <span className="status-pill">{formatLabel(item.provider)}</span>
@@ -51,19 +53,19 @@ export function GenerationTaskList({ items }: GenerationTaskListProps) {
 
           <dl className="task-meta">
             <div>
-              <dt>Model</dt>
+              <dt>{t.model}</dt>
               <dd>{item.model}</dd>
             </div>
             <div>
-              <dt>Prompt Profile</dt>
+              <dt>{t.promptProfile}</dt>
               <dd>{item.promptVersion}</dd>
             </div>
             <div>
-              <dt>Input Documents</dt>
+              <dt>{t.inputDocuments}</dt>
               <dd>{getDocumentCount(item.inputRefs)}</dd>
             </div>
             <div>
-              <dt>Created</dt>
+              <dt>{t.created}</dt>
               <dd>{item.createdAt}</dd>
             </div>
           </dl>

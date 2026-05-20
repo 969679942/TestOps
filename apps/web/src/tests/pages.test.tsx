@@ -45,8 +45,25 @@ describe("workspace pages", () => {
     expect(html).not.toContain("Payments Platform");
   });
 
-  it("renders a lightweight settings page for the shell navigation target", () => {
-    const html = renderToStaticMarkup(<SettingsPage />);
+  it("renders the project directory in Chinese when lang is zh", async () => {
+    listProjectsMock.mockResolvedValue({
+      kind: "success",
+      projects: [],
+    });
+
+    const html = renderToStaticMarkup(
+      await HomePage({
+        searchParams: Promise.resolve({ lang: "zh" }),
+      }),
+    );
+
+    expect(html).toContain("项目目录");
+    expect(html).toContain("管理项目空间");
+    expect(html).toContain("English");
+  });
+
+  it("renders a lightweight settings page for the shell navigation target", async () => {
+    const html = renderToStaticMarkup(await SettingsPage());
 
     expect(html).toContain(">Settings<");
     expect(html).toContain("Project defaults and workspace preferences");

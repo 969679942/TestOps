@@ -18,6 +18,19 @@ describe("AppShell", () => {
     expect(html).toContain(">Settings<");
   });
 
+  it("renders Chinese navigation and a matching language switch link", () => {
+    const html = renderToStaticMarkup(
+      <AppShell currentPath="/projects/payments" locale="zh">
+        <div>content</div>
+      </AppShell>,
+    );
+
+    expect(html).toContain(">项目<");
+    expect(html).toContain(">设置<");
+    expect(html).toContain(">English<");
+    expect(html).toContain('href="/projects/payments?lang=en"');
+  });
+
   it("renders the Task 9 project navigation links when a project is present", () => {
     const html = renderToStaticMarkup(
       <AppShell

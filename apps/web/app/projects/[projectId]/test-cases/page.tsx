@@ -3,12 +3,14 @@ import React from "react";
 import { AppShell } from "../../../../components/app-shell";
 import { TestCaseTable } from "../../../../components/test-case-table";
 import { getProject, listProjectTestCases } from "../../../../lib/api";
+import { copy, localizedHref, normalizeLocale, type LocaleSearchParams } from "../../../../lib/i18n";
 import type { TestCaseRecord } from "../../../../lib/types";
 
 type ProjectTestCasesPageProps = {
   params: Promise<{
     projectId: string;
   }>;
+  searchParams?: Promise<LocaleSearchParams>;
 };
 
 function getCounts(items: TestCaseRecord[]) {
@@ -20,17 +22,20 @@ function getCounts(items: TestCaseRecord[]) {
 
 export default async function ProjectTestCasesPage({
   params,
+  searchParams,
 }: ProjectTestCasesPageProps) {
   const { projectId } = await params;
+  const locale = normalizeLocale((await searchParams)?.lang);
+  const t = copy[locale];
   const projectResult = await getProject(projectId);
 
   if (projectResult.kind === "not-found") {
     return (
-      <AppShell currentPath={`/projects/${projectId}/test-cases`}>
+      <AppShell currentPath={`/projects/${projectId}/test-cases`} locale={locale}>
         <section className="page-header">
-          <span className="eyebrow">Test Case Library</span>
-          <h2>Project not found</h2>
-          <p>The requested project is unavailable or no longer exists.</p>
+          <span className="eyebrow">{t.testCasesPage.eyebrow}</span>
+          <h2>{t.states.projectNotFound}</h2>
+          <p>{t.states.projectNotFoundCopy}</p>
         </section>
       </AppShell>
     );
@@ -38,11 +43,11 @@ export default async function ProjectTestCasesPage({
 
   if (projectResult.kind === "http-error") {
     return (
-      <AppShell currentPath={`/projects/${projectId}/test-cases`}>
+      <AppShell currentPath={`/projects/${projectId}/test-cases`} locale={locale}>
         <section className="page-header">
-          <span className="eyebrow">Test Case Library</span>
-          <h2>Project unavailable</h2>
-          <p>The requested project could not be loaded because the API returned an error.</p>
+          <span className="eyebrow">{t.testCasesPage.eyebrow}</span>
+          <h2>{t.states.projectUnavailable}</h2>
+          <p>{t.states.apiError}</p>
         </section>
       </AppShell>
     );
@@ -52,11 +57,11 @@ export default async function ProjectTestCasesPage({
 
   if (project === null) {
     return (
-      <AppShell currentPath={`/projects/${projectId}/test-cases`}>
+      <AppShell currentPath={`/projects/${projectId}/test-cases`} locale={locale}>
         <section className="page-header">
-          <span className="eyebrow">Test Case Library</span>
-          <h2>Project unavailable</h2>
-          <p>The requested project could not be loaded because the API is unavailable.</p>
+          <span className="eyebrow">{t.testCasesPage.eyebrow}</span>
+          <h2>{t.states.projectUnavailable}</h2>
+          <p>{t.states.apiUnavailable}</p>
         </section>
       </AppShell>
     );
@@ -68,58 +73,65 @@ export default async function ProjectTestCasesPage({
   const countsUnavailable = testCaseList.kind === "http-error";
 
   return (
-    <AppShell currentPath={`/projects/${projectId}/test-cases`} project={project}>
+    <AppShell
+      currentPath={`/projects/${projectId}/test-cases`}
+      locale={locale}
+      project={project}
+    >
       <section className="page-header">
-        <span className="eyebrow">Test Case Library</span>
+        <span className="eyebrow">{t.testCasesPage.eyebrow}</span>
         <h2>{project.name}</h2>
-        <p>Browse generated drafts, spot review-ready coverage, and move cases into the editor.</p>
+        <p>{t.testCasesPage.description}</p>
       </section>
 
-      <section className="summary-grid" aria-label="Test case summary">
+      <section className="summary-grid" aria-label={t.testCasesPage.summary}>
         <article className="summary-card">
-          <span className="eyebrow">Drafts</span>
+          <span className="eyebrow">{t.testCasesPage.drafts}</span>
           <p className="summary-value">
-            {testCaseList.kind === "http-error" ? "Unavailable" : items.length}
+            {testCaseList.kind === "http-error" ? t.states.unavailable : items.length}
           </p>
         </article>
         <article className="summary-card">
-          <span className="eyebrow">Needs Update</span>
+          <span className="eyebrow">{t.testCasesPage.needsUpdate}</span>
           <p className="summary-value">
-            {countsUnavailable ? "Unavailable" : counts.needsUpdate}
+            {countsUnavailable ? t.states.unavailable : counts.needsUpdate}
           </p>
         </article>
         <article className="summary-card">
-          <span className="eyebrow">Automation Candidates</span>
+          <span className="eyebrow">{t.testCasesPage.automationCandidates}</span>
           <p className="summary-value">
-            {countsUnavailable ? "Unavailable" : counts.automationCandidates}
+            {countsUnavailable ? t.states.unavailable : counts.automationCandidates}
           </p>
         </article>
       </section>
 
       {testCaseList.kind === "unavailable" ? (
         <section>
-          <p>Showing fallback test case data because the API is currently unavailable.</p>
+          <p>{t.testCasesPage.fallback}</p>
         </section>
       ) : null}
 
       {testCaseList.kind === "http-error" ? (
         <section>
-          <p>Test cases are temporarily unavailable because the API returned an error.</p>
+          <p>{t.testCasesPage.error}</p>
         </section>
       ) : null}
 
-      {countsUnavailable ? null : <TestCaseTable items={items} />}
+      {countsUnavailable ? null : <TestCaseTable items={items} locale={locale} />}
 
-      <section className="workspace-links" aria-label="Test case follow-up">
-        <a className="workspace-link" href={`/projects/${projectId}/review`}>
-          <span className="eyebrow">Next Step</span>
-          <h3>Review Workspace</h3>
-          <p>Open the editor to refine structured steps and expected results before approval.</p>
+      <section className="workspace-links" aria-label={t.testCasesPage.followUp}>
+        <a className="workspace-link" href={localizedHref(`/projects/${projectId}/review`, locale)}>
+          <span className="eyebrow">{t.testCasesPage.nextStep}</span>
+          <h3>{t.testCasesPage.reviewWorkspace}</h3>
+          <p>{t.testCasesPage.reviewCopy}</p>
         </a>
-        <a className="workspace-link" href={`/projects/${projectId}/generation-tasks`}>
-          <span className="eyebrow">Generation Queue</span>
-          <h3>Refresh Drafts</h3>
-          <p>Return to generation runs when the current draft set needs broader source coverage.</p>
+        <a
+          className="workspace-link"
+          href={localizedHref(`/projects/${projectId}/generation-tasks`, locale)}
+        >
+          <span className="eyebrow">{t.testCasesPage.generationQueue}</span>
+          <h3>{t.testCasesPage.refreshDrafts}</h3>
+          <p>{t.testCasesPage.refreshCopy}</p>
         </a>
       </section>
     </AppShell>
