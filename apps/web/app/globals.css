@@ -373,8 +373,30 @@ a {
   font-weight: 700;
 }
 
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
 .primary-button:hover {
   background: #114b39;
+}
+
+.secondary-button {
+  width: fit-content;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: #fffefb;
+  padding: 0.8rem 1.2rem;
+  color: var(--accent);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.secondary-button:hover {
+  background: var(--accent-soft);
 }
 
 .status-pill {

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_session
 from app.modules.testcase import service as testcase_service
-from app.schemas.testcase import TestCaseCreate, TestCaseRead
+from app.schemas.testcase import TestCaseCreate, TestCaseRead, TestCaseUpdate
 
 router = APIRouter(tags=["testcases"])
 
@@ -27,6 +27,15 @@ def create_test_case(
     session: Session = Depends(get_session),
 ) -> TestCaseRead:
     return testcase_service.create_test_case(session, project_id, payload)
+
+
+@router.patch("/test-cases/{test_case_id}", response_model=TestCaseRead)
+def update_test_case(
+    test_case_id: int,
+    payload: TestCaseUpdate,
+    session: Session = Depends(get_session),
+) -> TestCaseRead:
+    return testcase_service.update_test_case(session, test_case_id, payload)
 
 
 @router.post("/test-cases/{test_case_id}/publish", response_model=TestCaseRead)

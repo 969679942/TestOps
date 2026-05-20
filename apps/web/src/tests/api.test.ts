@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  addTestCaseReview,
   createDocumentVersion,
   createGenerationTask,
   createProjectDocument,
@@ -10,6 +11,8 @@ import {
   listProjects,
   listProjectTestCases,
   parseDocumentVersion,
+  publishTestCase,
+  updateTestCase,
 } from "../../lib/api";
 
 const fetchMock = vi.fn<typeof fetch>();
@@ -353,6 +356,108 @@ describe("api fallbacks", () => {
           automationNotes: "Use checkout fixture",
         },
       ],
+    });
+  });
+
+  it("updates test case drafts through the API", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        id: 21,
+        project_id: 1,
+        title: "Updated checkout case",
+        status: "draft",
+        module: "Checkout",
+        feature: "Card payment",
+        case_type: "functional",
+        priority: "medium",
+        preconditions: ["Saved card exists"],
+        steps: [{ text: "Open checkout" }],
+        expected_results: [{ text: "Order completes" }],
+        tags: ["smoke"],
+        automation_flag: false,
+        automation_notes: "Needs fixture",
+      }),
+    );
+
+    await expect(
+      updateTestCase("21", {
+        title: "Updated checkout case",
+        module: "Checkout",
+        feature: "Card payment",
+        case_type: "functional",
+        priority: "medium",
+        preconditions: ["Saved card exists"],
+        steps: [{ text: "Open checkout" }],
+        expected_results: [{ text: "Order completes" }],
+        tags: ["smoke"],
+        automation_flag: false,
+        automation_notes: "Needs fixture",
+      }),
+    ).resolves.toMatchObject({
+      kind: "success",
+      data: {
+        id: "21",
+        title: "Updated checkout case",
+        automationFlag: false,
+      },
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/test-cases/21",
+      expect.objectContaining({
+        method: "PATCH",
+      }),
+    );
+  });
+
+  it("adds review actions and publishes test cases through the API", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        id: 31,
+        test_case_id: 21,
+        reviewer_id: "web.reviewer",
+        action: "approve",
+        comment: "Approved",
+        created_at: "2026-05-20T10:00:00Z",
+      }),
+    );
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        id: 21,
+        project_id: 1,
+        title: "Published checkout case",
+        status: "published",
+        module: "Checkout",
+        feature: "Card payment",
+        case_type: "functional",
+        priority: "high",
+        preconditions: ["Saved card exists"],
+        steps: [{ text: "Open checkout" }],
+        expected_results: [{ text: "Order completes" }],
+        tags: ["smoke"],
+        automation_flag: true,
+        automation_notes: null,
+      }),
+    );
+
+    await expect(
+      addTestCaseReview("21", {
+        reviewer_id: "web.reviewer",
+        action: "approve",
+        comment: "Approved",
+      }),
+    ).resolves.toMatchObject({
+      kind: "success",
+      data: {
+        action: "approve",
+        reviewer_id: "web.reviewer",
+      },
+    });
+    await expect(publishTestCase("21")).resolves.toMatchObject({
+      kind: "success",
+      data: {
+        id: "21",
+        status: "published",
+      },
     });
   });
 });

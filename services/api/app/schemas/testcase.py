@@ -26,6 +26,20 @@ class TestCaseCreate(BaseModel):
     status: Literal["draft"] = "draft"
 
 
+class TestCaseUpdate(BaseModel):
+    title: NonEmptyStr
+    module: NonEmptyStr
+    feature: NonEmptyStr
+    case_type: NonEmptyStr
+    priority: NonEmptyStr
+    preconditions: list[NonEmptyStr] = Field(default_factory=list)
+    steps: list[StepItem] = Field(min_length=1)
+    expected_results: list[StepItem] = Field(min_length=1)
+    tags: list[NonEmptyStr] = Field(default_factory=list)
+    automation_flag: bool = False
+    automation_notes: str | None = None
+
+
 class TestCaseRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

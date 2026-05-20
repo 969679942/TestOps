@@ -173,6 +173,94 @@ def test_list_test_cases_returns_project_drafts(client):
     ]
 
 
+def test_update_test_case_edits_reviewable_fields(client):
+    project = _create_project(client)
+    test_case = _create_test_case(client, project["id"])
+
+    response = client.patch(
+        f"/test-cases/{test_case['id']}",
+        json={
+            "title": "Submit checkout order with wallet",
+            "module": "Payments",
+            "feature": "Wallet checkout",
+            "case_type": "functional",
+            "priority": "medium",
+            "preconditions": ["User has a wallet balance"],
+            "steps": [
+                {"text": "Open checkout"},
+                {"text": "Select wallet and submit the order"},
+            ],
+            "expected_results": [
+                {"text": "The order is confirmed."},
+                {"text": "The wallet balance is debited."},
+            ],
+            "tags": ["wallet", "checkout"],
+            "automation_flag": False,
+            "automation_notes": "Needs wallet fixture before automation.",
+        },
+    )
+    listed = client.get(f"/projects/{project['id']}/test-cases")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["id"] == test_case["id"]
+    assert body["title"] == "Submit checkout order with wallet"
+    assert body["module"] == "Payments"
+    assert body["feature"] == "Wallet checkout"
+    assert body["priority"] == "medium"
+    assert body["preconditions"] == ["User has a wallet balance"]
+    assert body["steps"] == [
+        {"text": "Open checkout"},
+        {"text": "Select wallet and submit the order"},
+    ]
+    assert body["expected_results"] == [
+        {"text": "The order is confirmed."},
+        {"text": "The wallet balance is debited."},
+    ]
+    assert body["tags"] == ["wallet", "checkout"]
+    assert body["automation_flag"] is False
+    assert body["automation_notes"] == "Needs wallet fixture before automation."
+    assert body["status"] == "draft"
+    assert listed.status_code == 200
+    assert listed.json()[0]["title"] == "Submit checkout order with wallet"
+
+
+def test_update_test_case_rejects_published_case(client):
+    project = _create_project(client)
+    test_case = _create_test_case(client, project["id"])
+    approve = client.post(
+        f"/test-cases/{test_case['id']}/reviews",
+        json={
+            "reviewer_id": "qa.lead",
+            "action": "approve",
+            "comment": "ready",
+        },
+    )
+    publish = client.post(f"/test-cases/{test_case['id']}/publish")
+
+    response = client.patch(
+        f"/test-cases/{test_case['id']}",
+        json={
+            "title": "Mutate published case",
+            "module": "Checkout",
+            "feature": "Order submission",
+            "case_type": "functional",
+            "priority": "high",
+            "preconditions": ["User has items in cart"],
+            "steps": [{"text": "Open checkout"}],
+            "expected_results": [{"text": "Order is submitted"}],
+            "tags": ["checkout"],
+            "automation_flag": True,
+            "automation_notes": None,
+        },
+    )
+
+    assert approve.status_code == 201
+    assert publish.status_code == 200
+    assert response.status_code == 409
+    assert response.json() == {"detail": "Published test cases cannot be edited"}
+
+
 def test_list_test_cases_returns_404_for_missing_project(client):
     response = client.get("/projects/9999/test-cases")
 

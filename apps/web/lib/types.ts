@@ -73,6 +73,20 @@ export type TestCaseRecord = {
   automationNotes: string | null;
 };
 
+export type TestCaseMutationPayload = {
+  title: string;
+  module: string;
+  feature: string;
+  case_type: string;
+  priority: string;
+  preconditions: string[];
+  steps: StructuredTextField[];
+  expected_results: StructuredTextField[];
+  tags: string[];
+  automation_flag: boolean;
+  automation_notes: string | null;
+};
+
 export type TestCaseListResult =
   | {
       kind: "success";

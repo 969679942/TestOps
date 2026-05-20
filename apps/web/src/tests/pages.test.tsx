@@ -7,24 +7,31 @@ const {
   createDocumentVersionMock,
   createGenerationTaskMock,
   createProjectDocumentMock,
+  addTestCaseReviewMock,
   listProjectDocumentsMock,
   listProjectGenerationTasksMock,
   listProjectsMock,
   listProjectTestCasesMock,
   parseDocumentVersionMock,
+  publishTestCaseMock,
+  updateTestCaseMock,
 } = vi.hoisted(() => ({
   getProjectMock: vi.fn(),
   createDocumentVersionMock: vi.fn(),
   createGenerationTaskMock: vi.fn(),
   createProjectDocumentMock: vi.fn(),
+  addTestCaseReviewMock: vi.fn(),
   listProjectDocumentsMock: vi.fn(),
   listProjectGenerationTasksMock: vi.fn(),
   listProjectsMock: vi.fn(),
   listProjectTestCasesMock: vi.fn(),
   parseDocumentVersionMock: vi.fn(),
+  publishTestCaseMock: vi.fn(),
+  updateTestCaseMock: vi.fn(),
 }));
 
 vi.mock("../../lib/api", () => ({
+  addTestCaseReview: addTestCaseReviewMock,
   createDocumentVersion: createDocumentVersionMock,
   createGenerationTask: createGenerationTaskMock,
   createProjectDocument: createProjectDocumentMock,
@@ -34,6 +41,8 @@ vi.mock("../../lib/api", () => ({
   listProjects: listProjectsMock,
   listProjectTestCases: listProjectTestCasesMock,
   parseDocumentVersion: parseDocumentVersionMock,
+  publishTestCase: publishTestCaseMock,
+  updateTestCase: updateTestCaseMock,
 }));
 
 import HomePage from "../../app/page";
@@ -321,6 +330,9 @@ describe("workspace pages", () => {
 
     expect(html).toContain("Review draft");
     expect(html).toContain('name="step-1"');
+    expect(html).toContain("Save draft");
+    expect(html).toContain("Approve");
+    expect(html).toContain("Publish");
     expect(html).not.toContain("No test case selected");
   });
 

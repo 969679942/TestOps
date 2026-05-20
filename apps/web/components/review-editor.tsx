@@ -6,19 +6,19 @@ import type { StructuredTextField, TestCaseRecord } from "../lib/types";
 type ReviewEditorProps = Readonly<{
   item: TestCaseRecord | null;
   locale?: Locale;
+  approveAction?: (formData: FormData) => Promise<void>;
+  publishAction?: (formData: FormData) => Promise<void>;
+  saveAction?: (formData: FormData) => Promise<void>;
 }>;
 
 type TextFieldListProps = Readonly<{
   items: StructuredTextField[];
+  fieldNameBase: string;
   label: string;
   prefix: string;
 }>;
 
-function toFieldName(prefix: string, index: number) {
-  return `${prefix.toLowerCase().replace(/\s+/g, "-")}-${index + 1}`;
-}
-
-function TextFieldList({ items, label, prefix }: TextFieldListProps) {
+function TextFieldList({ items, fieldNameBase, label, prefix }: TextFieldListProps) {
   return (
     <section className="review-section">
       <div className="section-heading">
@@ -34,7 +34,7 @@ function TextFieldList({ items, label, prefix }: TextFieldListProps) {
             <span>{prefix} {index + 1}</span>
             <textarea
               className="field-textarea"
-              name={toFieldName(prefix, index)}
+              name={`${fieldNameBase}-${index + 1}`}
               defaultValue={item.text}
               rows={3}
             />
@@ -45,8 +45,26 @@ function TextFieldList({ items, label, prefix }: TextFieldListProps) {
   );
 }
 
-export function ReviewEditor({ item, locale = "en" }: ReviewEditorProps) {
+export function ReviewEditor({
+  item,
+  locale = "en",
+  approveAction,
+  publishAction,
+  saveAction,
+}: ReviewEditorProps) {
   const t = copy[locale].components;
+  const actions =
+    locale === "zh"
+      ? {
+          approve: "批准",
+          publish: "发布",
+          save: "保存草稿",
+        }
+      : {
+          approve: "Approve",
+          publish: "Publish",
+          save: "Save draft",
+        };
 
   if (!item) {
     return (
@@ -59,7 +77,7 @@ export function ReviewEditor({ item, locale = "en" }: ReviewEditorProps) {
   }
 
   return (
-    <section className="review-editor">
+    <form action={saveAction} className="review-editor">
       <div className="section-heading">
         <div>
           <span className="eyebrow">{t.reviewDraft}</span>
@@ -117,9 +135,15 @@ export function ReviewEditor({ item, locale = "en" }: ReviewEditorProps) {
         </div>
       </section>
 
-      <TextFieldList items={item.steps} label={t.steps} prefix={t.step} />
+      <TextFieldList
+        items={item.steps}
+        fieldNameBase="step"
+        label={t.steps}
+        prefix={t.step}
+      />
       <TextFieldList
         items={item.expectedResults}
+        fieldNameBase="expected-result"
         label={t.expectedResults}
         prefix={t.expectedResult}
       />
@@ -148,6 +172,17 @@ export function ReviewEditor({ item, locale = "en" }: ReviewEditorProps) {
           rows={4}
         />
       </label>
-    </section>
+      <div className="button-row">
+        <button className="primary-button" type="submit">
+          {actions.save}
+        </button>
+        <button className="secondary-button" formAction={approveAction} type="submit">
+          {actions.approve}
+        </button>
+        <button className="secondary-button" formAction={publishAction} type="submit">
+          {actions.publish}
+        </button>
+      </div>
+    </form>
   );
 }

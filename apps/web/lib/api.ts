@@ -8,6 +8,7 @@ import type {
   ProjectListResult,
   ProjectRecord,
   TestCaseListResult,
+  TestCaseMutationPayload,
   TestCaseRecord,
 } from "./types";
 
@@ -78,6 +79,15 @@ type ProjectTestCaseApiRecord = {
   automation_notes: string | null;
 };
 
+type ReviewApiRecord = {
+  id: number;
+  test_case_id: number;
+  reviewer_id: string;
+  action: string;
+  comment: string | null;
+  created_at: string;
+};
+
 type RequestResult<T> =
   | {
       kind: "success";
@@ -109,6 +119,12 @@ export type CreateGenerationTaskPayload = {
   provider?: string | null;
   model?: string | null;
   prompt_profile?: string | null;
+};
+
+export type CreateReviewPayload = {
+  reviewer_id: string;
+  action: "comment" | "request_change" | "approve" | "reject";
+  comment?: string | null;
 };
 
 const API_BASE_URL = process.env.TESTOPS_API_BASE_URL ?? "http://127.0.0.1:8000";
@@ -486,6 +502,19 @@ async function postJson<T>(
   });
 }
 
+async function patchJson<T>(
+  path: string,
+  body: Record<string, unknown>,
+): Promise<RequestResult<T>> {
+  return requestJson<T>(path, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+}
+
 function mapProject(project: ProjectApiRecord): ProjectRecord {
   return {
     id: String(project.id),
@@ -749,5 +778,48 @@ export async function listProjectTestCases(projectId: string): Promise<TestCaseL
   return {
     kind: "success",
     items: result.data.map(mapTestCase),
+  };
+}
+
+export async function updateTestCase(
+  testCaseId: string,
+  payload: TestCaseMutationPayload,
+): Promise<RequestResult<TestCaseRecord>> {
+  const result = await patchJson<ProjectTestCaseApiRecord>(
+    `/test-cases/${testCaseId}`,
+    payload,
+  );
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: mapTestCase(result.data),
+  };
+}
+
+export async function addTestCaseReview(
+  testCaseId: string,
+  payload: CreateReviewPayload,
+): Promise<RequestResult<ReviewApiRecord>> {
+  return postJson<ReviewApiRecord>(`/test-cases/${testCaseId}/reviews`, payload);
+}
+
+export async function publishTestCase(
+  testCaseId: string,
+): Promise<RequestResult<TestCaseRecord>> {
+  const result = await postJson<ProjectTestCaseApiRecord>(
+    `/test-cases/${testCaseId}/publish`,
+  );
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: mapTestCase(result.data),
   };
 }
