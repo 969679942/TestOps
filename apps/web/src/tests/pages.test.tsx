@@ -8,8 +8,10 @@ const {
   createGenerationTaskMock,
   createProjectDocumentMock,
   createAutomationGenerationMock,
+  createAutomationRunMock,
   addTestCaseReviewMock,
   listProjectAutomationGenerationsMock,
+  listProjectAutomationRunsMock,
   listProjectDocumentsMock,
   listProjectGenerationTasksMock,
   listProjectsMock,
@@ -24,8 +26,10 @@ const {
   createGenerationTaskMock: vi.fn(),
   createProjectDocumentMock: vi.fn(),
   createAutomationGenerationMock: vi.fn(),
+  createAutomationRunMock: vi.fn(),
   addTestCaseReviewMock: vi.fn(),
   listProjectAutomationGenerationsMock: vi.fn(),
+  listProjectAutomationRunsMock: vi.fn(),
   listProjectDocumentsMock: vi.fn(),
   listProjectGenerationTasksMock: vi.fn(),
   listProjectsMock: vi.fn(),
@@ -42,8 +46,10 @@ vi.mock("../../lib/api", () => ({
   createGenerationTask: createGenerationTaskMock,
   createProjectDocument: createProjectDocumentMock,
   createAutomationGeneration: createAutomationGenerationMock,
+  createAutomationRun: createAutomationRunMock,
   getProject: getProjectMock,
   listProjectAutomationGenerations: listProjectAutomationGenerationsMock,
+  listProjectAutomationRuns: listProjectAutomationRunsMock,
   listProjectDocuments: listProjectDocumentsMock,
   listProjectGenerationTasks: listProjectGenerationTasksMock,
   listProjects: listProjectsMock,
@@ -295,6 +301,23 @@ describe("workspace pages", () => {
         },
       ],
     });
+    listProjectAutomationRunsMock.mockResolvedValue({
+      kind: "success",
+      items: [
+        {
+          id: "run-901",
+          automationGenerationId: "gen-501",
+          status: "queued",
+          triggerMode: "manual",
+          reportPath: null,
+          summary: {},
+          errorMessage: null,
+          createdAt: "2026-05-20T10:02:00Z",
+          startedAt: null,
+          finishedAt: null,
+        },
+      ],
+    });
 
     const html = renderToStaticMarkup(
       await ProjectTestCasesPage({
@@ -310,6 +333,9 @@ describe("workspace pages", () => {
     expect(html).toContain("Latest automation artifact");
     expect(html).toContain("published.spec.ts");
     expect(html).toContain("published.page.ts");
+    expect(html).toContain("Run automation");
+    expect(html).toContain("Latest automation run");
+    expect(html).toContain("queued");
     expect(html).toContain("Review Workspace");
   });
 
@@ -449,6 +475,10 @@ describe("workspace pages", () => {
       status: 503,
     });
     listProjectAutomationGenerationsMock.mockResolvedValue({
+      kind: "http-error",
+      status: 503,
+    });
+    listProjectAutomationRunsMock.mockResolvedValue({
       kind: "http-error",
       status: 503,
     });

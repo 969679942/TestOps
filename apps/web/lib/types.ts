@@ -115,6 +115,33 @@ export type AutomationGenerationListResult =
       status: number;
     };
 
+export type AutomationRunRecord = {
+  id: string | number;
+  automationGenerationId: string | number;
+  status: string;
+  triggerMode: string;
+  reportPath: string | null;
+  summary: Record<string, unknown>;
+  errorMessage: string | null;
+  createdAt: string;
+  startedAt: string | null;
+  finishedAt: string | null;
+};
+
+export type AutomationRunListResult =
+  | {
+      kind: "success";
+      items: AutomationRunRecord[];
+    }
+  | {
+      kind: "unavailable";
+      items: AutomationRunRecord[];
+    }
+  | {
+      kind: "http-error";
+      status: number;
+    };
+
 export type TestCaseListResult =
   | {
       kind: "success";

@@ -101,6 +101,36 @@ def test_list_project_automation_generations(client, monkeypatch, tmp_path):
     assert sorted(body[0]["artifact_paths"]) == ["page_object", "spec"]
 
 
+def test_create_and_list_automation_runs(client, monkeypatch, tmp_path):
+    monkeypatch.setattr(automation_service.settings, "artifact_storage_root", str(tmp_path))
+    project = _create_project(client)
+    test_case = _create_published_test_case(client, project["id"])
+    generated = client.post(f"/test-cases/{test_case['id']}/automation-generations")
+    assert generated.status_code == 201
+    generation_id = generated.json()["id"]
+
+    created = client.post(f"/automation-generations/{generation_id}/runs")
+
+    assert created.status_code == 201
+    run = created.json()
+    assert run["automation_generation_id"] == generation_id
+    assert run["status"] == "queued"
+    assert run["trigger_mode"] == "manual"
+    assert run["summary"] == {}
+    assert run["report_path"] is None
+    assert run["started_at"] is None
+    assert run["finished_at"] is None
+
+    listed = client.get(f"/projects/{project['id']}/automation-runs")
+
+    assert listed.status_code == 200
+    body = listed.json()
+    assert len(body) == 1
+    assert body[0]["id"] == run["id"]
+    assert body[0]["automation_generation_id"] == generation_id
+    assert body[0]["status"] == "queued"
+
+
 def test_generate_automation_rejects_unpublished_case(client):
     project = _create_project(client)
     created = client.post(

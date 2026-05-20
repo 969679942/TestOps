@@ -24,3 +24,22 @@ class AutomationGenerationRead(BaseModel):
     error_message: str | None
     created_at: datetime
     completed_at: datetime | None
+
+
+class AutomationRunCreate(BaseModel):
+    trigger_mode: Literal["manual", "scheduled"] = "manual"
+
+
+class AutomationRunRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    automation_generation_id: int
+    status: str
+    trigger_mode: str
+    report_path: str | None
+    summary: dict[str, Any]
+    error_message: str | None
+    created_at: datetime
+    started_at: datetime | None
+    finished_at: datetime | None

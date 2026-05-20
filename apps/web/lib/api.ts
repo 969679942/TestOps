@@ -1,6 +1,8 @@
 import type {
   AutomationGenerationListResult,
   AutomationGenerationRecord,
+  AutomationRunListResult,
+  AutomationRunRecord,
   DocumentAsset,
   DocumentAssetListResult,
   DocumentVersionRecord,
@@ -93,6 +95,19 @@ type AutomationGenerationApiRecord = {
   error_message: string | null;
   created_at: string;
   completed_at: string | null;
+};
+
+type AutomationRunApiRecord = {
+  id: number;
+  automation_generation_id: number;
+  status: string;
+  trigger_mode: string;
+  report_path: string | null;
+  summary: Record<string, unknown>;
+  error_message: string | null;
+  created_at: string;
+  started_at: string | null;
+  finished_at: string | null;
 };
 
 type ReviewApiRecord = {
@@ -622,6 +637,21 @@ function mapAutomationGeneration(
   };
 }
 
+function mapAutomationRun(item: AutomationRunApiRecord): AutomationRunRecord {
+  return {
+    id: String(item.id),
+    automationGenerationId: String(item.automation_generation_id),
+    status: item.status,
+    triggerMode: item.trigger_mode,
+    reportPath: item.report_path,
+    summary: item.summary,
+    errorMessage: item.error_message,
+    createdAt: item.created_at,
+    startedAt: item.started_at,
+    finishedAt: item.finished_at,
+  };
+}
+
 function getDemoProject(projectId: string): ProjectRecord | null {
   return (
     demoProjects.find((project) => project.id === projectId || project.code === projectId) ??
@@ -863,6 +893,30 @@ export async function listProjectAutomationGenerations(
   };
 }
 
+export async function listProjectAutomationRuns(
+  projectId: string,
+): Promise<AutomationRunListResult> {
+  const result = await requestJson<AutomationRunApiRecord[]>(
+    `/projects/${projectId}/automation-runs`,
+  );
+
+  if (result.kind === "unavailable") {
+    return {
+      kind: "unavailable",
+      items: [],
+    };
+  }
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    items: result.data.map(mapAutomationRun),
+  };
+}
+
 export async function createAutomationGeneration(
   testCaseId: string,
 ): Promise<RequestResult<AutomationGenerationRecord>> {
@@ -877,6 +931,23 @@ export async function createAutomationGeneration(
   return {
     kind: "success",
     data: mapAutomationGeneration(result.data),
+  };
+}
+
+export async function createAutomationRun(
+  generationId: string,
+): Promise<RequestResult<AutomationRunRecord>> {
+  const result = await postJson<AutomationRunApiRecord>(
+    `/automation-generations/${generationId}/runs`,
+  );
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: mapAutomationRun(result.data),
   };
 }
 

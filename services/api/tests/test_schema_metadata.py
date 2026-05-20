@@ -5,6 +5,7 @@ from app.models import automation, document, generation, project, testcase  # no
 def test_registered_model_metadata_matches_schema() -> None:
     assert sorted(Base.metadata.tables) == [
         "automation_generations",
+        "automation_runs",
         "document_assets",
         "document_versions",
         "generation_tasks",

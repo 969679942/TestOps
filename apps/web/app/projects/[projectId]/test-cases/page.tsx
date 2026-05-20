@@ -5,13 +5,19 @@ import { AppShell } from "../../../../components/app-shell";
 import { TestCaseTable } from "../../../../components/test-case-table";
 import {
   createAutomationGeneration,
+  createAutomationRun,
   getProject,
   listProjectAutomationGenerations,
+  listProjectAutomationRuns,
   listProjectPublishedTestCases,
   listProjectTestCases,
 } from "../../../../lib/api";
 import { copy, localizedHref, normalizeLocale, type LocaleSearchParams } from "../../../../lib/i18n";
-import type { AutomationGenerationRecord, TestCaseRecord } from "../../../../lib/types";
+import type {
+  AutomationGenerationRecord,
+  AutomationRunRecord,
+  TestCaseRecord,
+} from "../../../../lib/types";
 
 type ProjectTestCasesPageProps = {
   params: Promise<{
@@ -52,6 +58,23 @@ function getLatestGenerationsByCase(items: AutomationGenerationRecord[]) {
   }
 
   return latestByCase;
+}
+
+function getLatestRunsByGeneration(items: AutomationRunRecord[]) {
+  const latestByGeneration = new Map<string, AutomationRunRecord>();
+
+  for (const item of items) {
+    const generationId = String(item.automationGenerationId);
+    const current = latestByGeneration.get(generationId);
+    if (
+      current === undefined ||
+      Date.parse(item.createdAt) > Date.parse(current.createdAt)
+    ) {
+      latestByGeneration.set(generationId, item);
+    }
+  }
+
+  return latestByGeneration;
 }
 
 export default async function ProjectTestCasesPage({
@@ -104,12 +127,15 @@ export default async function ProjectTestCasesPage({
   const testCaseList = await listProjectTestCases(projectId);
   const publishedCaseList = await listProjectPublishedTestCases(projectId);
   const automationGenerationList = await listProjectAutomationGenerations(projectId);
+  const automationRunList = await listProjectAutomationRuns(projectId);
   const items = testCaseList.kind === "http-error" ? [] : testCaseList.items;
   const publishedItems =
     publishedCaseList.kind === "http-error" ? [] : publishedCaseList.items;
   const automationGenerations =
     automationGenerationList.kind === "http-error" ? [] : automationGenerationList.items;
+  const automationRuns = automationRunList.kind === "http-error" ? [] : automationRunList.items;
   const latestGenerationsByCase = getLatestGenerationsByCase(automationGenerations);
+  const latestRunsByGeneration = getLatestRunsByGeneration(automationRuns);
   const counts = getCounts(items);
   const countsUnavailable = testCaseList.kind === "http-error";
   const automationText =
@@ -134,11 +160,17 @@ export default async function ProjectTestCasesPage({
           latest: "\u6700\u65b0\u81ea\u52a8\u5316\u4ea7\u7269",
           generated: "\u5df2\u751f\u6210",
           noArtifacts: "\u6682\u65e0\u4ea7\u7269\u8def\u5f84",
+          latestRun: "\u6700\u65b0\u81ea\u52a8\u5316\u8fd0\u884c",
+          run: "\u8fd0\u884c\u81ea\u52a8\u5316",
+          trigger: "\u89e6\u53d1\u65b9\u5f0f",
         }
       : {
           latest: "Latest automation artifact",
           generated: "Generated",
           noArtifacts: "No artifact paths yet",
+          latestRun: "Latest automation run",
+          run: "Run automation",
+          trigger: "Trigger",
         };
 
   async function generateAutomationAction(formData: FormData) {
@@ -150,6 +182,18 @@ export default async function ProjectTestCasesPage({
     }
 
     await createAutomationGeneration(value.trim());
+    revalidatePath(`/projects/${projectId}/test-cases`);
+  }
+
+  async function runAutomationAction(formData: FormData) {
+    "use server";
+
+    const value = formData.get("generationId");
+    if (typeof value !== "string" || !value.trim()) {
+      return;
+    }
+
+    await createAutomationRun(value.trim());
     revalidatePath(`/projects/${projectId}/test-cases`);
   }
 
@@ -216,6 +260,10 @@ export default async function ProjectTestCasesPage({
                 latestGeneration === undefined
                   ? []
                   : getArtifactNames(latestGeneration.artifactPaths);
+              const latestRun =
+                latestGeneration === undefined
+                  ? undefined
+                  : latestRunsByGeneration.get(String(latestGeneration.id));
 
               return (
                 <article className="automation-card" key={item.id}>
@@ -236,9 +284,27 @@ export default async function ProjectTestCasesPage({
                             ? artifactNames.join(", ")
                             : artifactText.noArtifacts}
                         </p>
+                        {latestRun ? (
+                          <p>
+                            <strong>{artifactText.latestRun}</strong>: {latestRun.status} -{" "}
+                            {artifactText.trigger} {latestRun.triggerMode}
+                          </p>
+                        ) : null}
                       </div>
                     ) : null}
                   </div>
+                  {latestGeneration ? (
+                    <form action={runAutomationAction}>
+                      <input
+                        name="generationId"
+                        type="hidden"
+                        value={String(latestGeneration.id)}
+                      />
+                      <button className="secondary-button" type="submit">
+                        {artifactText.run}
+                      </button>
+                    </form>
+                  ) : null}
                   <form action={generateAutomationAction}>
                     <input name="testCaseId" type="hidden" value={String(item.id)} />
                     <button className="secondary-button" type="submit">

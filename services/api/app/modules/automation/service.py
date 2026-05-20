@@ -8,12 +8,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.models.automation import AutomationGeneration
+from app.models.automation import AutomationGeneration, AutomationRun
 from app.models.project import Project
 from app.models.testcase import TestCase
 from app.modules.automation.generator import generate_playwright_pom_files
 from app.modules.document.storage import LocalArtifactStorage
-from app.schemas.automation import AutomationGenerationCreate
+from app.schemas.automation import AutomationGenerationCreate, AutomationRunCreate
 
 
 def _utcnow() -> datetime:
@@ -40,6 +40,18 @@ def _get_project(session: Session, project_id: int) -> Project:
     return project
 
 
+def _get_generation(session: Session, generation_id: int) -> AutomationGeneration:
+    generation = session.scalar(
+        select(AutomationGeneration).where(AutomationGeneration.id == generation_id)
+    )
+    if generation is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Automation generation not found",
+        )
+    return generation
+
+
 def list_project_generations(
     session: Session,
     project_id: int,
@@ -51,6 +63,49 @@ def list_project_generations(
             .join(TestCase, AutomationGeneration.test_case_id == TestCase.id)
             .where(TestCase.project_id == project_id)
             .order_by(AutomationGeneration.created_at.desc(), AutomationGeneration.id.desc())
+        )
+    )
+
+
+def create_run(
+    session: Session,
+    generation_id: int,
+    payload: AutomationRunCreate,
+) -> AutomationRun:
+    generation = _get_generation(session, generation_id)
+    if generation.status != "completed":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Only completed automation generations can be run",
+        )
+
+    run = AutomationRun(
+        automation_generation_id=generation.id,
+        status="queued",
+        trigger_mode=payload.trigger_mode,
+        summary={},
+    )
+    session.add(run)
+    session.commit()
+    session.refresh(run)
+    return run
+
+
+def list_project_runs(
+    session: Session,
+    project_id: int,
+) -> list[AutomationRun]:
+    _get_project(session, project_id)
+    return list(
+        session.scalars(
+            select(AutomationRun)
+            .join(
+                AutomationGeneration,
+                AutomationRun.automation_generation_id == AutomationGeneration.id,
+            )
+            .join(TestCase, AutomationGeneration.test_case_id == TestCase.id)
+            .where(TestCase.project_id == project_id)
+            .order_by(AutomationRun.created_at.desc(), AutomationRun.id.desc())
         )
     )
 

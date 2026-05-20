@@ -3,12 +3,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   addTestCaseReview,
   createAutomationGeneration,
+  createAutomationRun,
   createDocumentVersion,
   createGenerationTask,
   createProjectDocument,
   getProject,
   listProjectDocuments,
   listProjectAutomationGenerations,
+  listProjectAutomationRuns,
   listProjectGenerationTasks,
   listProjectPublishedTestCases,
   listProjects,
@@ -474,6 +476,75 @@ describe("api fallbacks", () => {
       "http://127.0.0.1:8000/projects/1/automation-generations",
       expect.objectContaining({
         cache: "no-store",
+      }),
+    );
+  });
+
+  it("maps project automation run history from the API", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse([
+        {
+          id: 9,
+          automation_generation_id: 5,
+          status: "queued",
+          trigger_mode: "manual",
+          report_path: null,
+          summary: {},
+          error_message: null,
+          created_at: "2026-05-20T10:01:00Z",
+          started_at: null,
+          finished_at: null,
+        },
+      ]),
+    );
+
+    await expect(listProjectAutomationRuns("1")).resolves.toMatchObject({
+      kind: "success",
+      items: [
+        {
+          id: "9",
+          automationGenerationId: "5",
+          status: "queued",
+          triggerMode: "manual",
+        },
+      ],
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/projects/1/automation-runs",
+      expect.objectContaining({
+        cache: "no-store",
+      }),
+    );
+  });
+
+  it("creates automation run records through the API", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        id: 9,
+        automation_generation_id: 5,
+        status: "queued",
+        trigger_mode: "manual",
+        report_path: null,
+        summary: {},
+        error_message: null,
+        created_at: "2026-05-20T10:01:00Z",
+        started_at: null,
+        finished_at: null,
+      }, 201),
+    );
+
+    await expect(createAutomationRun("5")).resolves.toMatchObject({
+      kind: "success",
+      data: {
+        id: "9",
+        automationGenerationId: "5",
+        status: "queued",
+      },
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/automation-generations/5/runs",
+      expect.objectContaining({
+        method: "POST",
       }),
     );
   });
