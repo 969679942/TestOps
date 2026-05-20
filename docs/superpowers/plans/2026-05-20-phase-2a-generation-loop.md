@@ -116,15 +116,15 @@ Run: `cd services/api; uv run pytest tests/test_document_routes.py tests/test_do
 - Modify: `services/api/app/modules/document/service.py`
 - Test: `services/worker/tests/test_parse_task.py`
 
-- [ ] **Step 1: Write failing parse task test using database-backed document version**
+- [x] **Step 1: Write failing parse task test using database-backed document version**
 
 Create a version with stored Swagger JSON, run parse, and assert `parse_status` and metadata are updated.
 
-- [ ] **Step 2: Implement artifact loading and DB update**
+- [x] **Step 2: Implement artifact loading and DB update**
 
 When `document_version_id` is passed without explicit payload, load the version, read the stored artifact, parse by document type, save structured metadata, and mark status.
 
-- [ ] **Step 3: Run worker parse tests**
+- [x] **Step 3: Run worker parse tests**
 
 Run: `cd services/worker; uv run pytest tests/test_parse_task.py -q`
 
