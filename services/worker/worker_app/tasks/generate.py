@@ -46,6 +46,11 @@ def generate_test_cases(generation_task_id: int) -> dict[str, Any]:
             )
         )
         normalized_cases = generation_service.normalize_generated_cases(response.payload)
+        generation_service.persist_generated_cases(
+            session,
+            project_id=task.project_id,
+            cases=normalized_cases,
+        )
 
         task.status = "completed"
         task.finished_at = _utcnow()

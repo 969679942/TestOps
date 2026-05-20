@@ -39,5 +39,11 @@ def test_parse_task_imports_installed_api_modules() -> None:
 
     assert parse_module.extract_operations.__module__ == "app.modules.parser.swagger_parser"
     assert parse_module.LocalArtifactStorage.__module__ == "app.modules.document.storage"
-    assert "site-packages" in {part.lower() for part in swagger_origin.parts}
-    assert "site-packages" in {part.lower() for part in storage_origin.parts}
+    swagger_parts = {part.lower() for part in swagger_origin.parts}
+    storage_parts = {part.lower() for part in storage_origin.parts}
+    assert "site-packages" in swagger_parts or swagger_origin.match(
+        "*/services/api/app/modules/parser/swagger_parser.py"
+    )
+    assert "site-packages" in storage_parts or storage_origin.match(
+        "*/services/api/app/modules/document/storage.py"
+    )

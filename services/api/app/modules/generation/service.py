@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models.generation import GenerationTask
 from app.models.project import Project
+from app.models.testcase import TestCase
 from app.modules.project import service as project_service
 from app.modules.provider import UnknownProviderError, resolve_provider
 from app.schemas.generation import GenerationTaskCreate
@@ -88,6 +89,34 @@ def normalize_generated_cases(raw: Mapping[str, Any]) -> list[dict[str, Any]]:
             }
         )
     return normalized
+
+
+def persist_generated_cases(
+    session: Session,
+    *,
+    project_id: int,
+    cases: list[dict[str, Any]],
+) -> list[TestCase]:
+    drafts: list[TestCase] = []
+    for item in cases:
+        draft = TestCase(
+            project_id=project_id,
+            title=item["title"],
+            module=item.get("module") or "Generated",
+            feature=item.get("feature") or item["title"],
+            case_type=item.get("case_type") or "functional",
+            priority=item.get("priority") or "medium",
+            preconditions=list(item.get("preconditions", [])),
+            steps=list(item["steps"]),
+            expected_results=list(item["expected_results"]),
+            tags=list(item.get("tags", ["ai-generated"])),
+            automation_flag=bool(item.get("automation_flag", False)),
+            automation_notes=item.get("automation_notes"),
+            status="draft",
+        )
+        session.add(draft)
+        drafts.append(draft)
+    return drafts
 
 
 def create_task(
