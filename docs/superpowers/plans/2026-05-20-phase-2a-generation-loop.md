@@ -38,24 +38,24 @@
 - Modify: `services/api/app/modules/generation/service.py`
 - Test: `services/worker/tests/test_generate_task.py`
 
-- [ ] **Step 1: Write a failing worker test proving generated cases become drafts**
+- [x] **Step 1: Write a failing worker test proving generated cases become drafts**
 
 Add a provider fake that returns one structured case, invoke `generate_test_cases`, then assert `test_cases` contains the draft.
 
-- [ ] **Step 2: Run the worker test and verify it fails**
+- [x] **Step 2: Run the worker test and verify it fails**
 
 Run: `cd services/worker; uv run pytest tests/test_generate_task.py -q`
 Expected: FAIL because the worker currently normalizes cases but does not persist them.
 
-- [ ] **Step 3: Add a `persist_generated_cases` service helper**
+- [x] **Step 3: Add a `persist_generated_cases` service helper**
 
 The helper should accept `session`, `project_id`, and normalized cases, then create `TestCase` rows with conservative defaults for fields the model does not yet provide.
 
-- [ ] **Step 4: Call the helper from the worker**
+- [x] **Step 4: Call the helper from the worker**
 
 After normalization succeeds, persist drafts before marking the task `completed`.
 
-- [ ] **Step 5: Run worker and API tests**
+- [x] **Step 5: Run worker and API tests**
 
 Run: `cd services/worker; uv run pytest tests -q`
 Run: `cd services/api; uv run pytest tests/test_generation_validation.py tests/test_testcase_review_flow.py -q`
@@ -67,19 +67,19 @@ Run: `cd services/api; uv run pytest tests/test_generation_validation.py tests/t
 - Modify: `services/api/app/modules/provider/cursor_provider.py`
 - Test: `services/api/tests/test_cursor_provider.py`
 
-- [ ] **Step 1: Write failing provider tests**
+- [x] **Step 1: Write failing provider tests**
 
 Cover command construction, JSON parsing, timeout/error handling, and the missing CLI case.
 
-- [ ] **Step 2: Implement provider settings**
+- [x] **Step 2: Implement provider settings**
 
 Add `cursor_agent_command`, `cursor_agent_timeout_seconds`, and `cursor_agent_cwd` settings with safe defaults.
 
-- [ ] **Step 3: Implement Cursor invocation**
+- [x] **Step 3: Implement Cursor invocation**
 
 Run `cursor-agent --print --output-format json` with a generated prompt. Parse the final JSON response and extract the generated cases from the provider text.
 
-- [ ] **Step 4: Run provider tests**
+- [x] **Step 4: Run provider tests**
 
 Run: `cd services/api; uv run pytest tests/test_cursor_provider.py -q`
 
