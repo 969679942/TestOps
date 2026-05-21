@@ -3,6 +3,8 @@ import type {
   AutomationGenerationRecord,
   AutomationFailureAnalysisListResult,
   AutomationFailureAnalysisRecord,
+  AutomationReportListResult,
+  AutomationReportRecord,
   AutomationRunListResult,
   AutomationRunRecord,
   DataSetupExecutionListResult,
@@ -144,6 +146,16 @@ type AutomationFailureAnalysisApiRecord = {
   should_rerun: boolean;
   created_at: string;
   completed_at: string | null;
+};
+
+type AutomationReportApiRecord = {
+  id: number;
+  automation_run_id: number;
+  kind: string;
+  artifact_root: string;
+  index_path: string;
+  summary: Record<string, unknown>;
+  created_at: string;
 };
 
 type DataSetupHintApiRecord = {
@@ -877,6 +889,18 @@ function mapAutomationFailureAnalysis(
   };
 }
 
+function mapAutomationReport(item: AutomationReportApiRecord): AutomationReportRecord {
+  return {
+    id: String(item.id),
+    automationRunId: String(item.automation_run_id),
+    kind: item.kind,
+    artifactRoot: item.artifact_root,
+    indexPath: item.index_path,
+    summary: item.summary,
+    createdAt: item.created_at,
+  };
+}
+
 function mapDataSetupHint(item: DataSetupHintApiRecord): DataSetupHintRecord {
   return {
     id: String(item.id),
@@ -1234,6 +1258,30 @@ export async function listProjectAutomationRuns(
   return {
     kind: "success",
     items: result.data.map(mapAutomationRun),
+  };
+}
+
+export async function listProjectAutomationReports(
+  projectId: string,
+): Promise<AutomationReportListResult> {
+  const result = await requestJson<AutomationReportApiRecord[]>(
+    `/projects/${projectId}/automation-reports`,
+  );
+
+  if (result.kind === "unavailable") {
+    return {
+      kind: "unavailable",
+      items: [],
+    };
+  }
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    items: result.data.map(mapAutomationReport),
   };
 }
 

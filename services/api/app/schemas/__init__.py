@@ -8,6 +8,7 @@ from app.schemas.document import DocumentCreate, DocumentRead
 from app.schemas.environment import EnvironmentCreate, EnvironmentRead, EnvironmentUpdate
 from app.schemas.generation import GenerationTaskCreate, GenerationTaskRead
 from app.schemas.project import ProjectCreate, ProjectRead
+from app.schemas.report import AutomationReportCreate, AutomationReportRead
 from app.schemas.review import ReviewCreate, ReviewRead
 from app.schemas.testcase import StepItem, TestCaseCreate, TestCaseRead
 
@@ -25,6 +26,8 @@ __all__ = [
     "GenerationTaskRead",
     "ProjectCreate",
     "ProjectRead",
+    "AutomationReportCreate",
+    "AutomationReportRead",
     "ReviewCreate",
     "ReviewRead",
     "StepItem",

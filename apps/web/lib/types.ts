@@ -155,6 +155,30 @@ export type AutomationRunListResult =
       status: number;
     };
 
+export type AutomationReportRecord = {
+  id: string | number;
+  automationRunId: string | number;
+  kind: string;
+  artifactRoot: string;
+  indexPath: string;
+  summary: Record<string, unknown>;
+  createdAt: string;
+};
+
+export type AutomationReportListResult =
+  | {
+      kind: "success";
+      items: AutomationReportRecord[];
+    }
+  | {
+      kind: "unavailable";
+      items: AutomationReportRecord[];
+    }
+  | {
+      kind: "http-error";
+      status: number;
+    };
+
 export type AutomationFailureAnalysisRecord = {
   id: string | number;
   automationRunId: string | number;

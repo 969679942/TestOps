@@ -15,6 +15,7 @@ const {
   listProjectAutomationGenerationsMock,
   listProjectAutomationFailureAnalysesMock,
   listProjectAutomationRunsMock,
+  listProjectAutomationReportsMock,
   listProjectDataSetupExecutionsMock,
   listProjectDataSetupHintsMock,
   listProjectDocumentsMock,
@@ -39,6 +40,7 @@ const {
   listProjectAutomationGenerationsMock: vi.fn(),
   listProjectAutomationFailureAnalysesMock: vi.fn(),
   listProjectAutomationRunsMock: vi.fn(),
+  listProjectAutomationReportsMock: vi.fn(),
   listProjectDataSetupExecutionsMock: vi.fn(),
   listProjectDataSetupHintsMock: vi.fn(),
   listProjectDocumentsMock: vi.fn(),
@@ -65,6 +67,7 @@ vi.mock("../../lib/api", () => ({
   listProjectAutomationGenerations: listProjectAutomationGenerationsMock,
   listProjectAutomationFailureAnalyses: listProjectAutomationFailureAnalysesMock,
   listProjectAutomationRuns: listProjectAutomationRunsMock,
+  listProjectAutomationReports: listProjectAutomationReportsMock,
   listProjectDataSetupExecutions: listProjectDataSetupExecutionsMock,
   listProjectDataSetupHints: listProjectDataSetupHintsMock,
   listProjectDocuments: listProjectDocumentsMock,
@@ -359,6 +362,24 @@ describe("workspace pages", () => {
         },
       ],
     });
+    listProjectAutomationReportsMock.mockResolvedValue({
+      kind: "success",
+      items: [
+        {
+          id: "report-701",
+          automationRunId: "run-901",
+          kind: "allure",
+          artifactRoot: "automation/reports/run-901",
+          indexPath: "automation/reports/run-901/index.html",
+          summary: {
+            passed: 3,
+            failed: 1,
+            duration_ms: 1240,
+          },
+          createdAt: "2026-05-21T12:00:00Z",
+        },
+      ],
+    });
     listProjectAutomationFailureAnalysesMock.mockResolvedValue({
       kind: "success",
       items: [
@@ -447,6 +468,8 @@ describe("workspace pages", () => {
     expect(html).toContain("Latest automation run");
     expect(html).toContain("failed");
     expect(html).toContain("automation/reports/run-901/index.html");
+    expect(html).toContain("Allure report");
+    expect(html).toContain("Duration 1240ms");
     expect(html).toContain("Passed 3");
     expect(html).toContain("Failed 1");
     expect(html).toContain("Locator timeout");
@@ -599,6 +622,10 @@ describe("workspace pages", () => {
       status: 503,
     });
     listProjectAutomationRunsMock.mockResolvedValue({
+      kind: "http-error",
+      status: 503,
+    });
+    listProjectAutomationReportsMock.mockResolvedValue({
       kind: "http-error",
       status: 503,
     });

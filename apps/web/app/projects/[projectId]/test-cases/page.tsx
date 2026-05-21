@@ -11,6 +11,7 @@ import {
   getProject,
   listProjectAutomationFailureAnalyses,
   listProjectAutomationGenerations,
+  listProjectAutomationReports,
   listProjectAutomationRuns,
   listProjectDataSetupExecutions,
   listProjectDataSetupHints,
@@ -21,6 +22,7 @@ import { copy, localizedHref, normalizeLocale, type LocaleSearchParams } from ".
 import type {
   AutomationFailureAnalysisRecord,
   AutomationGenerationRecord,
+  AutomationReportRecord,
   AutomationRunRecord,
   DataSetupExecutionRecord,
   DataSetupHintRecord,
@@ -87,6 +89,23 @@ function getLatestRunsByGeneration(items: AutomationRunRecord[]) {
 
 function getLatestAnalysesByRun(items: AutomationFailureAnalysisRecord[]) {
   const latestByRun = new Map<string, AutomationFailureAnalysisRecord>();
+
+  for (const item of items) {
+    const runId = String(item.automationRunId);
+    const current = latestByRun.get(runId);
+    if (
+      current === undefined ||
+      Date.parse(item.createdAt) > Date.parse(current.createdAt)
+    ) {
+      latestByRun.set(runId, item);
+    }
+  }
+
+  return latestByRun;
+}
+
+function getLatestReportsByRun(items: AutomationReportRecord[]) {
+  const latestByRun = new Map<string, AutomationReportRecord>();
 
   for (const item of items) {
     const runId = String(item.automationRunId);
@@ -187,6 +206,7 @@ export default async function ProjectTestCasesPage({
   const publishedCaseList = await listProjectPublishedTestCases(projectId);
   const automationGenerationList = await listProjectAutomationGenerations(projectId);
   const automationRunList = await listProjectAutomationRuns(projectId);
+  const automationReportList = await listProjectAutomationReports(projectId);
   const automationFailureAnalysisList =
     await listProjectAutomationFailureAnalyses(projectId);
   const dataSetupHintList = await listProjectDataSetupHints(projectId);
@@ -197,6 +217,8 @@ export default async function ProjectTestCasesPage({
   const automationGenerations =
     automationGenerationList.kind === "http-error" ? [] : automationGenerationList.items;
   const automationRuns = automationRunList.kind === "http-error" ? [] : automationRunList.items;
+  const automationReports =
+    automationReportList.kind === "http-error" ? [] : automationReportList.items;
   const automationFailureAnalyses =
     automationFailureAnalysisList.kind === "http-error"
       ? []
@@ -209,6 +231,7 @@ export default async function ProjectTestCasesPage({
       : dataSetupExecutionList.executions;
   const latestGenerationsByCase = getLatestGenerationsByCase(automationGenerations);
   const latestRunsByGeneration = getLatestRunsByGeneration(automationRuns);
+  const latestReportsByRun = getLatestReportsByRun(automationReports);
   const latestAnalysesByRun = getLatestAnalysesByRun(automationFailureAnalyses);
   const dataSetupHintsByCase = getDataSetupHintsByCase(dataSetupHints);
   const latestDataSetupExecutionsByHint =
@@ -241,6 +264,8 @@ export default async function ProjectTestCasesPage({
           run: "\u8fd0\u884c\u81ea\u52a8\u5316",
           trigger: "\u89e6\u53d1\u65b9\u5f0f",
           report: "\u62a5\u544a",
+          allureReport: "Allure \u62a5\u544a",
+          duration: "\u8017\u65f6",
           passed: "\u901a\u8fc7",
           failed: "\u5931\u8d25",
           error: "\u5931\u8d25\u539f\u56e0",
@@ -260,6 +285,8 @@ export default async function ProjectTestCasesPage({
           run: "Run automation",
           trigger: "Trigger",
           report: "Report",
+          allureReport: "Allure report",
+          duration: "Duration",
           passed: "Passed",
           failed: "Failed",
           error: "Failure reason",
@@ -395,6 +422,14 @@ export default async function ProjectTestCasesPage({
                 latestRun === undefined
                   ? undefined
                   : latestAnalysesByRun.get(String(latestRun.id));
+              const latestReport =
+                latestRun === undefined
+                  ? undefined
+                  : latestReportsByRun.get(String(latestRun.id));
+              const reportDuration =
+                latestReport === undefined
+                  ? null
+                  : getSummaryNumber(latestReport.summary, "duration_ms");
               const caseDataSetupHints = dataSetupHintsByCase.get(String(item.id)) ?? [];
 
               return (
@@ -426,6 +461,19 @@ export default async function ProjectTestCasesPage({
                               <p>
                                 {artifactText.report}: {latestRun.reportPath}
                               </p>
+                            ) : null}
+                            {latestReport ? (
+                              <>
+                                <p>
+                                  <strong>{artifactText.allureReport}</strong>:{" "}
+                                  {latestReport.indexPath}
+                                </p>
+                                {reportDuration ? (
+                                  <p>
+                                    {artifactText.duration} {reportDuration}ms
+                                  </p>
+                                ) : null}
+                              </>
                             ) : null}
                             {passedCount || failedCount ? (
                               <p>

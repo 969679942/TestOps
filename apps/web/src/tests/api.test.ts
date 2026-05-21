@@ -18,6 +18,7 @@ import {
   listProjectAutomationGenerations,
   listProjectAutomationFailureAnalyses,
   listProjectAutomationRuns,
+  listProjectAutomationReports,
   listProjectGenerationTasks,
   listProjectPublishedTestCases,
   listProjects,
@@ -715,6 +716,51 @@ describe("api fallbacks", () => {
     });
     expect(fetchMock).toHaveBeenCalledWith(
       "http://127.0.0.1:8000/projects/1/automation-runs",
+      expect.objectContaining({
+        cache: "no-store",
+      }),
+    );
+  });
+
+  it("maps project automation reports from the API", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse([
+        {
+          id: 17,
+          automation_run_id: 9,
+          kind: "allure",
+          artifact_root: "automation/runs/run-9",
+          index_path: "automation/runs/run-9/report/index.html",
+          summary: {
+            passed: 3,
+            failed: 1,
+            duration_ms: 1240,
+          },
+          created_at: "2026-05-21T12:00:00Z",
+        },
+      ]),
+    );
+
+    await expect(listProjectAutomationReports("1")).resolves.toEqual({
+      kind: "success",
+      items: [
+        {
+          id: "17",
+          automationRunId: "9",
+          kind: "allure",
+          artifactRoot: "automation/runs/run-9",
+          indexPath: "automation/runs/run-9/report/index.html",
+          summary: {
+            passed: 3,
+            failed: 1,
+            duration_ms: 1240,
+          },
+          createdAt: "2026-05-21T12:00:00Z",
+        },
+      ],
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/projects/1/automation-reports",
       expect.objectContaining({
         cache: "no-store",
       }),

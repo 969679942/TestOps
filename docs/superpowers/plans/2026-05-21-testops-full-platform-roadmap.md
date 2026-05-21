@@ -24,6 +24,7 @@
 - [x] Phase 2J: multi-system workspace environment model.
 - [x] Phase 2K: Swagger-guided data setup hints, safe execution adapter, records, and UI display.
 - [x] Phase 2L: Playwright runner package and worker execution task.
+- [x] Phase 2M: Allure report ingestion and display.
 
 ## Development Phases
 
@@ -181,23 +182,23 @@ npm test
 - Test: `apps/web/src/tests/api.test.ts`
 - Test: `apps/web/src/tests/pages.test.tsx`
 
-- [ ] **Step 1: Write tests for report ingestion**
+- [x] **Step 1: Write tests for report ingestion**
 
 Expected behavior: posting report metadata creates a report record and updates the linked automation run summary.
 
-- [ ] **Step 2: Add report records**
+- [x] **Step 2: Add report records**
 
 Store `automation_run_id`, `kind`, `artifact_root`, `index_path`, `summary`, `created_at`.
 
-- [ ] **Step 3: Add report APIs**
+- [x] **Step 3: Add report APIs**
 
 Expose `POST /automation-runs/{run_id}/reports` and `GET /projects/{project_id}/automation-reports`.
 
-- [ ] **Step 4: Show report summary in UI**
+- [x] **Step 4: Show report summary in UI**
 
 Display pass/fail counts, duration, and Allure report path near each automation run.
 
-- [ ] **Step 5: Verify**
+- [x] **Step 5: Verify**
 
 Run:
 
@@ -474,7 +475,7 @@ npm run lint
 - [x] One platform testing multiple systems: Phase 2J.
 - [x] Swagger-guided API data creation: Phase 2K.
 - [x] Real Playwright runner execution: Phase 2L.
-- [ ] Allure report ingestion and display: Phase 2M.
+- [x] Allure report ingestion and display: Phase 2M.
 - [ ] Scheduled automation execution: Phase 2N.
 - [ ] Real Codex failure diagnosis: Phase 2O.
 - [ ] Debug patch proposal and controlled self-healing loop: Phase 2P.
