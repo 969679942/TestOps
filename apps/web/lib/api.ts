@@ -5,6 +5,8 @@ import type {
   AutomationFailureAnalysisRecord,
   AutomationRunListResult,
   AutomationRunRecord,
+  DataSetupHintListResult,
+  DataSetupHintRecord,
   DocumentAsset,
   DocumentAssetListResult,
   DocumentVersionRecord,
@@ -140,6 +142,21 @@ type AutomationFailureAnalysisApiRecord = {
   should_rerun: boolean;
   created_at: string;
   completed_at: string | null;
+};
+
+type DataSetupHintApiRecord = {
+  id: number;
+  test_case_id: number;
+  document_version_id: number;
+  environment_id: number;
+  endpoint: string;
+  method: string;
+  request_template: Record<string, unknown>;
+  purpose: string;
+  confidence_score: number;
+  status: string;
+  created_at: string;
+  updated_at: string;
 };
 
 type ReviewApiRecord = {
@@ -602,6 +619,47 @@ const demoTestCases: Record<string, TestCaseRecord[]> = {
   ],
 };
 
+const demoDataSetupHints: Record<string, DataSetupHintRecord[]> = {
+  payments: [
+    {
+      id: "hint-checkout-order",
+      testCaseId: "case-101",
+      documentVersionId: "swagger-checkout-v1",
+      environmentId: "env-staging",
+      endpoint: "/orders",
+      method: "post",
+      requestTemplate: {
+        customer_id: "{{customer_id}}",
+        payment_method_id: "{{saved_card_id}}",
+      },
+      purpose: "Create order data",
+      confidenceScore: 0.86,
+      status: "ready",
+      createdAt: "2026-05-21T10:00:00Z",
+      updatedAt: "2026-05-21T10:00:00Z",
+    },
+  ],
+  "1": [
+    {
+      id: "hint-checkout-order",
+      testCaseId: "case-101",
+      documentVersionId: "swagger-checkout-v1",
+      environmentId: "env-staging",
+      endpoint: "/orders",
+      method: "post",
+      requestTemplate: {
+        customer_id: "{{customer_id}}",
+        payment_method_id: "{{saved_card_id}}",
+      },
+      purpose: "Create order data",
+      confidenceScore: 0.86,
+      status: "ready",
+      createdAt: "2026-05-21T10:00:00Z",
+      updatedAt: "2026-05-21T10:00:00Z",
+    },
+  ],
+};
+
 async function requestJson<T>(
   path: string,
   init?: RequestInit,
@@ -797,6 +855,23 @@ function mapAutomationFailureAnalysis(
     shouldRerun: item.should_rerun,
     createdAt: item.created_at,
     completedAt: item.completed_at,
+  };
+}
+
+function mapDataSetupHint(item: DataSetupHintApiRecord): DataSetupHintRecord {
+  return {
+    id: String(item.id),
+    testCaseId: String(item.test_case_id),
+    documentVersionId: String(item.document_version_id),
+    environmentId: String(item.environment_id),
+    endpoint: item.endpoint,
+    method: item.method,
+    requestTemplate: item.request_template,
+    purpose: item.purpose,
+    confidenceScore: item.confidence_score,
+    status: item.status,
+    createdAt: item.created_at,
+    updatedAt: item.updated_at,
   };
 }
 
@@ -1148,6 +1223,30 @@ export async function listProjectAutomationFailureAnalyses(
   return {
     kind: "success",
     items: result.data.map(mapAutomationFailureAnalysis),
+  };
+}
+
+export async function listProjectDataSetupHints(
+  projectId: string,
+): Promise<DataSetupHintListResult> {
+  const result = await requestJson<DataSetupHintApiRecord[]>(
+    `/projects/${projectId}/data-setup-hints`,
+  );
+
+  if (result.kind === "unavailable") {
+    return {
+      kind: "unavailable",
+      hints: demoDataSetupHints[projectId] ?? [],
+    };
+  }
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    hints: result.data.map(mapDataSetupHint),
   };
 }
 

@@ -184,6 +184,35 @@ export type AutomationFailureAnalysisListResult =
       status: number;
     };
 
+export type DataSetupHintRecord = {
+  id: string | number;
+  testCaseId: string | number;
+  documentVersionId: string | number;
+  environmentId: string | number;
+  endpoint: string;
+  method: string;
+  requestTemplate: Record<string, unknown>;
+  purpose: string;
+  confidenceScore: number;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type DataSetupHintListResult =
+  | {
+      kind: "success";
+      hints: DataSetupHintRecord[];
+    }
+  | {
+      kind: "unavailable";
+      hints: DataSetupHintRecord[];
+    }
+  | {
+      kind: "http-error";
+      status: number;
+    };
+
 export type TestCaseListResult =
   | {
       kind: "success";

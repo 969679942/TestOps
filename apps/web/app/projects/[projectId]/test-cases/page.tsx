@@ -12,6 +12,7 @@ import {
   listProjectAutomationFailureAnalyses,
   listProjectAutomationGenerations,
   listProjectAutomationRuns,
+  listProjectDataSetupHints,
   listProjectPublishedTestCases,
   listProjectTestCases,
 } from "../../../../lib/api";
@@ -20,6 +21,7 @@ import type {
   AutomationFailureAnalysisRecord,
   AutomationGenerationRecord,
   AutomationRunRecord,
+  DataSetupHintRecord,
   TestCaseRecord,
 } from "../../../../lib/types";
 
@@ -98,6 +100,18 @@ function getLatestAnalysesByRun(items: AutomationFailureAnalysisRecord[]) {
   return latestByRun;
 }
 
+function getDataSetupHintsByCase(items: DataSetupHintRecord[]) {
+  const hintsByCase = new Map<string, DataSetupHintRecord[]>();
+
+  for (const item of items) {
+    const testCaseId = String(item.testCaseId);
+    const current = hintsByCase.get(testCaseId) ?? [];
+    hintsByCase.set(testCaseId, [...current, item]);
+  }
+
+  return hintsByCase;
+}
+
 function getSummaryNumber(summary: Record<string, unknown>, key: string) {
   const value = summary[key];
   return typeof value === "number" || typeof value === "string" ? String(value) : null;
@@ -156,6 +170,7 @@ export default async function ProjectTestCasesPage({
   const automationRunList = await listProjectAutomationRuns(projectId);
   const automationFailureAnalysisList =
     await listProjectAutomationFailureAnalyses(projectId);
+  const dataSetupHintList = await listProjectDataSetupHints(projectId);
   const items = testCaseList.kind === "http-error" ? [] : testCaseList.items;
   const publishedItems =
     publishedCaseList.kind === "http-error" ? [] : publishedCaseList.items;
@@ -166,9 +181,12 @@ export default async function ProjectTestCasesPage({
     automationFailureAnalysisList.kind === "http-error"
       ? []
       : automationFailureAnalysisList.items;
+  const dataSetupHints =
+    dataSetupHintList.kind === "http-error" ? [] : dataSetupHintList.hints;
   const latestGenerationsByCase = getLatestGenerationsByCase(automationGenerations);
   const latestRunsByGeneration = getLatestRunsByGeneration(automationRuns);
   const latestAnalysesByRun = getLatestAnalysesByRun(automationFailureAnalyses);
+  const dataSetupHintsByCase = getDataSetupHintsByCase(dataSetupHints);
   const counts = getCounts(items);
   const countsUnavailable = testCaseList.kind === "http-error";
   const automationText =
@@ -202,6 +220,7 @@ export default async function ProjectTestCasesPage({
           error: "\u5931\u8d25\u539f\u56e0",
           analyze: "\u5206\u6790\u5931\u8d25",
           analysis: "\u5931\u8d25\u5206\u6790",
+          dataSetup: "\u6570\u636e\u51c6\u5907",
           rerun: "\u521b\u5efa\u91cd\u8bd5",
           retryRecommended: "\u5efa\u8bae\u91cd\u8bd5",
           noRetry: "\u4e0d\u5efa\u8bae\u76f4\u63a5\u91cd\u8bd5",
@@ -219,6 +238,7 @@ export default async function ProjectTestCasesPage({
           error: "Failure reason",
           analyze: "Analyze failure",
           analysis: "Failure analysis",
+          dataSetup: "Data setup",
           rerun: "Create rerun",
           retryRecommended: "Retry recommended",
           noRetry: "No direct retry recommended",
@@ -347,6 +367,7 @@ export default async function ProjectTestCasesPage({
                 latestRun === undefined
                   ? undefined
                   : latestAnalysesByRun.get(String(latestRun.id));
+              const caseDataSetupHints = dataSetupHintsByCase.get(String(item.id)) ?? [];
 
               return (
                 <article className="automation-card" key={item.id}>
@@ -409,6 +430,16 @@ export default async function ProjectTestCasesPage({
                             ) : null}
                           </>
                         ) : null}
+                      </div>
+                    ) : null}
+                    {caseDataSetupHints.length ? (
+                      <div className="table-detail">
+                        <strong>{artifactText.dataSetup}</strong>
+                        {caseDataSetupHints.map((hint) => (
+                          <p key={hint.id}>
+                            {hint.method.toUpperCase()} {hint.endpoint} - {hint.purpose}
+                          </p>
+                        ))}
                       </div>
                     ) : null}
                   </div>

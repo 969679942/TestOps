@@ -1,5 +1,13 @@
 from app.core.database import Base
-from app.models import automation, document, environment, generation, project, testcase  # noqa: F401
+from app.models import (  # noqa: F401
+    automation,
+    data_setup,
+    document,
+    environment,
+    generation,
+    project,
+    testcase,
+)
 
 
 def test_registered_model_metadata_matches_schema() -> None:
@@ -7,6 +15,8 @@ def test_registered_model_metadata_matches_schema() -> None:
         "automation_failure_analyses",
         "automation_generations",
         "automation_runs",
+        "data_setup_executions",
+        "data_setup_hints",
         "document_assets",
         "document_versions",
         "environments",

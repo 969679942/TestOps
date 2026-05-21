@@ -11,6 +11,7 @@ import {
   createGenerationTask,
   createProjectDocument,
   getProject,
+  listProjectDataSetupHints,
   listProjectEnvironments,
   listProjectDocuments,
   listProjectAutomationGenerations,
@@ -189,6 +190,57 @@ describe("api fallbacks", () => {
       "http://127.0.0.1:8000/environments/3",
       expect.objectContaining({
         method: "PATCH",
+      }),
+    );
+  });
+
+  it("maps project data setup hints from the API", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse([
+        {
+          id: 14,
+          test_case_id: 22,
+          document_version_id: 7,
+          environment_id: 3,
+          endpoint: "/orders",
+          method: "post",
+          request_template: {
+            customer_id: "{{customer_id}}",
+          },
+          purpose: "Create order data",
+          confidence_score: 0.86,
+          status: "ready",
+          created_at: "2026-05-21T10:00:00Z",
+          updated_at: "2026-05-21T10:00:00Z",
+        },
+      ]),
+    );
+
+    await expect(listProjectDataSetupHints("1")).resolves.toEqual({
+      kind: "success",
+      hints: [
+        {
+          id: "14",
+          testCaseId: "22",
+          documentVersionId: "7",
+          environmentId: "3",
+          endpoint: "/orders",
+          method: "post",
+          requestTemplate: {
+            customer_id: "{{customer_id}}",
+          },
+          purpose: "Create order data",
+          confidenceScore: 0.86,
+          status: "ready",
+          createdAt: "2026-05-21T10:00:00Z",
+          updatedAt: "2026-05-21T10:00:00Z",
+        },
+      ],
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/projects/1/data-setup-hints",
+      expect.objectContaining({
+        cache: "no-store",
       }),
     );
   });

@@ -1,9 +1,10 @@
 from app.modules.parser.figma_parser import extract_figma_nodes
 from app.modules.parser.prd_parser import extract_prd_sections
-from app.modules.parser.swagger_parser import extract_operations
+from app.modules.parser.swagger_parser import extract_operations, extract_setup_candidates
 
 __all__ = [
     "extract_figma_nodes",
     "extract_operations",
     "extract_prd_sections",
+    "extract_setup_candidates",
 ]

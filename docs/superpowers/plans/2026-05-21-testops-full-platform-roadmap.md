@@ -22,6 +22,7 @@
 - [x] Phase 2H: failure analysis records with Codex-placeholder classification.
 - [x] Phase 2I: rerun creation from retryable failure analysis.
 - [x] Phase 2J: multi-system workspace environment model.
+- [x] Phase 2K-a: Swagger-guided data setup hints, records, and UI display.
 
 ## Development Phases
 
@@ -87,15 +88,15 @@ npm test -- src/tests/api.test.ts src/tests/pages.test.tsx
 - Test: `services/api/tests/test_swagger_parser.py`
 - Test: `apps/web/src/tests/pages.test.tsx`
 
-- [ ] **Step 1: Write tests for extracting setup candidates from Swagger**
+- [x] **Step 1: Write tests for extracting setup candidates from Swagger**
 
 Expected behavior: a Swagger `POST /orders` operation becomes a setup candidate with method, path, request schema, and required parameters.
 
-- [ ] **Step 2: Add data setup hint records**
+- [x] **Step 2: Add data setup hint records**
 
 Create records linked to `test_case_id`, `document_version_id`, `environment_id`, `method`, `endpoint`, `request_template`, `purpose`, `confidence_score`, and `status`.
 
-- [ ] **Step 3: Add data setup execution records**
+- [x] **Step 3: Add data setup execution records**
 
 Create execution records linked to `automation_run_id` so every run can show which API calls created prerequisite data.
 
@@ -103,11 +104,11 @@ Create execution records linked to `automation_run_id` so every run can show whi
 
 Support only configured `api_base_url` per environment. Store request/response summaries without persisting secrets.
 
-- [ ] **Step 5: Show data setup hints in UI**
+- [x] **Step 5: Show data setup hints in UI**
 
 On the test-case automation handoff section, display required data setup endpoints before creating a run.
 
-- [ ] **Step 6: Verify**
+- [x] **Step 6: Verify data setup hints slice**
 
 Run:
 
@@ -470,7 +471,7 @@ npm run lint
 - [x] Record automation runs and result summaries: covered by Phase 2F and Phase 2G.
 - [x] Analyze failures and create rerun records: covered by Phase 2H and Phase 2I.
 - [x] One platform testing multiple systems: Phase 2J.
-- [ ] Swagger-guided API data creation: Phase 2K.
+- [ ] Swagger-guided API data creation: Phase 2K has hints/display; safe execution adapter remains.
 - [ ] Real Playwright runner execution: Phase 2L.
 - [ ] Allure report ingestion and display: Phase 2M.
 - [ ] Scheduled automation execution: Phase 2N.

@@ -15,6 +15,7 @@ const {
   listProjectAutomationGenerationsMock,
   listProjectAutomationFailureAnalysesMock,
   listProjectAutomationRunsMock,
+  listProjectDataSetupHintsMock,
   listProjectDocumentsMock,
   listProjectEnvironmentsMock,
   listProjectGenerationTasksMock,
@@ -37,6 +38,7 @@ const {
   listProjectAutomationGenerationsMock: vi.fn(),
   listProjectAutomationFailureAnalysesMock: vi.fn(),
   listProjectAutomationRunsMock: vi.fn(),
+  listProjectDataSetupHintsMock: vi.fn(),
   listProjectDocumentsMock: vi.fn(),
   listProjectEnvironmentsMock: vi.fn(),
   listProjectGenerationTasksMock: vi.fn(),
@@ -61,6 +63,7 @@ vi.mock("../../lib/api", () => ({
   listProjectAutomationGenerations: listProjectAutomationGenerationsMock,
   listProjectAutomationFailureAnalyses: listProjectAutomationFailureAnalysesMock,
   listProjectAutomationRuns: listProjectAutomationRunsMock,
+  listProjectDataSetupHints: listProjectDataSetupHintsMock,
   listProjectDocuments: listProjectDocumentsMock,
   listProjectEnvironments: listProjectEnvironmentsMock,
   listProjectGenerationTasks: listProjectGenerationTasksMock,
@@ -372,6 +375,27 @@ describe("workspace pages", () => {
         },
       ],
     });
+    listProjectDataSetupHintsMock.mockResolvedValue({
+      kind: "success",
+      hints: [
+        {
+          id: "hint-401",
+          testCaseId: "case-201",
+          documentVersionId: "doc-version-1",
+          environmentId: "env-1",
+          endpoint: "/orders",
+          method: "post",
+          requestTemplate: {
+            customer_id: "{{customer_id}}",
+          },
+          purpose: "Create order data",
+          confidenceScore: 0.86,
+          status: "ready",
+          createdAt: "2026-05-21T10:00:00Z",
+          updatedAt: "2026-05-21T10:00:00Z",
+        },
+      ],
+    });
 
     const html = renderToStaticMarkup(
       await ProjectTestCasesPage({
@@ -388,6 +412,9 @@ describe("workspace pages", () => {
     expect(html).toContain("published.spec.ts");
     expect(html).toContain("published.page.ts");
     expect(html).toContain("Run automation");
+    expect(html).toContain("Data setup");
+    expect(html).toContain("POST /orders");
+    expect(html).toContain("Create order data");
     expect(html).toContain("Latest automation run");
     expect(html).toContain("failed");
     expect(html).toContain("automation/reports/run-901/index.html");
@@ -547,6 +574,10 @@ describe("workspace pages", () => {
       status: 503,
     });
     listProjectAutomationFailureAnalysesMock.mockResolvedValue({
+      kind: "http-error",
+      status: 503,
+    });
+    listProjectDataSetupHintsMock.mockResolvedValue({
       kind: "http-error",
       status: 503,
     });
