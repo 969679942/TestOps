@@ -155,6 +155,34 @@ export type AutomationRunListResult =
       status: number;
     };
 
+export type AutomationScheduleRecord = {
+  id: string | number;
+  projectId: string | number;
+  environmentId: string | number;
+  name: string;
+  targetGenerationIds: (string | number)[];
+  cronExpression: string;
+  status: string;
+  nextRunAt: string | null;
+  lastRunAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AutomationScheduleListResult =
+  | {
+      kind: "success";
+      items: AutomationScheduleRecord[];
+    }
+  | {
+      kind: "unavailable";
+      items: AutomationScheduleRecord[];
+    }
+  | {
+      kind: "http-error";
+      status: number;
+    };
+
 export type AutomationReportRecord = {
   id: string | number;
   automationRunId: string | number;

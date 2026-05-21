@@ -7,6 +7,8 @@ import type {
   AutomationReportRecord,
   AutomationRunListResult,
   AutomationRunRecord,
+  AutomationScheduleListResult,
+  AutomationScheduleRecord,
   DataSetupExecutionListResult,
   DataSetupExecutionRecord,
   DataSetupHintListResult,
@@ -131,6 +133,20 @@ type AutomationRunApiRecord = {
   created_at: string;
   started_at: string | null;
   finished_at: string | null;
+};
+
+type AutomationScheduleApiRecord = {
+  id: number;
+  project_id: number;
+  environment_id: number;
+  name: string;
+  target_generation_ids: number[];
+  cron_expression: string;
+  status: string;
+  next_run_at: string | null;
+  last_run_at: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 type AutomationFailureAnalysisApiRecord = {
@@ -870,6 +886,22 @@ function mapAutomationRun(item: AutomationRunApiRecord): AutomationRunRecord {
   };
 }
 
+function mapAutomationSchedule(item: AutomationScheduleApiRecord): AutomationScheduleRecord {
+  return {
+    id: String(item.id),
+    projectId: String(item.project_id),
+    environmentId: String(item.environment_id),
+    name: item.name,
+    targetGenerationIds: item.target_generation_ids.map((id) => String(id)),
+    cronExpression: item.cron_expression,
+    status: item.status,
+    nextRunAt: item.next_run_at,
+    lastRunAt: item.last_run_at,
+    createdAt: item.created_at,
+    updatedAt: item.updated_at,
+  };
+}
+
 function mapAutomationFailureAnalysis(
   item: AutomationFailureAnalysisApiRecord,
 ): AutomationFailureAnalysisRecord {
@@ -1258,6 +1290,30 @@ export async function listProjectAutomationRuns(
   return {
     kind: "success",
     items: result.data.map(mapAutomationRun),
+  };
+}
+
+export async function listProjectAutomationSchedules(
+  projectId: string,
+): Promise<AutomationScheduleListResult> {
+  const result = await requestJson<AutomationScheduleApiRecord[]>(
+    `/projects/${projectId}/automation-schedules`,
+  );
+
+  if (result.kind === "unavailable") {
+    return {
+      kind: "unavailable",
+      items: [],
+    };
+  }
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    items: result.data.map(mapAutomationSchedule),
   };
 }
 

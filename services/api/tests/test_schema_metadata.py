@@ -7,6 +7,7 @@ from app.models import (  # noqa: F401
     generation,
     project,
     report,
+    schedule,
     testcase,
 )
 
@@ -17,6 +18,7 @@ def test_registered_model_metadata_matches_schema() -> None:
         "automation_generations",
         "automation_reports",
         "automation_runs",
+        "automation_schedules",
         "data_setup_executions",
         "data_setup_hints",
         "document_assets",

@@ -42,6 +42,10 @@ export function AppShell({
         { href: `/projects/${project.id}`, label: t.overview },
         { href: `/projects/${project.id}/documents`, label: t.documents },
         { href: `/projects/${project.id}/generation-tasks`, label: t.generationTasks },
+        {
+          href: `/projects/${project.id}/automation-schedules`,
+          label: t.automationSchedules,
+        },
         { href: `/projects/${project.id}/test-cases`, label: t.testCases },
         { href: `/projects/${project.id}/review`, label: t.review },
       ]

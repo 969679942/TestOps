@@ -37,6 +37,7 @@ celery_app = Celery(
         "worker_app.tasks.generate",
         "worker_app.tasks.parse",
         "worker_app.tasks.run_automation",
+        "worker_app.tasks.schedule",
     ],
 )
 celery_app.conf.update(

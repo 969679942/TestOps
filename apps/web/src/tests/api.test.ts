@@ -11,6 +11,7 @@ import {
   createGenerationTask,
   createProjectDocument,
   getProject,
+  listProjectAutomationSchedules,
   listProjectDataSetupExecutions,
   listProjectDataSetupHints,
   listProjectEnvironments,
@@ -761,6 +762,51 @@ describe("api fallbacks", () => {
     });
     expect(fetchMock).toHaveBeenCalledWith(
       "http://127.0.0.1:8000/projects/1/automation-reports",
+      expect.objectContaining({
+        cache: "no-store",
+      }),
+    );
+  });
+
+  it("maps project automation schedules from the API", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse([
+        {
+          id: 31,
+          project_id: 1,
+          environment_id: 3,
+          name: "Hourly smoke",
+          target_generation_ids: [5],
+          cron_expression: "@hourly",
+          status: "active",
+          next_run_at: "2026-05-21T10:00:00",
+          last_run_at: null,
+          created_at: "2026-05-21T09:30:00Z",
+          updated_at: "2026-05-21T09:30:00Z",
+        },
+      ]),
+    );
+
+    await expect(listProjectAutomationSchedules("1")).resolves.toEqual({
+      kind: "success",
+      items: [
+        {
+          id: "31",
+          projectId: "1",
+          environmentId: "3",
+          name: "Hourly smoke",
+          targetGenerationIds: ["5"],
+          cronExpression: "@hourly",
+          status: "active",
+          nextRunAt: "2026-05-21T10:00:00",
+          lastRunAt: null,
+          createdAt: "2026-05-21T09:30:00Z",
+          updatedAt: "2026-05-21T09:30:00Z",
+        },
+      ],
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/projects/1/automation-schedules",
       expect.objectContaining({
         cache: "no-store",
       }),

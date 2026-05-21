@@ -15,6 +15,7 @@ const {
   listProjectAutomationGenerationsMock,
   listProjectAutomationFailureAnalysesMock,
   listProjectAutomationRunsMock,
+  listProjectAutomationSchedulesMock,
   listProjectAutomationReportsMock,
   listProjectDataSetupExecutionsMock,
   listProjectDataSetupHintsMock,
@@ -40,6 +41,7 @@ const {
   listProjectAutomationGenerationsMock: vi.fn(),
   listProjectAutomationFailureAnalysesMock: vi.fn(),
   listProjectAutomationRunsMock: vi.fn(),
+  listProjectAutomationSchedulesMock: vi.fn(),
   listProjectAutomationReportsMock: vi.fn(),
   listProjectDataSetupExecutionsMock: vi.fn(),
   listProjectDataSetupHintsMock: vi.fn(),
@@ -67,6 +69,7 @@ vi.mock("../../lib/api", () => ({
   listProjectAutomationGenerations: listProjectAutomationGenerationsMock,
   listProjectAutomationFailureAnalyses: listProjectAutomationFailureAnalysesMock,
   listProjectAutomationRuns: listProjectAutomationRunsMock,
+  listProjectAutomationSchedules: listProjectAutomationSchedulesMock,
   listProjectAutomationReports: listProjectAutomationReportsMock,
   listProjectDataSetupExecutions: listProjectDataSetupExecutionsMock,
   listProjectDataSetupHints: listProjectDataSetupHintsMock,
@@ -87,6 +90,7 @@ import ProjectDocumentsPage from "../../app/projects/[projectId]/documents/page"
 import ProjectGenerationTasksPage from "../../app/projects/[projectId]/generation-tasks/page";
 import ProjectReviewPage from "../../app/projects/[projectId]/review/page";
 import ProjectTestCasesPage from "../../app/projects/[projectId]/test-cases/page";
+import ProjectAutomationSchedulesPage from "../../app/projects/[projectId]/automation-schedules/page";
 import SettingsPage from "../../app/settings/page";
 
 describe("workspace pages", () => {
@@ -480,6 +484,70 @@ describe("workspace pages", () => {
     expect(html).toContain("Create rerun");
     expect(html).toContain("Inspect the selector");
     expect(html).toContain("Review Workspace");
+  });
+
+  it("renders the automation schedule route with active schedules", async () => {
+    getProjectMock.mockResolvedValue({
+      kind: "success",
+      project: {
+        id: "1",
+        name: "Payments Platform",
+        code: "payments",
+        description: "Checkout and settlement flows.",
+        status: "active",
+        defaultProvider: "cursor",
+        defaultPromptProfile: "default",
+      },
+    });
+    listProjectAutomationSchedulesMock.mockResolvedValue({
+      kind: "success",
+      items: [
+        {
+          id: "schedule-31",
+          projectId: "1",
+          environmentId: "env-1",
+          name: "Hourly smoke",
+          targetGenerationIds: ["gen-501"],
+          cronExpression: "@hourly",
+          status: "active",
+          nextRunAt: "2026-05-21T10:00:00Z",
+          lastRunAt: null,
+          createdAt: "2026-05-21T09:30:00Z",
+          updatedAt: "2026-05-21T09:30:00Z",
+        },
+      ],
+    });
+    listProjectEnvironmentsMock.mockResolvedValue({
+      kind: "success",
+      environments: [
+        {
+          id: "env-1",
+          projectId: "1",
+          name: "Payments Staging",
+          code: "staging",
+          baseUrl: "https://staging.payments.example",
+          apiBaseUrl: "https://api-staging.payments.example",
+          authProfile: "qa-staging",
+          status: "active",
+          createdAt: "2026-05-21T09:00:00Z",
+          updatedAt: "2026-05-21T09:00:00Z",
+        },
+      ],
+    });
+
+    const html = renderToStaticMarkup(
+      await ProjectAutomationSchedulesPage({
+        params: Promise.resolve({ projectId: "1" }),
+      }),
+    );
+
+    expect(html).toContain("Automation Schedules");
+    expect(html).toContain("Hourly smoke");
+    expect(html).toContain("@hourly");
+    expect(html).toContain("Payments Staging");
+    expect(html).toContain("1 target");
+    expect(html).toContain("Next run");
+    expect(html).toContain("Test Cases");
   });
 
   it("renders the review route baseline with no active selection", async () => {
