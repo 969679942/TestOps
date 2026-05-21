@@ -14,7 +14,14 @@ from app.models.automation import (
     AutomationRun,
 )
 from app.models.project import Project
+from app.models.report import AutomationReport
 from app.models.testcase import TestCase
+from app.modules.automation.failure_provider import (
+    CodexFailureAnalysisProvider,
+    FailureAnalysisProvider,
+    FailureAnalysisRequest,
+    FailureReportContext,
+)
 from app.modules.automation.generator import generate_playwright_pom_files
 from app.modules.document.storage import LocalArtifactStorage
 from app.schemas.automation import (
@@ -87,6 +94,10 @@ def _get_failure_analysis(
     return analysis
 
 
+def get_failure_analysis_provider(_settings=settings) -> FailureAnalysisProvider:
+    return CodexFailureAnalysisProvider(model=_settings.codex_failure_analysis_model)
+
+
 def list_project_generations(
     session: Session,
     project_id: int,
@@ -145,43 +156,37 @@ def list_project_runs(
     )
 
 
-def _build_failure_analysis(run: AutomationRun) -> AutomationFailureAnalysis:
-    error_message = run.error_message or "No failure details were recorded."
-    normalized = error_message.lower()
-    if "locator" in normalized or "timeout" in normalized:
-        classification = "automation_issue"
-        confidence = 0.82
-        should_rerun = True
-        recommendations = [
-            "Inspect the selector and page object method used by the failing step.",
-            "Add a targeted wait or more stable locator before rerunning the case.",
-        ]
-    elif "assert" in normalized or "expected" in normalized:
-        classification = "business_regression"
-        confidence = 0.68
-        should_rerun = False
-        recommendations = [
-            "Compare the actual UI/API behavior with the published expected result.",
-            "Ask the product owner to confirm whether the expected behavior changed.",
-        ]
-    else:
-        classification = "needs_triage"
-        confidence = 0.55
-        should_rerun = False
-        recommendations = [
-            "Review the report and execution logs before deciding whether to rerun.",
-        ]
-
+def _build_failure_analysis(
+    run: AutomationRun,
+    reports: list[AutomationReport],
+) -> AutomationFailureAnalysis:
+    provider = get_failure_analysis_provider(settings)
+    result = provider.analyze(
+        FailureAnalysisRequest(
+            automation_run_id=run.id,
+            run_summary=run.summary,
+            error_message=run.error_message or "No failure details were recorded.",
+            report_path=run.report_path,
+            reports=[
+                FailureReportContext(
+                    kind=report.kind,
+                    index_path=report.index_path,
+                    summary=report.summary,
+                )
+                for report in reports
+            ],
+        )
+    )
     return AutomationFailureAnalysis(
         automation_run_id=run.id,
         status="completed",
-        provider="codex",
-        model="codex-placeholder",
-        classification=classification,
-        confidence=confidence,
-        summary=f"Codex placeholder analysis classified the failure from: {error_message}",
-        recommendations=recommendations,
-        should_rerun=should_rerun,
+        provider=provider.name,
+        model=provider.model,
+        classification=result.classification,
+        confidence=result.confidence,
+        summary=result.summary,
+        recommendations=result.recommendations,
+        should_rerun=result.should_rerun,
         completed_at=_utcnow(),
     )
 
@@ -197,7 +202,14 @@ def create_failure_analysis(
             detail="Only failed automation runs can be analyzed",
         )
 
-    analysis = _build_failure_analysis(run)
+    reports = list(
+        session.scalars(
+            select(AutomationReport)
+            .where(AutomationReport.automation_run_id == run.id)
+            .order_by(AutomationReport.created_at.desc(), AutomationReport.id.desc())
+        )
+    )
+    analysis = _build_failure_analysis(run, reports)
     session.add(analysis)
     session.commit()
     session.refresh(analysis)
