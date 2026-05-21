@@ -16,6 +16,7 @@ def test_registered_model_metadata_matches_schema() -> None:
     assert sorted(Base.metadata.tables) == [
         "automation_debug_proposals",
         "automation_failure_analyses",
+        "automation_final_reports",
         "automation_generations",
         "automation_reports",
         "automation_runs",

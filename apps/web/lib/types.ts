@@ -207,6 +207,34 @@ export type AutomationReportListResult =
       status: number;
     };
 
+export type AutomationFinalReportRecord = {
+  id: string | number;
+  projectId: string | number;
+  automationRunId: string | number;
+  status: string;
+  title: string;
+  summary: Record<string, unknown>;
+  content: string;
+  larkStatus: string;
+  larkError: string | null;
+  createdAt: string;
+  pushedAt: string | null;
+};
+
+export type AutomationFinalReportListResult =
+  | {
+      kind: "success";
+      items: AutomationFinalReportRecord[];
+    }
+  | {
+      kind: "unavailable";
+      items: AutomationFinalReportRecord[];
+    }
+  | {
+      kind: "http-error";
+      status: number;
+    };
+
 export type AutomationFailureAnalysisRecord = {
   id: string | number;
   automationRunId: string | number;

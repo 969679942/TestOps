@@ -7,10 +7,12 @@ import {
   createAutomationFailureAnalysis,
   createAutomationDebugProposal,
   createAutomationDebugProposalRerun,
+  createAutomationFinalReport,
   createAutomationGeneration,
   createAutomationRun,
   getProject,
   listProjectAutomationDebugProposals,
+  listProjectAutomationFinalReports,
   listProjectAutomationFailureAnalyses,
   listProjectAutomationGenerations,
   listProjectAutomationReports,
@@ -19,12 +21,14 @@ import {
   listProjectDataSetupHints,
   listProjectPublishedTestCases,
   listProjectTestCases,
+  pushAutomationFinalReportToLark,
   reviewAutomationDebugProposal,
 } from "../../../../lib/api";
 import { copy, localizedHref, normalizeLocale, type LocaleSearchParams } from "../../../../lib/i18n";
 import type {
   AutomationFailureAnalysisRecord,
   AutomationDebugProposalRecord,
+  AutomationFinalReportRecord,
   AutomationGenerationRecord,
   AutomationReportRecord,
   AutomationRunRecord,
@@ -142,6 +146,23 @@ function getLatestReportsByRun(items: AutomationReportRecord[]) {
   return latestByRun;
 }
 
+function getLatestFinalReportsByRun(items: AutomationFinalReportRecord[]) {
+  const latestByRun = new Map<string, AutomationFinalReportRecord>();
+
+  for (const item of items) {
+    const runId = String(item.automationRunId);
+    const current = latestByRun.get(runId);
+    if (
+      current === undefined ||
+      Date.parse(item.createdAt) > Date.parse(current.createdAt)
+    ) {
+      latestByRun.set(runId, item);
+    }
+  }
+
+  return latestByRun;
+}
+
 function getDataSetupHintsByCase(items: DataSetupHintRecord[]) {
   const hintsByCase = new Map<string, DataSetupHintRecord[]>();
 
@@ -228,6 +249,8 @@ export default async function ProjectTestCasesPage({
   const automationGenerationList = await listProjectAutomationGenerations(projectId);
   const automationRunList = await listProjectAutomationRuns(projectId);
   const automationReportList = await listProjectAutomationReports(projectId);
+  const automationFinalReportList =
+    await listProjectAutomationFinalReports(projectId);
   const automationFailureAnalysisList =
     await listProjectAutomationFailureAnalyses(projectId);
   const automationDebugProposalList =
@@ -242,6 +265,10 @@ export default async function ProjectTestCasesPage({
   const automationRuns = automationRunList.kind === "http-error" ? [] : automationRunList.items;
   const automationReports =
     automationReportList.kind === "http-error" ? [] : automationReportList.items;
+  const automationFinalReports =
+    automationFinalReportList.kind === "http-error"
+      ? []
+      : automationFinalReportList.items;
   const automationFailureAnalyses =
     automationFailureAnalysisList.kind === "http-error"
       ? []
@@ -259,6 +286,7 @@ export default async function ProjectTestCasesPage({
   const latestGenerationsByCase = getLatestGenerationsByCase(automationGenerations);
   const latestRunsByGeneration = getLatestRunsByGeneration(automationRuns);
   const latestReportsByRun = getLatestReportsByRun(automationReports);
+  const latestFinalReportsByRun = getLatestFinalReportsByRun(automationFinalReports);
   const latestAnalysesByRun = getLatestAnalysesByRun(automationFailureAnalyses);
   const latestDebugProposalsByAnalysis =
     getLatestDebugProposalsByAnalysis(automationDebugProposals);
@@ -304,6 +332,10 @@ export default async function ProjectTestCasesPage({
           createDebugProposal: "\u521b\u5efa\u8c03\u8bd5\u63d0\u6848",
           approveProposal: "\u5ba1\u6279\u63d0\u6848",
           controlledRerun: "\u53d7\u63a7\u91cd\u8bd5",
+          finalReport: "\u7ec8\u7248\u62a5\u544a",
+          generateFinalReport: "\u751f\u6210\u7ec8\u7248\u62a5\u544a",
+          pushToLark: "\u63a8\u9001\u5230 Lark",
+          larkStatus: "Lark \u72b6\u6001",
           dataSetup: "\u6570\u636e\u51c6\u5907",
           dataSetupExecution: "\u6570\u636e\u51c6\u5907\u6267\u884c",
           rerun: "\u521b\u5efa\u91cd\u8bd5",
@@ -329,6 +361,10 @@ export default async function ProjectTestCasesPage({
           createDebugProposal: "Create debug proposal",
           approveProposal: "Approve proposal",
           controlledRerun: "Controlled rerun",
+          finalReport: "Final report",
+          generateFinalReport: "Generate final report",
+          pushToLark: "Push to Lark",
+          larkStatus: "Lark status",
           dataSetup: "Data setup",
           dataSetupExecution: "Data setup execution",
           rerun: "Create rerun",
@@ -409,6 +445,30 @@ export default async function ProjectTestCasesPage({
     }
 
     await createAutomationDebugProposalRerun(value.trim());
+    revalidatePath(`/projects/${projectId}/test-cases`);
+  }
+
+  async function createFinalReportAction(formData: FormData) {
+    "use server";
+
+    const value = formData.get("runId");
+    if (typeof value !== "string" || !value.trim()) {
+      return;
+    }
+
+    await createAutomationFinalReport(value.trim());
+    revalidatePath(`/projects/${projectId}/test-cases`);
+  }
+
+  async function pushFinalReportToLarkAction(formData: FormData) {
+    "use server";
+
+    const value = formData.get("finalReportId");
+    if (typeof value !== "string" || !value.trim()) {
+      return;
+    }
+
+    await pushAutomationFinalReportToLark(value.trim());
     revalidatePath(`/projects/${projectId}/test-cases`);
   }
 
@@ -495,6 +555,10 @@ export default async function ProjectTestCasesPage({
                 latestRun === undefined
                   ? undefined
                   : latestReportsByRun.get(String(latestRun.id));
+              const latestFinalReport =
+                latestRun === undefined
+                  ? undefined
+                  : latestFinalReportsByRun.get(String(latestRun.id));
               const reportDuration =
                 latestReport === undefined
                   ? null
@@ -582,6 +646,22 @@ export default async function ProjectTestCasesPage({
                                       <p>{latestDebugProposal.recommendations[0]}</p>
                                     ) : null}
                                   </>
+                                ) : null}
+                              </>
+                            ) : null}
+                            {latestFinalReport ? (
+                              <>
+                                <p>
+                                  <strong>{artifactText.finalReport}</strong>:{" "}
+                                  {latestFinalReport.status}
+                                </p>
+                                <p>{latestFinalReport.title}</p>
+                                <p>
+                                  {artifactText.larkStatus}:{" "}
+                                  {latestFinalReport.larkStatus}
+                                </p>
+                                {latestFinalReport.larkError ? (
+                                  <p>{latestFinalReport.larkError}</p>
                                 ) : null}
                               </>
                             ) : null}
@@ -676,6 +756,26 @@ export default async function ProjectTestCasesPage({
                       />
                       <button className="secondary-button" type="submit">
                         {artifactText.controlledRerun}
+                      </button>
+                    </form>
+                  ) : null}
+                  {latestRun && !latestFinalReport ? (
+                    <form action={createFinalReportAction}>
+                      <input name="runId" type="hidden" value={String(latestRun.id)} />
+                      <button className="secondary-button" type="submit">
+                        {artifactText.generateFinalReport}
+                      </button>
+                    </form>
+                  ) : null}
+                  {latestFinalReport && latestFinalReport.larkStatus !== "sent" ? (
+                    <form action={pushFinalReportToLarkAction}>
+                      <input
+                        name="finalReportId"
+                        type="hidden"
+                        value={String(latestFinalReport.id)}
+                      />
+                      <button className="secondary-button" type="submit">
+                        {artifactText.pushToLark}
                       </button>
                     </form>
                   ) : null}

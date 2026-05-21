@@ -3,6 +3,8 @@ import type {
   AutomationGenerationRecord,
   AutomationDebugProposalListResult,
   AutomationDebugProposalRecord,
+  AutomationFinalReportListResult,
+  AutomationFinalReportRecord,
   AutomationFailureAnalysisListResult,
   AutomationFailureAnalysisRecord,
   AutomationReportListResult,
@@ -188,6 +190,20 @@ type AutomationReportApiRecord = {
   index_path: string;
   summary: Record<string, unknown>;
   created_at: string;
+};
+
+type AutomationFinalReportApiRecord = {
+  id: number;
+  project_id: number;
+  automation_run_id: number;
+  status: string;
+  title: string;
+  summary: Record<string, unknown>;
+  content: string;
+  lark_status: string;
+  lark_error: string | null;
+  created_at: string;
+  pushed_at: string | null;
 };
 
 type DataSetupHintApiRecord = {
@@ -973,6 +989,24 @@ function mapAutomationReport(item: AutomationReportApiRecord): AutomationReportR
   };
 }
 
+function mapAutomationFinalReport(
+  item: AutomationFinalReportApiRecord,
+): AutomationFinalReportRecord {
+  return {
+    id: String(item.id),
+    projectId: String(item.project_id),
+    automationRunId: String(item.automation_run_id),
+    status: item.status,
+    title: item.title,
+    summary: item.summary,
+    content: item.content,
+    larkStatus: item.lark_status,
+    larkError: item.lark_error,
+    createdAt: item.created_at,
+    pushedAt: item.pushed_at,
+  };
+}
+
 function mapDataSetupHint(item: DataSetupHintApiRecord): DataSetupHintRecord {
   return {
     id: String(item.id),
@@ -1381,6 +1415,30 @@ export async function listProjectAutomationReports(
   };
 }
 
+export async function listProjectAutomationFinalReports(
+  projectId: string,
+): Promise<AutomationFinalReportListResult> {
+  const result = await requestJson<AutomationFinalReportApiRecord[]>(
+    `/projects/${projectId}/automation-final-reports`,
+  );
+
+  if (result.kind === "unavailable") {
+    return {
+      kind: "unavailable",
+      items: [],
+    };
+  }
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    items: result.data.map(mapAutomationFinalReport),
+  };
+}
+
 export async function listProjectAutomationFailureAnalyses(
   projectId: string,
 ): Promise<AutomationFailureAnalysisListResult> {
@@ -1561,6 +1619,40 @@ export async function createAutomationDebugProposalRerun(
   return {
     kind: "success",
     data: mapAutomationRun(result.data),
+  };
+}
+
+export async function createAutomationFinalReport(
+  runId: string,
+): Promise<RequestResult<AutomationFinalReportRecord>> {
+  const result = await postJson<AutomationFinalReportApiRecord>(
+    `/automation-runs/${runId}/final-report`,
+  );
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: mapAutomationFinalReport(result.data),
+  };
+}
+
+export async function pushAutomationFinalReportToLark(
+  reportId: string,
+): Promise<RequestResult<AutomationFinalReportRecord>> {
+  const result = await postJson<AutomationFinalReportApiRecord>(
+    `/automation-final-reports/${reportId}/push-lark`,
+  );
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: mapAutomationFinalReport(result.data),
   };
 }
 

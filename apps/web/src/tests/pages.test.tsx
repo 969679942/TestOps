@@ -10,6 +10,7 @@ const {
   createAutomationGenerationMock,
   createAutomationDebugProposalMock,
   createAutomationDebugProposalRerunMock,
+  createAutomationFinalReportMock,
   createAutomationFailureAnalysisMock,
   createAutomationRerunMock,
   createAutomationRunMock,
@@ -17,6 +18,7 @@ const {
   listProjectAutomationGenerationsMock,
   listProjectAutomationFailureAnalysesMock,
   listProjectAutomationDebugProposalsMock,
+  listProjectAutomationFinalReportsMock,
   listProjectAutomationRunsMock,
   listProjectAutomationSchedulesMock,
   listProjectAutomationReportsMock,
@@ -32,6 +34,7 @@ const {
   publishTestCaseMock,
   updateTestCaseMock,
   reviewAutomationDebugProposalMock,
+  pushAutomationFinalReportToLarkMock,
 } = vi.hoisted(() => ({
   getProjectMock: vi.fn(),
   createDocumentVersionMock: vi.fn(),
@@ -40,6 +43,7 @@ const {
   createAutomationGenerationMock: vi.fn(),
   createAutomationDebugProposalMock: vi.fn(),
   createAutomationDebugProposalRerunMock: vi.fn(),
+  createAutomationFinalReportMock: vi.fn(),
   createAutomationFailureAnalysisMock: vi.fn(),
   createAutomationRerunMock: vi.fn(),
   createAutomationRunMock: vi.fn(),
@@ -47,6 +51,7 @@ const {
   listProjectAutomationGenerationsMock: vi.fn(),
   listProjectAutomationFailureAnalysesMock: vi.fn(),
   listProjectAutomationDebugProposalsMock: vi.fn(),
+  listProjectAutomationFinalReportsMock: vi.fn(),
   listProjectAutomationRunsMock: vi.fn(),
   listProjectAutomationSchedulesMock: vi.fn(),
   listProjectAutomationReportsMock: vi.fn(),
@@ -62,6 +67,7 @@ const {
   publishTestCaseMock: vi.fn(),
   updateTestCaseMock: vi.fn(),
   reviewAutomationDebugProposalMock: vi.fn(),
+  pushAutomationFinalReportToLarkMock: vi.fn(),
 }));
 
 vi.mock("../../lib/api", () => ({
@@ -72,6 +78,7 @@ vi.mock("../../lib/api", () => ({
   createAutomationGeneration: createAutomationGenerationMock,
   createAutomationDebugProposal: createAutomationDebugProposalMock,
   createAutomationDebugProposalRerun: createAutomationDebugProposalRerunMock,
+  createAutomationFinalReport: createAutomationFinalReportMock,
   createAutomationFailureAnalysis: createAutomationFailureAnalysisMock,
   createAutomationRerun: createAutomationRerunMock,
   createAutomationRun: createAutomationRunMock,
@@ -79,6 +86,7 @@ vi.mock("../../lib/api", () => ({
   listProjectAutomationGenerations: listProjectAutomationGenerationsMock,
   listProjectAutomationFailureAnalyses: listProjectAutomationFailureAnalysesMock,
   listProjectAutomationDebugProposals: listProjectAutomationDebugProposalsMock,
+  listProjectAutomationFinalReports: listProjectAutomationFinalReportsMock,
   listProjectAutomationRuns: listProjectAutomationRunsMock,
   listProjectAutomationSchedules: listProjectAutomationSchedulesMock,
   listProjectAutomationReports: listProjectAutomationReportsMock,
@@ -94,6 +102,7 @@ vi.mock("../../lib/api", () => ({
   publishTestCase: publishTestCaseMock,
   updateTestCase: updateTestCaseMock,
   reviewAutomationDebugProposal: reviewAutomationDebugProposalMock,
+  pushAutomationFinalReportToLark: pushAutomationFinalReportToLarkMock,
 }));
 
 import HomePage from "../../app/page";
@@ -435,6 +444,30 @@ describe("workspace pages", () => {
         },
       ],
     });
+    listProjectAutomationFinalReportsMock.mockResolvedValue({
+      kind: "success",
+      items: [
+        {
+          id: "final-report-501",
+          projectId: "1",
+          automationRunId: "run-901",
+          status: "ready",
+          title: "Final automation report - Published wallet checkout",
+          summary: {
+            run_status: "failed",
+            allure: {
+              passed: 3,
+              failed: 1,
+            },
+          },
+          content: "# Final automation report",
+          larkStatus: "pending",
+          larkError: null,
+          createdAt: "2026-05-21T12:10:00Z",
+          pushedAt: null,
+        },
+      ],
+    });
     listProjectDataSetupHintsMock.mockResolvedValue({
       kind: "success",
       hints: [
@@ -515,6 +548,9 @@ describe("workspace pages", () => {
     expect(html).toContain("Retry recommended");
     expect(html).toContain("Debug proposal");
     expect(html).toContain("Approve proposal");
+    expect(html).toContain("Final report");
+    expect(html).toContain("pending");
+    expect(html).toContain("Push to Lark");
     expect(html).toContain("Inspect the selector");
     expect(html).toContain("Review Workspace");
   });
@@ -735,6 +771,10 @@ describe("workspace pages", () => {
       status: 503,
     });
     listProjectAutomationDebugProposalsMock.mockResolvedValue({
+      kind: "http-error",
+      status: 503,
+    });
+    listProjectAutomationFinalReportsMock.mockResolvedValue({
       kind: "http-error",
       status: 503,
     });

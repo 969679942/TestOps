@@ -5,6 +5,7 @@ import {
   createAutomationGeneration,
   createAutomationDebugProposal,
   createAutomationDebugProposalRerun,
+  createAutomationFinalReport,
   createAutomationFailureAnalysis,
   createAutomationRerun,
   createAutomationRun,
@@ -14,6 +15,7 @@ import {
   createProjectDocument,
   getProject,
   listProjectAutomationDebugProposals,
+  listProjectAutomationFinalReports,
   listProjectAutomationSchedules,
   listProjectDataSetupExecutions,
   listProjectDataSetupHints,
@@ -32,6 +34,7 @@ import {
   updateProjectEnvironment,
   updateAutomationRun,
   reviewAutomationDebugProposal,
+  pushAutomationFinalReportToLark,
   updateTestCase,
 } from "../../lib/api";
 
@@ -768,6 +771,72 @@ describe("api fallbacks", () => {
       "http://127.0.0.1:8000/projects/1/automation-reports",
       expect.objectContaining({
         cache: "no-store",
+      }),
+    );
+  });
+
+  it("creates, pushes, and lists automation final reports through the API", async () => {
+    const finalReportResponse = {
+      id: 41,
+      project_id: 1,
+      automation_run_id: 9,
+      status: "ready",
+      title: "Final automation report - Checkout",
+      summary: {
+        run_status: "failed",
+        allure: {
+          passed: 3,
+          failed: 1,
+        },
+      },
+      content: "# Final automation report",
+      lark_status: "pending",
+      lark_error: null,
+      created_at: "2026-05-21T12:10:00Z",
+      pushed_at: null,
+    };
+    const pushedReportResponse = {
+      ...finalReportResponse,
+      lark_status: "sent",
+      pushed_at: "2026-05-21T12:11:00Z",
+    };
+    fetchMock.mockResolvedValueOnce(jsonResponse(finalReportResponse, 201));
+    fetchMock.mockResolvedValueOnce(jsonResponse(pushedReportResponse));
+    fetchMock.mockResolvedValueOnce(jsonResponse([pushedReportResponse]));
+
+    await expect(createAutomationFinalReport("9")).resolves.toMatchObject({
+      kind: "success",
+      data: {
+        id: "41",
+        automationRunId: "9",
+        larkStatus: "pending",
+      },
+    });
+    await expect(pushAutomationFinalReportToLark("41")).resolves.toMatchObject({
+      kind: "success",
+      data: {
+        larkStatus: "sent",
+      },
+    });
+    await expect(listProjectAutomationFinalReports("1")).resolves.toMatchObject({
+      kind: "success",
+      items: [
+        {
+          id: "41",
+          larkStatus: "sent",
+        },
+      ],
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/automation-runs/9/final-report",
+      expect.objectContaining({
+        method: "POST",
+      }),
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/automation-final-reports/41/push-lark",
+      expect.objectContaining({
+        method: "POST",
       }),
     );
   });

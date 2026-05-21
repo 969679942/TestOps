@@ -21,3 +21,19 @@ class AutomationReportRead(BaseModel):
     index_path: str
     summary: dict[str, Any]
     created_at: datetime
+
+
+class AutomationFinalReportRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    project_id: int
+    automation_run_id: int
+    status: str
+    title: str
+    summary: dict[str, Any]
+    content: str
+    lark_status: str
+    lark_error: str | None
+    created_at: datetime
+    pushed_at: datetime | None
