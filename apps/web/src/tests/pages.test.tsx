@@ -15,6 +15,7 @@ const {
   listProjectAutomationGenerationsMock,
   listProjectAutomationFailureAnalysesMock,
   listProjectAutomationRunsMock,
+  listProjectDataSetupExecutionsMock,
   listProjectDataSetupHintsMock,
   listProjectDocumentsMock,
   listProjectEnvironmentsMock,
@@ -38,6 +39,7 @@ const {
   listProjectAutomationGenerationsMock: vi.fn(),
   listProjectAutomationFailureAnalysesMock: vi.fn(),
   listProjectAutomationRunsMock: vi.fn(),
+  listProjectDataSetupExecutionsMock: vi.fn(),
   listProjectDataSetupHintsMock: vi.fn(),
   listProjectDocumentsMock: vi.fn(),
   listProjectEnvironmentsMock: vi.fn(),
@@ -63,6 +65,7 @@ vi.mock("../../lib/api", () => ({
   listProjectAutomationGenerations: listProjectAutomationGenerationsMock,
   listProjectAutomationFailureAnalyses: listProjectAutomationFailureAnalysesMock,
   listProjectAutomationRuns: listProjectAutomationRunsMock,
+  listProjectDataSetupExecutions: listProjectDataSetupExecutionsMock,
   listProjectDataSetupHints: listProjectDataSetupHintsMock,
   listProjectDocuments: listProjectDocumentsMock,
   listProjectEnvironments: listProjectEnvironmentsMock,
@@ -396,6 +399,29 @@ describe("workspace pages", () => {
         },
       ],
     });
+    listProjectDataSetupExecutionsMock.mockResolvedValue({
+      kind: "success",
+      executions: [
+        {
+          id: "execution-601",
+          dataSetupHintId: "hint-401",
+          automationRunId: "run-901",
+          status: "completed",
+          requestSummary: {
+            method: "post",
+            url: "https://api-staging.checkout.example/orders",
+            body_keys: ["customer_id"],
+          },
+          responseSummary: {
+            status_code: 201,
+            json_keys: ["id"],
+          },
+          errorMessage: null,
+          createdAt: "2026-05-21T10:01:00Z",
+          completedAt: "2026-05-21T10:01:01Z",
+        },
+      ],
+    });
 
     const html = renderToStaticMarkup(
       await ProjectTestCasesPage({
@@ -415,6 +441,9 @@ describe("workspace pages", () => {
     expect(html).toContain("Data setup");
     expect(html).toContain("POST /orders");
     expect(html).toContain("Create order data");
+    expect(html).toContain("Data setup execution");
+    expect(html).toContain("completed");
+    expect(html).toContain("Status 201");
     expect(html).toContain("Latest automation run");
     expect(html).toContain("failed");
     expect(html).toContain("automation/reports/run-901/index.html");
@@ -578,6 +607,10 @@ describe("workspace pages", () => {
       status: 503,
     });
     listProjectDataSetupHintsMock.mockResolvedValue({
+      kind: "http-error",
+      status: 503,
+    });
+    listProjectDataSetupExecutionsMock.mockResolvedValue({
       kind: "http-error",
       status: 503,
     });

@@ -213,6 +213,32 @@ export type DataSetupHintListResult =
       status: number;
     };
 
+export type DataSetupExecutionRecord = {
+  id: string | number;
+  dataSetupHintId: string | number;
+  automationRunId: string | number;
+  status: string;
+  requestSummary: Record<string, unknown>;
+  responseSummary: Record<string, unknown>;
+  errorMessage: string | null;
+  createdAt: string;
+  completedAt: string | null;
+};
+
+export type DataSetupExecutionListResult =
+  | {
+      kind: "success";
+      executions: DataSetupExecutionRecord[];
+    }
+  | {
+      kind: "unavailable";
+      executions: DataSetupExecutionRecord[];
+    }
+  | {
+      kind: "http-error";
+      status: number;
+    };
+
 export type TestCaseListResult =
   | {
       kind: "success";

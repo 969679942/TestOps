@@ -1,4 +1,9 @@
-from app.schemas.data_setup import DataSetupHintCreate, DataSetupHintRead
+from app.schemas.data_setup import (
+    DataSetupExecutionCreate,
+    DataSetupExecutionRead,
+    DataSetupHintCreate,
+    DataSetupHintRead,
+)
 from app.schemas.document import DocumentCreate, DocumentRead
 from app.schemas.environment import EnvironmentCreate, EnvironmentRead, EnvironmentUpdate
 from app.schemas.generation import GenerationTaskCreate, GenerationTaskRead
@@ -11,6 +16,8 @@ __all__ = [
     "DocumentRead",
     "DataSetupHintCreate",
     "DataSetupHintRead",
+    "DataSetupExecutionCreate",
+    "DataSetupExecutionRead",
     "EnvironmentCreate",
     "EnvironmentRead",
     "EnvironmentUpdate",

@@ -12,6 +12,7 @@ import {
   listProjectAutomationFailureAnalyses,
   listProjectAutomationGenerations,
   listProjectAutomationRuns,
+  listProjectDataSetupExecutions,
   listProjectDataSetupHints,
   listProjectPublishedTestCases,
   listProjectTestCases,
@@ -21,6 +22,7 @@ import type {
   AutomationFailureAnalysisRecord,
   AutomationGenerationRecord,
   AutomationRunRecord,
+  DataSetupExecutionRecord,
   DataSetupHintRecord,
   TestCaseRecord,
 } from "../../../../lib/types";
@@ -112,6 +114,23 @@ function getDataSetupHintsByCase(items: DataSetupHintRecord[]) {
   return hintsByCase;
 }
 
+function getLatestDataSetupExecutionsByHint(items: DataSetupExecutionRecord[]) {
+  const latestByHint = new Map<string, DataSetupExecutionRecord>();
+
+  for (const item of items) {
+    const hintId = String(item.dataSetupHintId);
+    const current = latestByHint.get(hintId);
+    if (
+      current === undefined ||
+      Date.parse(item.createdAt) > Date.parse(current.createdAt)
+    ) {
+      latestByHint.set(hintId, item);
+    }
+  }
+
+  return latestByHint;
+}
+
 function getSummaryNumber(summary: Record<string, unknown>, key: string) {
   const value = summary[key];
   return typeof value === "number" || typeof value === "string" ? String(value) : null;
@@ -171,6 +190,7 @@ export default async function ProjectTestCasesPage({
   const automationFailureAnalysisList =
     await listProjectAutomationFailureAnalyses(projectId);
   const dataSetupHintList = await listProjectDataSetupHints(projectId);
+  const dataSetupExecutionList = await listProjectDataSetupExecutions(projectId);
   const items = testCaseList.kind === "http-error" ? [] : testCaseList.items;
   const publishedItems =
     publishedCaseList.kind === "http-error" ? [] : publishedCaseList.items;
@@ -183,10 +203,16 @@ export default async function ProjectTestCasesPage({
       : automationFailureAnalysisList.items;
   const dataSetupHints =
     dataSetupHintList.kind === "http-error" ? [] : dataSetupHintList.hints;
+  const dataSetupExecutions =
+    dataSetupExecutionList.kind === "http-error"
+      ? []
+      : dataSetupExecutionList.executions;
   const latestGenerationsByCase = getLatestGenerationsByCase(automationGenerations);
   const latestRunsByGeneration = getLatestRunsByGeneration(automationRuns);
   const latestAnalysesByRun = getLatestAnalysesByRun(automationFailureAnalyses);
   const dataSetupHintsByCase = getDataSetupHintsByCase(dataSetupHints);
+  const latestDataSetupExecutionsByHint =
+    getLatestDataSetupExecutionsByHint(dataSetupExecutions);
   const counts = getCounts(items);
   const countsUnavailable = testCaseList.kind === "http-error";
   const automationText =
@@ -221,6 +247,7 @@ export default async function ProjectTestCasesPage({
           analyze: "\u5206\u6790\u5931\u8d25",
           analysis: "\u5931\u8d25\u5206\u6790",
           dataSetup: "\u6570\u636e\u51c6\u5907",
+          dataSetupExecution: "\u6570\u636e\u51c6\u5907\u6267\u884c",
           rerun: "\u521b\u5efa\u91cd\u8bd5",
           retryRecommended: "\u5efa\u8bae\u91cd\u8bd5",
           noRetry: "\u4e0d\u5efa\u8bae\u76f4\u63a5\u91cd\u8bd5",
@@ -239,6 +266,7 @@ export default async function ProjectTestCasesPage({
           analyze: "Analyze failure",
           analysis: "Failure analysis",
           dataSetup: "Data setup",
+          dataSetupExecution: "Data setup execution",
           rerun: "Create rerun",
           retryRecommended: "Retry recommended",
           noRetry: "No direct retry recommended",
@@ -435,11 +463,34 @@ export default async function ProjectTestCasesPage({
                     {caseDataSetupHints.length ? (
                       <div className="table-detail">
                         <strong>{artifactText.dataSetup}</strong>
-                        {caseDataSetupHints.map((hint) => (
-                          <p key={hint.id}>
-                            {hint.method.toUpperCase()} {hint.endpoint} - {hint.purpose}
-                          </p>
-                        ))}
+                        {caseDataSetupHints.map((hint) => {
+                          const latestExecution = latestDataSetupExecutionsByHint.get(
+                            String(hint.id),
+                          );
+                          const statusCode =
+                            latestExecution === undefined
+                              ? null
+                              : getSummaryNumber(
+                                  latestExecution.responseSummary,
+                                  "status_code",
+                                );
+
+                          return (
+                            <React.Fragment key={hint.id}>
+                              <p>
+                                {hint.method.toUpperCase()} {hint.endpoint} -{" "}
+                                {hint.purpose}
+                              </p>
+                              {latestExecution ? (
+                                <p>
+                                  <strong>{artifactText.dataSetupExecution}</strong>:{" "}
+                                  {latestExecution.status}
+                                  {statusCode ? ` - Status ${statusCode}` : null}
+                                </p>
+                              ) : null}
+                            </React.Fragment>
+                          );
+                        })}
                       </div>
                     ) : null}
                   </div>

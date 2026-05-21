@@ -22,7 +22,7 @@
 - [x] Phase 2H: failure analysis records with Codex-placeholder classification.
 - [x] Phase 2I: rerun creation from retryable failure analysis.
 - [x] Phase 2J: multi-system workspace environment model.
-- [x] Phase 2K-a: Swagger-guided data setup hints, records, and UI display.
+- [x] Phase 2K: Swagger-guided data setup hints, safe execution adapter, records, and UI display.
 
 ## Development Phases
 
@@ -100,7 +100,7 @@ Create records linked to `test_case_id`, `document_version_id`, `environment_id`
 
 Create execution records linked to `automation_run_id` so every run can show which API calls created prerequisite data.
 
-- [ ] **Step 4: Add safe API execution adapter**
+- [x] **Step 4: Add safe API execution adapter**
 
 Support only configured `api_base_url` per environment. Store request/response summaries without persisting secrets.
 
@@ -471,7 +471,7 @@ npm run lint
 - [x] Record automation runs and result summaries: covered by Phase 2F and Phase 2G.
 - [x] Analyze failures and create rerun records: covered by Phase 2H and Phase 2I.
 - [x] One platform testing multiple systems: Phase 2J.
-- [ ] Swagger-guided API data creation: Phase 2K has hints/display; safe execution adapter remains.
+- [x] Swagger-guided API data creation: Phase 2K.
 - [ ] Real Playwright runner execution: Phase 2L.
 - [ ] Allure report ingestion and display: Phase 2M.
 - [ ] Scheduled automation execution: Phase 2N.

@@ -5,6 +5,8 @@ import type {
   AutomationFailureAnalysisRecord,
   AutomationRunListResult,
   AutomationRunRecord,
+  DataSetupExecutionListResult,
+  DataSetupExecutionRecord,
   DataSetupHintListResult,
   DataSetupHintRecord,
   DocumentAsset,
@@ -157,6 +159,18 @@ type DataSetupHintApiRecord = {
   status: string;
   created_at: string;
   updated_at: string;
+};
+
+type DataSetupExecutionApiRecord = {
+  id: number;
+  data_setup_hint_id: number;
+  automation_run_id: number;
+  status: string;
+  request_summary: Record<string, unknown>;
+  response_summary: Record<string, unknown>;
+  error_message: string | null;
+  created_at: string;
+  completed_at: string | null;
 };
 
 type ReviewApiRecord = {
@@ -660,6 +674,11 @@ const demoDataSetupHints: Record<string, DataSetupHintRecord[]> = {
   ],
 };
 
+const demoDataSetupExecutions: Record<string, DataSetupExecutionRecord[]> = {
+  payments: [],
+  "1": [],
+};
+
 async function requestJson<T>(
   path: string,
   init?: RequestInit,
@@ -872,6 +891,22 @@ function mapDataSetupHint(item: DataSetupHintApiRecord): DataSetupHintRecord {
     status: item.status,
     createdAt: item.created_at,
     updatedAt: item.updated_at,
+  };
+}
+
+function mapDataSetupExecution(
+  item: DataSetupExecutionApiRecord,
+): DataSetupExecutionRecord {
+  return {
+    id: String(item.id),
+    dataSetupHintId: String(item.data_setup_hint_id),
+    automationRunId: String(item.automation_run_id),
+    status: item.status,
+    requestSummary: item.request_summary,
+    responseSummary: item.response_summary,
+    errorMessage: item.error_message,
+    createdAt: item.created_at,
+    completedAt: item.completed_at,
   };
 }
 
@@ -1247,6 +1282,30 @@ export async function listProjectDataSetupHints(
   return {
     kind: "success",
     hints: result.data.map(mapDataSetupHint),
+  };
+}
+
+export async function listProjectDataSetupExecutions(
+  projectId: string,
+): Promise<DataSetupExecutionListResult> {
+  const result = await requestJson<DataSetupExecutionApiRecord[]>(
+    `/projects/${projectId}/data-setup-executions`,
+  );
+
+  if (result.kind === "unavailable") {
+    return {
+      kind: "unavailable",
+      executions: demoDataSetupExecutions[projectId] ?? [],
+    };
+  }
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    executions: result.data.map(mapDataSetupExecution),
   };
 }
 

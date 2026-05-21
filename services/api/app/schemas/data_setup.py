@@ -31,3 +31,22 @@ class DataSetupHintRead(BaseModel):
     status: str
     created_at: datetime
     updated_at: datetime
+
+
+class DataSetupExecutionCreate(BaseModel):
+    data_setup_hint_id: int
+    variables: dict[str, Any] = Field(default_factory=dict)
+
+
+class DataSetupExecutionRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    data_setup_hint_id: int
+    automation_run_id: int
+    status: str
+    request_summary: dict[str, Any]
+    response_summary: dict[str, Any]
+    error_message: str | None
+    created_at: datetime
+    completed_at: datetime | None

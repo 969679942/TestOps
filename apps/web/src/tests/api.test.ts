@@ -11,6 +11,7 @@ import {
   createGenerationTask,
   createProjectDocument,
   getProject,
+  listProjectDataSetupExecutions,
   listProjectDataSetupHints,
   listProjectEnvironments,
   listProjectDocuments,
@@ -239,6 +240,61 @@ describe("api fallbacks", () => {
     });
     expect(fetchMock).toHaveBeenCalledWith(
       "http://127.0.0.1:8000/projects/1/data-setup-hints",
+      expect.objectContaining({
+        cache: "no-store",
+      }),
+    );
+  });
+
+  it("maps project data setup executions from the API", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse([
+        {
+          id: 15,
+          data_setup_hint_id: 14,
+          automation_run_id: 9,
+          status: "completed",
+          request_summary: {
+            method: "post",
+            url: "https://api-staging.checkout.example/orders",
+            body_keys: ["customer_id"],
+          },
+          response_summary: {
+            status_code: 201,
+            json_keys: ["id"],
+          },
+          error_message: null,
+          created_at: "2026-05-21T10:01:00Z",
+          completed_at: "2026-05-21T10:01:01Z",
+        },
+      ]),
+    );
+
+    await expect(listProjectDataSetupExecutions("1")).resolves.toEqual({
+      kind: "success",
+      executions: [
+        {
+          id: "15",
+          dataSetupHintId: "14",
+          automationRunId: "9",
+          status: "completed",
+          requestSummary: {
+            method: "post",
+            url: "https://api-staging.checkout.example/orders",
+            body_keys: ["customer_id"],
+          },
+          responseSummary: {
+            status_code: 201,
+            json_keys: ["id"],
+          },
+          errorMessage: null,
+          createdAt: "2026-05-21T10:01:00Z",
+          completedAt: "2026-05-21T10:01:01Z",
+        },
+      ],
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/projects/1/data-setup-executions",
       expect.objectContaining({
         cache: "no-store",
       }),
