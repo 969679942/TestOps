@@ -1,7 +1,7 @@
 """add environments
 
 Revision ID: 0010_add_environments
-Revises: 0009_add_automation_failure_analyses
+Revises: 0009_add_failure_analyses
 Create Date: 2026-05-21 13:55:00
 """
 
@@ -11,7 +11,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision: str = "0010_add_environments"
-down_revision: str | None = "0009_add_automation_failure_analyses"
+down_revision: str | None = "0009_add_failure_analyses"
 branch_labels: Sequence[str] | None = None
 depends_on: Sequence[str] | None = None
 

@@ -1,4 +1,6 @@
 from app.core.database import Base
+from pathlib import Path
+import ast
 from app.models import (  # noqa: F401
     automation,
     data_setup,
@@ -31,3 +33,20 @@ def test_registered_model_metadata_matches_schema() -> None:
         "test_case_reviews",
         "test_cases",
     ]
+
+
+def test_alembic_revision_ids_fit_postgres_version_table() -> None:
+    versions_dir = Path(__file__).resolve().parents[1] / "alembic" / "versions"
+    revision_ids: list[str] = []
+
+    for path in versions_dir.glob("*.py"):
+        module = ast.parse(path.read_text())
+        for node in module.body:
+            if (
+                isinstance(node, ast.AnnAssign)
+                and getattr(node.target, "id", None) == "revision"
+            ):
+                revision_ids.append(ast.literal_eval(node.value))
+
+    assert revision_ids
+    assert [revision_id for revision_id in revision_ids if len(revision_id) > 32] == []

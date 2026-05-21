@@ -1,6 +1,6 @@
 """add automation failure analyses
 
-Revision ID: 0009_add_automation_failure_analyses
+Revision ID: 0009_add_failure_analyses
 Revises: 0008_add_automation_runs
 Create Date: 2026-05-21 08:10:00
 """
@@ -10,7 +10,7 @@ from typing import Sequence
 from alembic import op
 import sqlalchemy as sa
 
-revision: str = "0009_add_automation_failure_analyses"
+revision: str = "0009_add_failure_analyses"
 down_revision: str | None = "0008_add_automation_runs"
 branch_labels: Sequence[str] | None = None
 depends_on: Sequence[str] | None = None
