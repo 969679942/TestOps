@@ -6,6 +6,7 @@ import { TestCaseTable } from "../../../../components/test-case-table";
 import {
   createAutomationFailureAnalysis,
   createAutomationGeneration,
+  createAutomationRerun,
   createAutomationRun,
   getProject,
   listProjectAutomationFailureAnalyses,
@@ -201,6 +202,7 @@ export default async function ProjectTestCasesPage({
           error: "\u5931\u8d25\u539f\u56e0",
           analyze: "\u5206\u6790\u5931\u8d25",
           analysis: "\u5931\u8d25\u5206\u6790",
+          rerun: "\u521b\u5efa\u91cd\u8bd5",
           retryRecommended: "\u5efa\u8bae\u91cd\u8bd5",
           noRetry: "\u4e0d\u5efa\u8bae\u76f4\u63a5\u91cd\u8bd5",
         }
@@ -217,6 +219,7 @@ export default async function ProjectTestCasesPage({
           error: "Failure reason",
           analyze: "Analyze failure",
           analysis: "Failure analysis",
+          rerun: "Create rerun",
           retryRecommended: "Retry recommended",
           noRetry: "No direct retry recommended",
         };
@@ -254,6 +257,18 @@ export default async function ProjectTestCasesPage({
     }
 
     await createAutomationFailureAnalysis(value.trim());
+    revalidatePath(`/projects/${projectId}/test-cases`);
+  }
+
+  async function createRerunAction(formData: FormData) {
+    "use server";
+
+    const value = formData.get("analysisId");
+    if (typeof value !== "string" || !value.trim()) {
+      return;
+    }
+
+    await createAutomationRerun(value.trim());
     revalidatePath(`/projects/${projectId}/test-cases`);
   }
 
@@ -414,6 +429,18 @@ export default async function ProjectTestCasesPage({
                       <input name="runId" type="hidden" value={String(latestRun.id)} />
                       <button className="secondary-button" type="submit">
                         {artifactText.analyze}
+                      </button>
+                    </form>
+                  ) : null}
+                  {latestAnalysis?.shouldRerun ? (
+                    <form action={createRerunAction}>
+                      <input
+                        name="analysisId"
+                        type="hidden"
+                        value={String(latestAnalysis.id)}
+                      />
+                      <button className="secondary-button" type="submit">
+                        {artifactText.rerun}
                       </button>
                     </form>
                   ) : null}

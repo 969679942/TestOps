@@ -9,6 +9,7 @@ const {
   createProjectDocumentMock,
   createAutomationGenerationMock,
   createAutomationFailureAnalysisMock,
+  createAutomationRerunMock,
   createAutomationRunMock,
   addTestCaseReviewMock,
   listProjectAutomationGenerationsMock,
@@ -29,6 +30,7 @@ const {
   createProjectDocumentMock: vi.fn(),
   createAutomationGenerationMock: vi.fn(),
   createAutomationFailureAnalysisMock: vi.fn(),
+  createAutomationRerunMock: vi.fn(),
   createAutomationRunMock: vi.fn(),
   addTestCaseReviewMock: vi.fn(),
   listProjectAutomationGenerationsMock: vi.fn(),
@@ -51,6 +53,7 @@ vi.mock("../../lib/api", () => ({
   createProjectDocument: createProjectDocumentMock,
   createAutomationGeneration: createAutomationGenerationMock,
   createAutomationFailureAnalysis: createAutomationFailureAnalysisMock,
+  createAutomationRerun: createAutomationRerunMock,
   createAutomationRun: createAutomationRunMock,
   getProject: getProjectMock,
   listProjectAutomationGenerations: listProjectAutomationGenerationsMock,
@@ -372,6 +375,7 @@ describe("workspace pages", () => {
     expect(html).toContain("Failure analysis");
     expect(html).toContain("automation_issue");
     expect(html).toContain("Retry recommended");
+    expect(html).toContain("Create rerun");
     expect(html).toContain("Inspect the selector");
     expect(html).toContain("Review Workspace");
   });

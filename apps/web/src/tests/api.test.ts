@@ -4,6 +4,7 @@ import {
   addTestCaseReview,
   createAutomationGeneration,
   createAutomationFailureAnalysis,
+  createAutomationRerun,
   createAutomationRun,
   createDocumentVersion,
   createGenerationTask,
@@ -660,6 +661,39 @@ describe("api fallbacks", () => {
       "http://127.0.0.1:8000/projects/1/automation-failure-analyses",
       expect.objectContaining({
         cache: "no-store",
+      }),
+    );
+  });
+
+  it("creates automation reruns from retryable failure analyses through the API", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        id: 10,
+        automation_generation_id: 5,
+        status: "queued",
+        trigger_mode: "analysis_rerun",
+        report_path: null,
+        summary: {},
+        error_message: null,
+        created_at: "2026-05-21T08:01:00Z",
+        started_at: null,
+        finished_at: null,
+      }, 201),
+    );
+
+    await expect(createAutomationRerun("12")).resolves.toMatchObject({
+      kind: "success",
+      data: {
+        id: "10",
+        automationGenerationId: "5",
+        status: "queued",
+        triggerMode: "analysis_rerun",
+      },
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/automation-failure-analyses/12/rerun",
+      expect.objectContaining({
+        method: "POST",
       }),
     );
   });

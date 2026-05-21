@@ -27,7 +27,7 @@ class AutomationGenerationRead(BaseModel):
 
 
 class AutomationRunCreate(BaseModel):
-    trigger_mode: Literal["manual", "scheduled"] = "manual"
+    trigger_mode: Literal["manual", "scheduled", "analysis_rerun"] = "manual"
 
 
 class AutomationRunUpdate(BaseModel):

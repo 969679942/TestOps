@@ -212,6 +212,50 @@ def test_create_and_list_failure_analysis_for_failed_run(client, monkeypatch, tm
     assert listed.json()[0]["id"] == analysis["id"]
 
 
+def test_create_rerun_from_retryable_failure_analysis(client, monkeypatch, tmp_path):
+    monkeypatch.setattr(automation_service.settings, "artifact_storage_root", str(tmp_path))
+    project = _create_project(client)
+    test_case = _create_published_test_case(client, project["id"])
+    generated = client.post(f"/test-cases/{test_case['id']}/automation-generations")
+    assert generated.status_code == 201
+    generation_id = generated.json()["id"]
+    created_run = client.post(f"/automation-generations/{generation_id}/runs")
+    assert created_run.status_code == 201
+    updated_run = client.patch(
+        f"/automation-runs/{created_run.json()['id']}",
+        json={
+            "status": "failed",
+            "report_path": "automation/reports/run-1/index.html",
+            "summary": {"passed": 3, "failed": 1},
+            "error_message": "Locator timeout on checkout submit button",
+        },
+    )
+    assert updated_run.status_code == 200
+    analysis = client.post(
+        f"/automation-runs/{created_run.json()['id']}/failure-analyses"
+    )
+    assert analysis.status_code == 201
+    assert analysis.json()["should_rerun"] is True
+
+    response = client.post(
+        f"/automation-failure-analyses/{analysis.json()['id']}/rerun"
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["automation_generation_id"] == generation_id
+    assert body["status"] == "queued"
+    assert body["trigger_mode"] == "analysis_rerun"
+    assert body["summary"] == {}
+
+    listed = client.get(f"/projects/{project['id']}/automation-runs")
+    assert listed.status_code == 200
+    assert [item["id"] for item in listed.json()] == [
+        body["id"],
+        created_run.json()["id"],
+    ]
+
+
 def test_generate_automation_rejects_unpublished_case(client):
     project = _create_project(client)
     created = client.post(

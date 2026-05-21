@@ -70,6 +70,23 @@ def _get_run(session: Session, run_id: int) -> AutomationRun:
     return run
 
 
+def _get_failure_analysis(
+    session: Session,
+    analysis_id: int,
+) -> AutomationFailureAnalysis:
+    analysis = session.scalar(
+        select(AutomationFailureAnalysis).where(
+            AutomationFailureAnalysis.id == analysis_id
+        )
+    )
+    if analysis is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Automation failure analysis not found",
+        )
+    return analysis
+
+
 def list_project_generations(
     session: Session,
     project_id: int,
@@ -185,6 +202,31 @@ def create_failure_analysis(
     session.commit()
     session.refresh(analysis)
     return analysis
+
+
+def create_rerun_from_analysis(
+    session: Session,
+    analysis_id: int,
+) -> AutomationRun:
+    analysis = _get_failure_analysis(session, analysis_id)
+    if not analysis.should_rerun:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Failure analysis does not recommend rerun",
+        )
+
+    source_run = _get_run(session, analysis.automation_run_id)
+    generation = _get_generation(session, source_run.automation_generation_id)
+    rerun = AutomationRun(
+        automation_generation_id=generation.id,
+        status="queued",
+        trigger_mode="analysis_rerun",
+        summary={},
+    )
+    session.add(rerun)
+    session.commit()
+    session.refresh(rerun)
+    return rerun
 
 
 def list_project_failure_analyses(

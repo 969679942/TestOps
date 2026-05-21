@@ -94,6 +94,18 @@ def create_automation_failure_analysis(
     return automation_service.create_failure_analysis(session, run_id)
 
 
+@router.post(
+    "/automation-failure-analyses/{analysis_id}/rerun",
+    response_model=AutomationRunRead,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_automation_rerun_from_analysis(
+    analysis_id: int,
+    session: Session = Depends(get_session),
+) -> AutomationRunRead:
+    return automation_service.create_rerun_from_analysis(session, analysis_id)
+
+
 @router.patch(
     "/automation-runs/{run_id}",
     response_model=AutomationRunRead,

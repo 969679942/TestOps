@@ -1018,6 +1018,23 @@ export async function createAutomationFailureAnalysis(
   };
 }
 
+export async function createAutomationRerun(
+  analysisId: string,
+): Promise<RequestResult<AutomationRunRecord>> {
+  const result = await postJson<AutomationRunApiRecord>(
+    `/automation-failure-analyses/${analysisId}/rerun`,
+  );
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: mapAutomationRun(result.data),
+  };
+}
+
 export async function createAutomationRun(
   generationId: string,
 ): Promise<RequestResult<AutomationRunRecord>> {
