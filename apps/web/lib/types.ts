@@ -10,6 +10,40 @@ export type ProjectRecord = {
   defaultPromptProfile: string;
 };
 
+export type RuntimeSettingsRecord = {
+  cursor: {
+    command: string;
+    timeoutSeconds: number;
+    cwd: string | null;
+  };
+  codex: {
+    failureAnalysisModel: string;
+  };
+  notifications: {
+    larkWebhookConfigured: boolean;
+  };
+  runner: {
+    framework: string;
+    language: string;
+    pattern: string;
+    reporter: string;
+  };
+};
+
+export type RuntimeSettingsResult =
+  | {
+      kind: "success";
+      settings: RuntimeSettingsRecord;
+    }
+  | {
+      kind: "unavailable";
+      settings: RuntimeSettingsRecord;
+    }
+  | {
+      kind: "http-error";
+      status: number;
+    };
+
 export type DocumentType = LooseString<"prd" | "figma" | "swagger">;
 
 export type EnvironmentRecord = {

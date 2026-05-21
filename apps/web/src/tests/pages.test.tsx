@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 const {
   getProjectMock,
+  getRuntimeSettingsMock,
   createDocumentVersionMock,
   createGenerationTaskMock,
   createProjectDocumentMock,
@@ -37,6 +38,7 @@ const {
   pushAutomationFinalReportToLarkMock,
 } = vi.hoisted(() => ({
   getProjectMock: vi.fn(),
+  getRuntimeSettingsMock: vi.fn(),
   createDocumentVersionMock: vi.fn(),
   createGenerationTaskMock: vi.fn(),
   createProjectDocumentMock: vi.fn(),
@@ -83,6 +85,7 @@ vi.mock("../../lib/api", () => ({
   createAutomationRerun: createAutomationRerunMock,
   createAutomationRun: createAutomationRunMock,
   getProject: getProjectMock,
+  getRuntimeSettings: getRuntimeSettingsMock,
   listProjectAutomationGenerations: listProjectAutomationGenerationsMock,
   listProjectAutomationFailureAnalyses: listProjectAutomationFailureAnalysesMock,
   listProjectAutomationDebugProposals: listProjectAutomationDebugProposalsMock,
@@ -145,10 +148,37 @@ describe("workspace pages", () => {
   });
 
   it("renders a lightweight settings page for the shell navigation target", async () => {
+    getRuntimeSettingsMock.mockResolvedValue({
+      kind: "success",
+      settings: {
+        cursor: {
+          command: "cursor-agent",
+          timeoutSeconds: 180,
+          cwd: "D:/TestOps",
+        },
+        codex: {
+          failureAnalysisModel: "codex-provider-boundary",
+        },
+        notifications: {
+          larkWebhookConfigured: false,
+        },
+        runner: {
+          framework: "playwright",
+          language: "typescript",
+          pattern: "pom",
+          reporter: "allure-playwright",
+        },
+      },
+    });
+
     const html = renderToStaticMarkup(await SettingsPage());
 
     expect(html).toContain(">Settings<");
-    expect(html).toContain("Project defaults and workspace preferences");
+    expect(html).toContain("Cursor/Codex");
+    expect(html).toContain("cursor-agent");
+    expect(html).toContain("Lark");
+    expect(html).toContain("Not configured");
+    expect(html).toContain("Playwright + TypeScript + POM");
   });
 
   it("renders document availability instead of a zero count on document list http errors", async () => {

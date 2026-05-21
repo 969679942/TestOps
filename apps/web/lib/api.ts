@@ -27,6 +27,8 @@ import type {
   ProjectLookupResult,
   ProjectListResult,
   ProjectRecord,
+  RuntimeSettingsRecord,
+  RuntimeSettingsResult,
   TestCaseListResult,
   TestCaseMutationPayload,
   TestCaseRecord,
@@ -40,6 +42,26 @@ type ProjectApiRecord = {
   status: string;
   default_provider: string;
   default_prompt_profile: string;
+};
+
+type RuntimeSettingsApiRecord = {
+  cursor: {
+    command: string;
+    timeout_seconds: number;
+    cwd: string | null;
+  };
+  codex: {
+    failure_analysis_model: string;
+  };
+  notifications: {
+    lark_webhook_configured: boolean;
+  };
+  runner: {
+    framework: string;
+    language: string;
+    pattern: string;
+    reporter: string;
+  };
 };
 
 type ProjectDocumentApiRecord = {
@@ -332,6 +354,26 @@ const demoProjects: ProjectRecord[] = [
     defaultPromptProfile: "review-heavy",
   },
 ];
+
+const demoRuntimeSettings: RuntimeSettingsRecord = {
+  cursor: {
+    command: "cursor-agent",
+    timeoutSeconds: 120,
+    cwd: null,
+  },
+  codex: {
+    failureAnalysisModel: "codex-provider-boundary",
+  },
+  notifications: {
+    larkWebhookConfigured: false,
+  },
+  runner: {
+    framework: "playwright",
+    language: "typescript",
+    pattern: "pom",
+    reporter: "allure-playwright",
+  },
+};
 
 const demoDocuments: Record<string, DocumentAsset[]> = {
   payments: [
@@ -815,6 +857,28 @@ function mapProject(project: ProjectApiRecord): ProjectRecord {
   };
 }
 
+function mapRuntimeSettings(settings: RuntimeSettingsApiRecord): RuntimeSettingsRecord {
+  return {
+    cursor: {
+      command: settings.cursor.command,
+      timeoutSeconds: settings.cursor.timeout_seconds,
+      cwd: settings.cursor.cwd,
+    },
+    codex: {
+      failureAnalysisModel: settings.codex.failure_analysis_model,
+    },
+    notifications: {
+      larkWebhookConfigured: settings.notifications.lark_webhook_configured,
+    },
+    runner: {
+      framework: settings.runner.framework,
+      language: settings.runner.language,
+      pattern: settings.runner.pattern,
+      reporter: settings.runner.reporter,
+    },
+  };
+}
+
 function mapDocument(document: ProjectDocumentApiRecord): DocumentAsset {
   return {
     id: String(document.id),
@@ -1090,6 +1154,26 @@ export async function getProject(projectId: string): Promise<ProjectLookupResult
   return {
     kind: "success",
     project: mapProject(result.data),
+  };
+}
+
+export async function getRuntimeSettings(): Promise<RuntimeSettingsResult> {
+  const result = await requestJson<RuntimeSettingsApiRecord>("/settings/runtime");
+
+  if (result.kind === "unavailable") {
+    return {
+      kind: "unavailable",
+      settings: demoRuntimeSettings,
+    };
+  }
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    settings: mapRuntimeSettings(result.data),
   };
 }
 

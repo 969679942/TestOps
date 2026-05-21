@@ -9,6 +9,7 @@ from app.modules.project.router import router as project_router
 from app.modules.report.router import router as report_router
 from app.modules.review.router import router as review_router
 from app.modules.schedule.router import router as schedule_router
+from app.modules.settings.router import router as settings_router
 from app.modules.testcase.router import router as testcase_router
 
 app = FastAPI(title="TestOps API")
@@ -21,6 +22,7 @@ app.include_router(environment_router)
 app.include_router(generation_router)
 app.include_router(report_router)
 app.include_router(schedule_router)
+app.include_router(settings_router)
 app.include_router(testcase_router)
 app.include_router(review_router)
 

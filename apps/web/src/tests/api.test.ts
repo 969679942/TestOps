@@ -14,6 +14,7 @@ import {
   createGenerationTask,
   createProjectDocument,
   getProject,
+  getRuntimeSettings,
   listProjectAutomationDebugProposals,
   listProjectAutomationFinalReports,
   listProjectAutomationSchedules,
@@ -200,6 +201,59 @@ describe("api fallbacks", () => {
       "http://127.0.0.1:8000/environments/3",
       expect.objectContaining({
         method: "PATCH",
+      }),
+    );
+  });
+
+  it("maps runtime settings from the API", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        cursor: {
+          command: "cursor-agent",
+          timeout_seconds: 180,
+          cwd: "D:/TestOps",
+        },
+        codex: {
+          failure_analysis_model: "codex-provider-boundary",
+        },
+        notifications: {
+          lark_webhook_configured: false,
+        },
+        runner: {
+          framework: "playwright",
+          language: "typescript",
+          pattern: "pom",
+          reporter: "allure-playwright",
+        },
+      }),
+    );
+
+    await expect(getRuntimeSettings()).resolves.toEqual({
+      kind: "success",
+      settings: {
+        cursor: {
+          command: "cursor-agent",
+          timeoutSeconds: 180,
+          cwd: "D:/TestOps",
+        },
+        codex: {
+          failureAnalysisModel: "codex-provider-boundary",
+        },
+        notifications: {
+          larkWebhookConfigured: false,
+        },
+        runner: {
+          framework: "playwright",
+          language: "typescript",
+          pattern: "pom",
+          reporter: "allure-playwright",
+        },
+      },
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/settings/runtime",
+      expect.objectContaining({
+        cache: "no-store",
       }),
     );
   });
