@@ -23,6 +23,7 @@
 - [x] Phase 2I: rerun creation from retryable failure analysis.
 - [x] Phase 2J: multi-system workspace environment model.
 - [x] Phase 2K: Swagger-guided data setup hints, safe execution adapter, records, and UI display.
+- [x] Phase 2L: Playwright runner package and worker execution task.
 
 ## Development Phases
 
@@ -134,27 +135,27 @@ npm test -- src/tests/pages.test.tsx
 - Test: `services/worker/tests/test_run_automation_task.py`
 - Test: `services/api/tests/test_automation_generation_flow.py`
 
-- [ ] **Step 1: Write worker test for claiming a queued automation run**
+- [x] **Step 1: Write worker test for claiming a queued automation run**
 
 Expected behavior: a queued run becomes `running`, then `passed` or `failed` with report metadata.
 
-- [ ] **Step 2: Add runner API client**
+- [x] **Step 2: Add runner API client**
 
 The runner must call `PATCH /automation-runs/{run_id}` to write status, `report_path`, `summary`, and `error_message`.
 
-- [ ] **Step 3: Add Playwright execution command**
+- [x] **Step 3: Add Playwright execution command**
 
 Run generated specs with `npx playwright test --reporter=line,allure-playwright`.
 
-- [ ] **Step 4: Add artifact collection**
+- [x] **Step 4: Add artifact collection**
 
 Collect screenshots, videos, traces, and Allure result files into the run artifact directory.
 
-- [ ] **Step 5: Wire Celery task**
+- [x] **Step 5: Wire Celery task**
 
 Create `automation.run_queued` worker task that invokes the runner for one run.
 
-- [ ] **Step 6: Verify**
+- [x] **Step 6: Verify**
 
 Run:
 
@@ -472,7 +473,7 @@ npm run lint
 - [x] Analyze failures and create rerun records: covered by Phase 2H and Phase 2I.
 - [x] One platform testing multiple systems: Phase 2J.
 - [x] Swagger-guided API data creation: Phase 2K.
-- [ ] Real Playwright runner execution: Phase 2L.
+- [x] Real Playwright runner execution: Phase 2L.
 - [ ] Allure report ingestion and display: Phase 2M.
 - [ ] Scheduled automation execution: Phase 2N.
 - [ ] Real Codex failure diagnosis: Phase 2O.
