@@ -1,7 +1,7 @@
 import React from "react";
 import { AppShell } from "../../../components/app-shell";
 import { ProjectSummary } from "../../../components/project-summary";
-import { getProject, listProjectDocuments } from "../../../lib/api";
+import { getProject, listProjectDocuments, listProjectEnvironments } from "../../../lib/api";
 import { copy, localizedHref, normalizeLocale, type LocaleSearchParams } from "../../../lib/i18n";
 
 type ProjectPageProps = {
@@ -59,7 +59,10 @@ export default async function ProjectWorkspacePage({
   }
 
   const documentList = await listProjectDocuments(projectId);
+  const environmentList = await listProjectEnvironments(projectId);
   const documents = documentList.kind === "http-error" ? [] : documentList.documents;
+  const environments =
+    environmentList.kind === "http-error" ? [] : environmentList.environments;
 
   return (
     <AppShell currentPath={`/projects/${projectId}`} locale={locale} project={project}>
@@ -75,6 +78,42 @@ export default async function ProjectWorkspacePage({
         documentsUnavailable={documentList.kind === "http-error"}
         locale={locale}
       />
+
+      <section className="data-card">
+        <div className="section-heading">
+          <div>
+            <span className="eyebrow">Target systems</span>
+            <h3>Target environments</h3>
+          </div>
+          <p>
+            Keep UI and API base URLs separated per system so later data setup,
+            scheduled runs, and reports stay scoped correctly.
+          </p>
+        </div>
+        {environmentList.kind === "http-error" ? (
+          <p>Target environments are temporarily unavailable.</p>
+        ) : environments.length ? (
+          <div className="automation-list">
+            {environments.map((environment) => (
+              <article className="automation-card" key={environment.id}>
+                <div>
+                  <strong>{environment.name}</strong>
+                  <p>
+                    {environment.code} - {environment.status}
+                  </p>
+                  <p>{environment.baseUrl}</p>
+                  <p>{environment.apiBaseUrl}</p>
+                  {environment.authProfile ? (
+                    <p>Auth profile: {environment.authProfile}</p>
+                  ) : null}
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="empty-copy">No target environments have been configured yet.</p>
+        )}
+      </section>
 
       {documentList.kind === "http-error" ? (
         <section>

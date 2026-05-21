@@ -12,6 +12,19 @@ export type ProjectRecord = {
 
 export type DocumentType = LooseString<"prd" | "figma" | "swagger">;
 
+export type EnvironmentRecord = {
+  id: string | number;
+  projectId: string | number;
+  name: string;
+  code: string;
+  baseUrl: string;
+  apiBaseUrl: string;
+  authProfile: string | null;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type DocumentAsset = {
   id: string | number;
   projectId: string | number;
@@ -210,6 +223,20 @@ export type ProjectLookupResult =
     }
   | {
       kind: "not-found";
+    }
+  | {
+      kind: "http-error";
+      status: number;
+    };
+
+export type EnvironmentListResult =
+  | {
+      kind: "success";
+      environments: EnvironmentRecord[];
+    }
+  | {
+      kind: "unavailable";
+      environments: EnvironmentRecord[];
     }
   | {
       kind: "http-error";

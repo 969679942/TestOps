@@ -16,6 +16,7 @@ const {
   listProjectAutomationFailureAnalysesMock,
   listProjectAutomationRunsMock,
   listProjectDocumentsMock,
+  listProjectEnvironmentsMock,
   listProjectGenerationTasksMock,
   listProjectsMock,
   listProjectPublishedTestCasesMock,
@@ -37,6 +38,7 @@ const {
   listProjectAutomationFailureAnalysesMock: vi.fn(),
   listProjectAutomationRunsMock: vi.fn(),
   listProjectDocumentsMock: vi.fn(),
+  listProjectEnvironmentsMock: vi.fn(),
   listProjectGenerationTasksMock: vi.fn(),
   listProjectsMock: vi.fn(),
   listProjectPublishedTestCasesMock: vi.fn(),
@@ -60,6 +62,7 @@ vi.mock("../../lib/api", () => ({
   listProjectAutomationFailureAnalyses: listProjectAutomationFailureAnalysesMock,
   listProjectAutomationRuns: listProjectAutomationRunsMock,
   listProjectDocuments: listProjectDocumentsMock,
+  listProjectEnvironments: listProjectEnvironmentsMock,
   listProjectGenerationTasks: listProjectGenerationTasksMock,
   listProjects: listProjectsMock,
   listProjectPublishedTestCases: listProjectPublishedTestCasesMock,
@@ -131,6 +134,23 @@ describe("workspace pages", () => {
       kind: "http-error",
       status: 503,
     });
+    listProjectEnvironmentsMock.mockResolvedValue({
+      kind: "success",
+      environments: [
+        {
+          id: "env-1",
+          projectId: "1",
+          name: "Payments Staging",
+          code: "staging",
+          baseUrl: "https://staging.payments.example",
+          apiBaseUrl: "https://api-staging.payments.example",
+          authProfile: "qa-staging",
+          status: "active",
+          createdAt: "2026-05-21T09:00:00Z",
+          updatedAt: "2026-05-21T09:00:00Z",
+        },
+      ],
+    });
 
     const html = renderToStaticMarkup(
       await ProjectWorkspacePage({
@@ -139,6 +159,9 @@ describe("workspace pages", () => {
     );
 
     expect(html).toContain("Source documents are temporarily unavailable");
+    expect(html).toContain("Target environments");
+    expect(html).toContain("Payments Staging");
+    expect(html).toContain("https://staging.payments.example");
     expect(html).toContain(">Unavailable<");
     expect(html).not.toContain(">0<");
   });

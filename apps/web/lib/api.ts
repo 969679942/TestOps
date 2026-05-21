@@ -8,6 +8,8 @@ import type {
   DocumentAsset,
   DocumentAssetListResult,
   DocumentVersionRecord,
+  EnvironmentListResult,
+  EnvironmentRecord,
   GenerationTaskListResult,
   GenerationTaskRecord,
   ProjectLookupResult,
@@ -36,6 +38,19 @@ type ProjectDocumentApiRecord = {
   source_mode: string;
   source_uri: string | null;
   parse_status: string;
+};
+
+type EnvironmentApiRecord = {
+  id: number;
+  project_id: number;
+  name: string;
+  code: string;
+  base_url: string;
+  api_base_url: string;
+  auth_profile: string | null;
+  status: string;
+  created_at: string;
+  updated_at: string;
 };
 
 type DocumentVersionApiRecord = {
@@ -156,6 +171,22 @@ export type CreateProjectDocumentPayload = {
   source_uri?: string | null;
 };
 
+export type CreateProjectEnvironmentPayload = {
+  name: string;
+  code: string;
+  base_url: string;
+  api_base_url: string;
+  auth_profile?: string | null;
+};
+
+export type UpdateProjectEnvironmentPayload = {
+  name?: string;
+  base_url?: string;
+  api_base_url?: string;
+  auth_profile?: string | null;
+  status?: "active" | "paused" | "archived";
+};
+
 export type CreateDocumentVersionPayload = {
   filename?: string | null;
   content?: string | null;
@@ -266,6 +297,65 @@ const demoDocuments: Record<string, DocumentAsset[]> = {
       sourceMode: "url",
       sourceUri: "https://internal.example/figma/account-center",
       parseStatus: "parsed",
+    },
+  ],
+};
+
+const demoEnvironments: Record<string, EnvironmentRecord[]> = {
+  payments: [
+    {
+      id: "env-staging",
+      projectId: "payments",
+      name: "Payments Staging",
+      code: "staging",
+      baseUrl: "https://staging.payments.example",
+      apiBaseUrl: "https://api-staging.payments.example",
+      authProfile: "qa-staging",
+      status: "active",
+      createdAt: "2026-05-21T09:00:00Z",
+      updatedAt: "2026-05-21T09:00:00Z",
+    },
+  ],
+  "1": [
+    {
+      id: "env-staging",
+      projectId: "1",
+      name: "Payments Staging",
+      code: "staging",
+      baseUrl: "https://staging.payments.example",
+      apiBaseUrl: "https://api-staging.payments.example",
+      authProfile: "qa-staging",
+      status: "active",
+      createdAt: "2026-05-21T09:00:00Z",
+      updatedAt: "2026-05-21T09:00:00Z",
+    },
+  ],
+  "account-center": [
+    {
+      id: "env-qa",
+      projectId: "account-center",
+      name: "Account Center QA",
+      code: "qa",
+      baseUrl: "https://qa.account.example",
+      apiBaseUrl: "https://api-qa.account.example",
+      authProfile: "qa-account",
+      status: "active",
+      createdAt: "2026-05-21T09:00:00Z",
+      updatedAt: "2026-05-21T09:00:00Z",
+    },
+  ],
+  "2": [
+    {
+      id: "env-qa",
+      projectId: "2",
+      name: "Account Center QA",
+      code: "qa",
+      baseUrl: "https://qa.account.example",
+      apiBaseUrl: "https://api-qa.account.example",
+      authProfile: "qa-account",
+      status: "active",
+      createdAt: "2026-05-21T09:00:00Z",
+      updatedAt: "2026-05-21T09:00:00Z",
     },
   ],
 };
@@ -594,6 +684,21 @@ function mapDocument(document: ProjectDocumentApiRecord): DocumentAsset {
   };
 }
 
+function mapEnvironment(environment: EnvironmentApiRecord): EnvironmentRecord {
+  return {
+    id: String(environment.id),
+    projectId: String(environment.project_id),
+    name: environment.name,
+    code: environment.code,
+    baseUrl: environment.base_url,
+    apiBaseUrl: environment.api_base_url,
+    authProfile: environment.auth_profile,
+    status: environment.status,
+    createdAt: environment.created_at,
+    updatedAt: environment.updated_at,
+  };
+}
+
 function mapDocumentVersion(version: DocumentVersionApiRecord): DocumentVersionRecord {
   return {
     id: String(version.id),
@@ -745,6 +850,68 @@ export async function getProject(projectId: string): Promise<ProjectLookupResult
   return {
     kind: "success",
     project: mapProject(result.data),
+  };
+}
+
+export async function listProjectEnvironments(
+  projectId: string,
+): Promise<EnvironmentListResult> {
+  const result = await requestJson<EnvironmentApiRecord[]>(
+    `/projects/${projectId}/environments`,
+  );
+
+  if (result.kind === "unavailable") {
+    return {
+      kind: "unavailable",
+      environments: demoEnvironments[projectId] ?? [],
+    };
+  }
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    environments: result.data.map(mapEnvironment),
+  };
+}
+
+export async function createProjectEnvironment(
+  projectId: string,
+  payload: CreateProjectEnvironmentPayload,
+): Promise<RequestResult<EnvironmentRecord>> {
+  const result = await postJson<EnvironmentApiRecord>(
+    `/projects/${projectId}/environments`,
+    payload,
+  );
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: mapEnvironment(result.data),
+  };
+}
+
+export async function updateProjectEnvironment(
+  environmentId: string,
+  payload: UpdateProjectEnvironmentPayload,
+): Promise<RequestResult<EnvironmentRecord>> {
+  const result = await patchJson<EnvironmentApiRecord>(
+    `/environments/${environmentId}`,
+    payload,
+  );
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: mapEnvironment(result.data),
   };
 }
 

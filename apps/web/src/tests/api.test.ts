@@ -7,9 +7,11 @@ import {
   createAutomationRerun,
   createAutomationRun,
   createDocumentVersion,
+  createProjectEnvironment,
   createGenerationTask,
   createProjectDocument,
   getProject,
+  listProjectEnvironments,
   listProjectDocuments,
   listProjectAutomationGenerations,
   listProjectAutomationFailureAnalyses,
@@ -20,6 +22,7 @@ import {
   listProjectTestCases,
   parseDocumentVersion,
   publishTestCase,
+  updateProjectEnvironment,
   updateAutomationRun,
   updateTestCase,
 } from "../../lib/api";
@@ -99,6 +102,95 @@ describe("api fallbacks", () => {
       kind: "http-error",
       status: 503,
     });
+  });
+
+  it("creates, updates, and lists project environments through the API", async () => {
+    const environmentResponse = {
+      id: 3,
+      project_id: 1,
+      name: "Payments Staging",
+      code: "staging",
+      base_url: "https://staging.payments.example",
+      api_base_url: "https://api-staging.payments.example",
+      auth_profile: "qa-staging",
+      status: "active",
+      created_at: "2026-05-21T09:00:00Z",
+      updated_at: "2026-05-21T09:00:00Z",
+    };
+    const updatedEnvironmentResponse = {
+      ...environmentResponse,
+      name: "Payments QA",
+      base_url: "https://qa.payments.example",
+      api_base_url: "https://api-qa.payments.example",
+      status: "paused",
+      updated_at: "2026-05-21T09:10:00Z",
+    };
+    fetchMock.mockResolvedValueOnce(jsonResponse(environmentResponse, 201));
+    fetchMock.mockResolvedValueOnce(jsonResponse([environmentResponse]));
+    fetchMock.mockResolvedValueOnce(jsonResponse(updatedEnvironmentResponse));
+
+    await expect(
+      createProjectEnvironment("1", {
+        name: "Payments Staging",
+        code: "staging",
+        base_url: "https://staging.payments.example",
+        api_base_url: "https://api-staging.payments.example",
+        auth_profile: "qa-staging",
+      }),
+    ).resolves.toMatchObject({
+      kind: "success",
+      data: {
+        id: "3",
+        projectId: "1",
+        name: "Payments Staging",
+        code: "staging",
+        baseUrl: "https://staging.payments.example",
+        apiBaseUrl: "https://api-staging.payments.example",
+        authProfile: "qa-staging",
+        status: "active",
+      },
+    });
+    await expect(listProjectEnvironments("1")).resolves.toMatchObject({
+      kind: "success",
+      environments: [
+        {
+          id: "3",
+          name: "Payments Staging",
+        },
+      ],
+    });
+    await expect(
+      updateProjectEnvironment("3", {
+        name: "Payments QA",
+        base_url: "https://qa.payments.example",
+        api_base_url: "https://api-qa.payments.example",
+        status: "paused",
+      }),
+    ).resolves.toMatchObject({
+      kind: "success",
+      data: {
+        name: "Payments QA",
+        status: "paused",
+      },
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/projects/1/environments",
+      expect.objectContaining({
+        method: "POST",
+      }),
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/projects/1/environments",
+      expect.objectContaining({
+        cache: "no-store",
+      }),
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/environments/3",
+      expect.objectContaining({
+        method: "PATCH",
+      }),
+    );
   });
 
   it("keeps a successful empty document list empty", async () => {

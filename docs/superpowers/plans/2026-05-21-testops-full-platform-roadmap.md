@@ -21,6 +21,7 @@
 - [x] Phase 2G: automation run result/report summary update API.
 - [x] Phase 2H: failure analysis records with Codex-placeholder classification.
 - [x] Phase 2I: rerun creation from retryable failure analysis.
+- [x] Phase 2J: multi-system workspace environment model.
 
 ## Development Phases
 
@@ -42,25 +43,25 @@
 - Test: `apps/web/src/tests/api.test.ts`
 - Test: `apps/web/src/tests/pages.test.tsx`
 
-- [ ] **Step 1: Write backend tests for target-system environments**
+- [x] **Step 1: Write backend tests for target-system environments**
 
 Run: `D:\TestOps\services\api\.venv\Scripts\python.exe -m pytest services/api/tests/test_environment_routes.py -q`
 
 Expected first failure: missing `/projects/{project_id}/environments` routes.
 
-- [ ] **Step 2: Add environment model and Alembic migration**
+- [x] **Step 2: Add environment model and Alembic migration**
 
 Create `Environment` with `project_id`, `name`, `code`, `base_url`, `api_base_url`, `auth_profile`, `status`, `created_at`, and `updated_at`.
 
-- [ ] **Step 3: Add environment CRUD APIs**
+- [x] **Step 3: Add environment CRUD APIs**
 
 Expose `POST /projects/{project_id}/environments`, `GET /projects/{project_id}/environments`, and `PATCH /environments/{environment_id}`.
 
-- [ ] **Step 4: Add web environment display**
+- [x] **Step 4: Add web environment display**
 
 Show environments on the project overview and expose them to later data setup and runner forms.
 
-- [ ] **Step 5: Verify**
+- [x] **Step 5: Verify**
 
 Run:
 
@@ -468,7 +469,7 @@ npm run lint
 - [x] Generate Playwright + TypeScript + POM artifacts: covered by Phase 2C and Phase 2D.
 - [x] Record automation runs and result summaries: covered by Phase 2F and Phase 2G.
 - [x] Analyze failures and create rerun records: covered by Phase 2H and Phase 2I.
-- [ ] One platform testing multiple systems: Phase 2J.
+- [x] One platform testing multiple systems: Phase 2J.
 - [ ] Swagger-guided API data creation: Phase 2K.
 - [ ] Real Playwright runner execution: Phase 2L.
 - [ ] Allure report ingestion and display: Phase 2M.
