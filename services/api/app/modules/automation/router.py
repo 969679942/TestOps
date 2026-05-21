@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_session
 from app.modules.automation import service as automation_service
 from app.schemas.automation import (
+    AutomationFailureAnalysisRead,
     AutomationGenerationCreate,
     AutomationGenerationRead,
     AutomationRunCreate,
@@ -34,6 +35,17 @@ def list_project_automation_runs(
     session: Session = Depends(get_session),
 ) -> list[AutomationRunRead]:
     return automation_service.list_project_runs(session, project_id)
+
+
+@router.get(
+    "/projects/{project_id}/automation-failure-analyses",
+    response_model=list[AutomationFailureAnalysisRead],
+)
+def list_project_automation_failure_analyses(
+    project_id: int,
+    session: Session = Depends(get_session),
+) -> list[AutomationFailureAnalysisRead]:
+    return automation_service.list_project_failure_analyses(session, project_id)
 
 
 @router.post(
@@ -68,6 +80,18 @@ def create_automation_run(
         generation_id,
         payload or AutomationRunCreate(),
     )
+
+
+@router.post(
+    "/automation-runs/{run_id}/failure-analyses",
+    response_model=AutomationFailureAnalysisRead,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_automation_failure_analysis(
+    run_id: int,
+    session: Session = Depends(get_session),
+) -> AutomationFailureAnalysisRead:
+    return automation_service.create_failure_analysis(session, run_id)
 
 
 @router.patch(

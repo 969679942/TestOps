@@ -50,3 +50,20 @@ class AutomationRunRead(BaseModel):
     created_at: datetime
     started_at: datetime | None
     finished_at: datetime | None
+
+
+class AutomationFailureAnalysisRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    automation_run_id: int
+    status: str
+    provider: str
+    model: str
+    classification: str
+    confidence: float
+    summary: str
+    recommendations: list[str]
+    should_rerun: bool
+    created_at: datetime
+    completed_at: datetime | None

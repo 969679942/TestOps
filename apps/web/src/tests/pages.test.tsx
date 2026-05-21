@@ -8,9 +8,11 @@ const {
   createGenerationTaskMock,
   createProjectDocumentMock,
   createAutomationGenerationMock,
+  createAutomationFailureAnalysisMock,
   createAutomationRunMock,
   addTestCaseReviewMock,
   listProjectAutomationGenerationsMock,
+  listProjectAutomationFailureAnalysesMock,
   listProjectAutomationRunsMock,
   listProjectDocumentsMock,
   listProjectGenerationTasksMock,
@@ -26,9 +28,11 @@ const {
   createGenerationTaskMock: vi.fn(),
   createProjectDocumentMock: vi.fn(),
   createAutomationGenerationMock: vi.fn(),
+  createAutomationFailureAnalysisMock: vi.fn(),
   createAutomationRunMock: vi.fn(),
   addTestCaseReviewMock: vi.fn(),
   listProjectAutomationGenerationsMock: vi.fn(),
+  listProjectAutomationFailureAnalysesMock: vi.fn(),
   listProjectAutomationRunsMock: vi.fn(),
   listProjectDocumentsMock: vi.fn(),
   listProjectGenerationTasksMock: vi.fn(),
@@ -46,9 +50,11 @@ vi.mock("../../lib/api", () => ({
   createGenerationTask: createGenerationTaskMock,
   createProjectDocument: createProjectDocumentMock,
   createAutomationGeneration: createAutomationGenerationMock,
+  createAutomationFailureAnalysis: createAutomationFailureAnalysisMock,
   createAutomationRun: createAutomationRunMock,
   getProject: getProjectMock,
   listProjectAutomationGenerations: listProjectAutomationGenerationsMock,
+  listProjectAutomationFailureAnalyses: listProjectAutomationFailureAnalysesMock,
   listProjectAutomationRuns: listProjectAutomationRunsMock,
   listProjectDocuments: listProjectDocumentsMock,
   listProjectGenerationTasks: listProjectGenerationTasksMock,
@@ -321,6 +327,25 @@ describe("workspace pages", () => {
         },
       ],
     });
+    listProjectAutomationFailureAnalysesMock.mockResolvedValue({
+      kind: "success",
+      items: [
+        {
+          id: "analysis-301",
+          automationRunId: "run-901",
+          status: "completed",
+          provider: "codex",
+          model: "codex-placeholder",
+          classification: "automation_issue",
+          confidence: 0.82,
+          summary: "Codex placeholder analysis classified a locator timeout.",
+          recommendations: ["Inspect the selector", "Rerun after stabilizing the wait"],
+          shouldRerun: true,
+          createdAt: "2026-05-21T08:00:00Z",
+          completedAt: "2026-05-21T08:00:01Z",
+        },
+      ],
+    });
 
     const html = renderToStaticMarkup(
       await ProjectTestCasesPage({
@@ -343,6 +368,11 @@ describe("workspace pages", () => {
     expect(html).toContain("Passed 3");
     expect(html).toContain("Failed 1");
     expect(html).toContain("Locator timeout");
+    expect(html).toContain("Analyze failure");
+    expect(html).toContain("Failure analysis");
+    expect(html).toContain("automation_issue");
+    expect(html).toContain("Retry recommended");
+    expect(html).toContain("Inspect the selector");
     expect(html).toContain("Review Workspace");
   });
 
@@ -486,6 +516,10 @@ describe("workspace pages", () => {
       status: 503,
     });
     listProjectAutomationRunsMock.mockResolvedValue({
+      kind: "http-error",
+      status: 503,
+    });
+    listProjectAutomationFailureAnalysesMock.mockResolvedValue({
       kind: "http-error",
       status: 503,
     });

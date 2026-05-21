@@ -8,7 +8,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.models.automation import AutomationGeneration, AutomationRun
+from app.models.automation import (
+    AutomationFailureAnalysis,
+    AutomationGeneration,
+    AutomationRun,
+)
 from app.models.project import Project
 from app.models.testcase import TestCase
 from app.modules.automation.generator import generate_playwright_pom_files
@@ -120,6 +124,91 @@ def list_project_runs(
             .join(TestCase, AutomationGeneration.test_case_id == TestCase.id)
             .where(TestCase.project_id == project_id)
             .order_by(AutomationRun.created_at.desc(), AutomationRun.id.desc())
+        )
+    )
+
+
+def _build_failure_analysis(run: AutomationRun) -> AutomationFailureAnalysis:
+    error_message = run.error_message or "No failure details were recorded."
+    normalized = error_message.lower()
+    if "locator" in normalized or "timeout" in normalized:
+        classification = "automation_issue"
+        confidence = 0.82
+        should_rerun = True
+        recommendations = [
+            "Inspect the selector and page object method used by the failing step.",
+            "Add a targeted wait or more stable locator before rerunning the case.",
+        ]
+    elif "assert" in normalized or "expected" in normalized:
+        classification = "business_regression"
+        confidence = 0.68
+        should_rerun = False
+        recommendations = [
+            "Compare the actual UI/API behavior with the published expected result.",
+            "Ask the product owner to confirm whether the expected behavior changed.",
+        ]
+    else:
+        classification = "needs_triage"
+        confidence = 0.55
+        should_rerun = False
+        recommendations = [
+            "Review the report and execution logs before deciding whether to rerun.",
+        ]
+
+    return AutomationFailureAnalysis(
+        automation_run_id=run.id,
+        status="completed",
+        provider="codex",
+        model="codex-placeholder",
+        classification=classification,
+        confidence=confidence,
+        summary=f"Codex placeholder analysis classified the failure from: {error_message}",
+        recommendations=recommendations,
+        should_rerun=should_rerun,
+        completed_at=_utcnow(),
+    )
+
+
+def create_failure_analysis(
+    session: Session,
+    run_id: int,
+) -> AutomationFailureAnalysis:
+    run = _get_run(session, run_id)
+    if run.status != "failed":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Only failed automation runs can be analyzed",
+        )
+
+    analysis = _build_failure_analysis(run)
+    session.add(analysis)
+    session.commit()
+    session.refresh(analysis)
+    return analysis
+
+
+def list_project_failure_analyses(
+    session: Session,
+    project_id: int,
+) -> list[AutomationFailureAnalysis]:
+    _get_project(session, project_id)
+    return list(
+        session.scalars(
+            select(AutomationFailureAnalysis)
+            .join(
+                AutomationRun,
+                AutomationFailureAnalysis.automation_run_id == AutomationRun.id,
+            )
+            .join(
+                AutomationGeneration,
+                AutomationRun.automation_generation_id == AutomationGeneration.id,
+            )
+            .join(TestCase, AutomationGeneration.test_case_id == TestCase.id)
+            .where(TestCase.project_id == project_id)
+            .order_by(
+                AutomationFailureAnalysis.created_at.desc(),
+                AutomationFailureAnalysis.id.desc(),
+            )
         )
     )
 

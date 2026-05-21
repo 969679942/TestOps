@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   addTestCaseReview,
   createAutomationGeneration,
+  createAutomationFailureAnalysis,
   createAutomationRun,
   createDocumentVersion,
   createGenerationTask,
@@ -10,6 +11,7 @@ import {
   getProject,
   listProjectDocuments,
   listProjectAutomationGenerations,
+  listProjectAutomationFailureAnalyses,
   listProjectAutomationRuns,
   listProjectGenerationTasks,
   listProjectPublishedTestCases,
@@ -607,6 +609,57 @@ describe("api fallbacks", () => {
           },
           error_message: "Locator timeout",
         }),
+      }),
+    );
+  });
+
+  it("creates and lists automation failure analyses through the API", async () => {
+    const analysisResponse = {
+      id: 12,
+      automation_run_id: 9,
+      status: "completed",
+      provider: "codex",
+      model: "codex-placeholder",
+      classification: "automation_issue",
+      confidence: 0.82,
+      summary: "Codex placeholder analysis classified a locator timeout.",
+      recommendations: ["Inspect the selector", "Rerun after stabilizing the wait"],
+      should_rerun: true,
+      created_at: "2026-05-21T08:00:00Z",
+      completed_at: "2026-05-21T08:00:01Z",
+    };
+    fetchMock.mockResolvedValueOnce(jsonResponse(analysisResponse, 201));
+    fetchMock.mockResolvedValueOnce(jsonResponse([analysisResponse]));
+
+    await expect(createAutomationFailureAnalysis("9")).resolves.toMatchObject({
+      kind: "success",
+      data: {
+        id: "12",
+        automationRunId: "9",
+        classification: "automation_issue",
+        shouldRerun: true,
+      },
+    });
+    await expect(listProjectAutomationFailureAnalyses("1")).resolves.toMatchObject({
+      kind: "success",
+      items: [
+        {
+          id: "12",
+          provider: "codex",
+          recommendations: ["Inspect the selector", "Rerun after stabilizing the wait"],
+        },
+      ],
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/automation-runs/9/failure-analyses",
+      expect.objectContaining({
+        method: "POST",
+      }),
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/projects/1/automation-failure-analyses",
+      expect.objectContaining({
+        cache: "no-store",
       }),
     );
   });

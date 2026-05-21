@@ -1,6 +1,8 @@
 import type {
   AutomationGenerationListResult,
   AutomationGenerationRecord,
+  AutomationFailureAnalysisListResult,
+  AutomationFailureAnalysisRecord,
   AutomationRunListResult,
   AutomationRunRecord,
   DocumentAsset,
@@ -108,6 +110,21 @@ type AutomationRunApiRecord = {
   created_at: string;
   started_at: string | null;
   finished_at: string | null;
+};
+
+type AutomationFailureAnalysisApiRecord = {
+  id: number;
+  automation_run_id: number;
+  status: string;
+  provider: string;
+  model: string;
+  classification: string;
+  confidence: number;
+  summary: string;
+  recommendations: string[];
+  should_rerun: boolean;
+  created_at: string;
+  completed_at: string | null;
 };
 
 type ReviewApiRecord = {
@@ -659,6 +676,25 @@ function mapAutomationRun(item: AutomationRunApiRecord): AutomationRunRecord {
   };
 }
 
+function mapAutomationFailureAnalysis(
+  item: AutomationFailureAnalysisApiRecord,
+): AutomationFailureAnalysisRecord {
+  return {
+    id: String(item.id),
+    automationRunId: String(item.automation_run_id),
+    status: item.status,
+    provider: item.provider,
+    model: item.model,
+    classification: item.classification,
+    confidence: item.confidence,
+    summary: item.summary,
+    recommendations: item.recommendations,
+    shouldRerun: item.should_rerun,
+    createdAt: item.created_at,
+    completedAt: item.completed_at,
+  };
+}
+
 function getDemoProject(projectId: string): ProjectRecord | null {
   return (
     demoProjects.find((project) => project.id === projectId || project.code === projectId) ??
@@ -924,6 +960,30 @@ export async function listProjectAutomationRuns(
   };
 }
 
+export async function listProjectAutomationFailureAnalyses(
+  projectId: string,
+): Promise<AutomationFailureAnalysisListResult> {
+  const result = await requestJson<AutomationFailureAnalysisApiRecord[]>(
+    `/projects/${projectId}/automation-failure-analyses`,
+  );
+
+  if (result.kind === "unavailable") {
+    return {
+      kind: "unavailable",
+      items: [],
+    };
+  }
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    items: result.data.map(mapAutomationFailureAnalysis),
+  };
+}
+
 export async function createAutomationGeneration(
   testCaseId: string,
 ): Promise<RequestResult<AutomationGenerationRecord>> {
@@ -938,6 +998,23 @@ export async function createAutomationGeneration(
   return {
     kind: "success",
     data: mapAutomationGeneration(result.data),
+  };
+}
+
+export async function createAutomationFailureAnalysis(
+  runId: string,
+): Promise<RequestResult<AutomationFailureAnalysisRecord>> {
+  const result = await postJson<AutomationFailureAnalysisApiRecord>(
+    `/automation-runs/${runId}/failure-analyses`,
+  );
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: mapAutomationFailureAnalysis(result.data),
   };
 }
 

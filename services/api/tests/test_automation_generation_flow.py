@@ -172,6 +172,46 @@ def test_update_automation_run_result(client, monkeypatch, tmp_path):
     assert listed.json()[0]["summary"]["failed"] == 1
 
 
+def test_create_and_list_failure_analysis_for_failed_run(client, monkeypatch, tmp_path):
+    monkeypatch.setattr(automation_service.settings, "artifact_storage_root", str(tmp_path))
+    project = _create_project(client)
+    test_case = _create_published_test_case(client, project["id"])
+    generated = client.post(f"/test-cases/{test_case['id']}/automation-generations")
+    assert generated.status_code == 201
+    created_run = client.post(f"/automation-generations/{generated.json()['id']}/runs")
+    assert created_run.status_code == 201
+    updated_run = client.patch(
+        f"/automation-runs/{created_run.json()['id']}",
+        json={
+            "status": "failed",
+            "report_path": "automation/reports/run-1/index.html",
+            "summary": {"passed": 3, "failed": 1},
+            "error_message": "Locator timeout on checkout submit button",
+        },
+    )
+    assert updated_run.status_code == 200
+
+    response = client.post(
+        f"/automation-runs/{created_run.json()['id']}/failure-analyses"
+    )
+
+    assert response.status_code == 201
+    analysis = response.json()
+    assert analysis["automation_run_id"] == created_run.json()["id"]
+    assert analysis["status"] == "completed"
+    assert analysis["provider"] == "codex"
+    assert analysis["classification"] == "automation_issue"
+    assert analysis["should_rerun"] is True
+    assert analysis["confidence"] >= 0.5
+    assert "Locator timeout" in analysis["summary"]
+    assert analysis["completed_at"] is not None
+
+    listed = client.get(f"/projects/{project['id']}/automation-failure-analyses")
+    assert listed.status_code == 200
+    assert len(listed.json()) == 1
+    assert listed.json()[0]["id"] == analysis["id"]
+
+
 def test_generate_automation_rejects_unpublished_case(client):
     project = _create_project(client)
     created = client.post(

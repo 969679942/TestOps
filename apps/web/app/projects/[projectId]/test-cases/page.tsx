@@ -4,9 +4,11 @@ import { revalidatePath } from "next/cache";
 import { AppShell } from "../../../../components/app-shell";
 import { TestCaseTable } from "../../../../components/test-case-table";
 import {
+  createAutomationFailureAnalysis,
   createAutomationGeneration,
   createAutomationRun,
   getProject,
+  listProjectAutomationFailureAnalyses,
   listProjectAutomationGenerations,
   listProjectAutomationRuns,
   listProjectPublishedTestCases,
@@ -14,6 +16,7 @@ import {
 } from "../../../../lib/api";
 import { copy, localizedHref, normalizeLocale, type LocaleSearchParams } from "../../../../lib/i18n";
 import type {
+  AutomationFailureAnalysisRecord,
   AutomationGenerationRecord,
   AutomationRunRecord,
   TestCaseRecord,
@@ -77,6 +80,23 @@ function getLatestRunsByGeneration(items: AutomationRunRecord[]) {
   return latestByGeneration;
 }
 
+function getLatestAnalysesByRun(items: AutomationFailureAnalysisRecord[]) {
+  const latestByRun = new Map<string, AutomationFailureAnalysisRecord>();
+
+  for (const item of items) {
+    const runId = String(item.automationRunId);
+    const current = latestByRun.get(runId);
+    if (
+      current === undefined ||
+      Date.parse(item.createdAt) > Date.parse(current.createdAt)
+    ) {
+      latestByRun.set(runId, item);
+    }
+  }
+
+  return latestByRun;
+}
+
 function getSummaryNumber(summary: Record<string, unknown>, key: string) {
   const value = summary[key];
   return typeof value === "number" || typeof value === "string" ? String(value) : null;
@@ -133,14 +153,21 @@ export default async function ProjectTestCasesPage({
   const publishedCaseList = await listProjectPublishedTestCases(projectId);
   const automationGenerationList = await listProjectAutomationGenerations(projectId);
   const automationRunList = await listProjectAutomationRuns(projectId);
+  const automationFailureAnalysisList =
+    await listProjectAutomationFailureAnalyses(projectId);
   const items = testCaseList.kind === "http-error" ? [] : testCaseList.items;
   const publishedItems =
     publishedCaseList.kind === "http-error" ? [] : publishedCaseList.items;
   const automationGenerations =
     automationGenerationList.kind === "http-error" ? [] : automationGenerationList.items;
   const automationRuns = automationRunList.kind === "http-error" ? [] : automationRunList.items;
+  const automationFailureAnalyses =
+    automationFailureAnalysisList.kind === "http-error"
+      ? []
+      : automationFailureAnalysisList.items;
   const latestGenerationsByCase = getLatestGenerationsByCase(automationGenerations);
   const latestRunsByGeneration = getLatestRunsByGeneration(automationRuns);
+  const latestAnalysesByRun = getLatestAnalysesByRun(automationFailureAnalyses);
   const counts = getCounts(items);
   const countsUnavailable = testCaseList.kind === "http-error";
   const automationText =
@@ -172,6 +199,10 @@ export default async function ProjectTestCasesPage({
           passed: "\u901a\u8fc7",
           failed: "\u5931\u8d25",
           error: "\u5931\u8d25\u539f\u56e0",
+          analyze: "\u5206\u6790\u5931\u8d25",
+          analysis: "\u5931\u8d25\u5206\u6790",
+          retryRecommended: "\u5efa\u8bae\u91cd\u8bd5",
+          noRetry: "\u4e0d\u5efa\u8bae\u76f4\u63a5\u91cd\u8bd5",
         }
       : {
           latest: "Latest automation artifact",
@@ -184,6 +215,10 @@ export default async function ProjectTestCasesPage({
           passed: "Passed",
           failed: "Failed",
           error: "Failure reason",
+          analyze: "Analyze failure",
+          analysis: "Failure analysis",
+          retryRecommended: "Retry recommended",
+          noRetry: "No direct retry recommended",
         };
 
   async function generateAutomationAction(formData: FormData) {
@@ -207,6 +242,18 @@ export default async function ProjectTestCasesPage({
     }
 
     await createAutomationRun(value.trim());
+    revalidatePath(`/projects/${projectId}/test-cases`);
+  }
+
+  async function analyzeFailureAction(formData: FormData) {
+    "use server";
+
+    const value = formData.get("runId");
+    if (typeof value !== "string" || !value.trim()) {
+      return;
+    }
+
+    await createAutomationFailureAnalysis(value.trim());
     revalidatePath(`/projects/${projectId}/test-cases`);
   }
 
@@ -281,6 +328,10 @@ export default async function ProjectTestCasesPage({
                 latestRun === undefined ? null : getSummaryNumber(latestRun.summary, "passed");
               const failedCount =
                 latestRun === undefined ? null : getSummaryNumber(latestRun.summary, "failed");
+              const latestAnalysis =
+                latestRun === undefined
+                  ? undefined
+                  : latestAnalysesByRun.get(String(latestRun.id));
 
               return (
                 <article className="automation-card" key={item.id}>
@@ -324,6 +375,23 @@ export default async function ProjectTestCasesPage({
                                 {artifactText.error}: {latestRun.errorMessage}
                               </p>
                             ) : null}
+                            {latestAnalysis ? (
+                              <>
+                                <p>
+                                  <strong>{artifactText.analysis}</strong>:{" "}
+                                  {latestAnalysis.classification} · {latestAnalysis.provider}
+                                </p>
+                                <p>
+                                  {latestAnalysis.shouldRerun
+                                    ? artifactText.retryRecommended
+                                    : artifactText.noRetry}
+                                </p>
+                                <p>{latestAnalysis.summary}</p>
+                                {latestAnalysis.recommendations.length ? (
+                                  <p>{latestAnalysis.recommendations[0]}</p>
+                                ) : null}
+                              </>
+                            ) : null}
                           </>
                         ) : null}
                       </div>
@@ -338,6 +406,14 @@ export default async function ProjectTestCasesPage({
                       />
                       <button className="secondary-button" type="submit">
                         {artifactText.run}
+                      </button>
+                    </form>
+                  ) : null}
+                  {latestRun?.status === "failed" ? (
+                    <form action={analyzeFailureAction}>
+                      <input name="runId" type="hidden" value={String(latestRun.id)} />
+                      <button className="secondary-button" type="submit">
+                        {artifactText.analyze}
                       </button>
                     </form>
                   ) : null}

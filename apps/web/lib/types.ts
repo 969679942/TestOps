@@ -142,6 +142,35 @@ export type AutomationRunListResult =
       status: number;
     };
 
+export type AutomationFailureAnalysisRecord = {
+  id: string | number;
+  automationRunId: string | number;
+  status: string;
+  provider: string;
+  model: string;
+  classification: string;
+  confidence: number;
+  summary: string;
+  recommendations: string[];
+  shouldRerun: boolean;
+  createdAt: string;
+  completedAt: string | null;
+};
+
+export type AutomationFailureAnalysisListResult =
+  | {
+      kind: "success";
+      items: AutomationFailureAnalysisRecord[];
+    }
+  | {
+      kind: "unavailable";
+      items: AutomationFailureAnalysisRecord[];
+    }
+  | {
+      kind: "http-error";
+      status: number;
+    };
+
 export type TestCaseListResult =
   | {
       kind: "success";
