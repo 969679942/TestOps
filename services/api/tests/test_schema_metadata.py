@@ -14,6 +14,7 @@ from app.models import (  # noqa: F401
 
 def test_registered_model_metadata_matches_schema() -> None:
     assert sorted(Base.metadata.tables) == [
+        "automation_debug_proposals",
         "automation_failure_analyses",
         "automation_generations",
         "automation_reports",

@@ -8,12 +8,15 @@ const {
   createGenerationTaskMock,
   createProjectDocumentMock,
   createAutomationGenerationMock,
+  createAutomationDebugProposalMock,
+  createAutomationDebugProposalRerunMock,
   createAutomationFailureAnalysisMock,
   createAutomationRerunMock,
   createAutomationRunMock,
   addTestCaseReviewMock,
   listProjectAutomationGenerationsMock,
   listProjectAutomationFailureAnalysesMock,
+  listProjectAutomationDebugProposalsMock,
   listProjectAutomationRunsMock,
   listProjectAutomationSchedulesMock,
   listProjectAutomationReportsMock,
@@ -28,18 +31,22 @@ const {
   parseDocumentVersionMock,
   publishTestCaseMock,
   updateTestCaseMock,
+  reviewAutomationDebugProposalMock,
 } = vi.hoisted(() => ({
   getProjectMock: vi.fn(),
   createDocumentVersionMock: vi.fn(),
   createGenerationTaskMock: vi.fn(),
   createProjectDocumentMock: vi.fn(),
   createAutomationGenerationMock: vi.fn(),
+  createAutomationDebugProposalMock: vi.fn(),
+  createAutomationDebugProposalRerunMock: vi.fn(),
   createAutomationFailureAnalysisMock: vi.fn(),
   createAutomationRerunMock: vi.fn(),
   createAutomationRunMock: vi.fn(),
   addTestCaseReviewMock: vi.fn(),
   listProjectAutomationGenerationsMock: vi.fn(),
   listProjectAutomationFailureAnalysesMock: vi.fn(),
+  listProjectAutomationDebugProposalsMock: vi.fn(),
   listProjectAutomationRunsMock: vi.fn(),
   listProjectAutomationSchedulesMock: vi.fn(),
   listProjectAutomationReportsMock: vi.fn(),
@@ -54,6 +61,7 @@ const {
   parseDocumentVersionMock: vi.fn(),
   publishTestCaseMock: vi.fn(),
   updateTestCaseMock: vi.fn(),
+  reviewAutomationDebugProposalMock: vi.fn(),
 }));
 
 vi.mock("../../lib/api", () => ({
@@ -62,12 +70,15 @@ vi.mock("../../lib/api", () => ({
   createGenerationTask: createGenerationTaskMock,
   createProjectDocument: createProjectDocumentMock,
   createAutomationGeneration: createAutomationGenerationMock,
+  createAutomationDebugProposal: createAutomationDebugProposalMock,
+  createAutomationDebugProposalRerun: createAutomationDebugProposalRerunMock,
   createAutomationFailureAnalysis: createAutomationFailureAnalysisMock,
   createAutomationRerun: createAutomationRerunMock,
   createAutomationRun: createAutomationRunMock,
   getProject: getProjectMock,
   listProjectAutomationGenerations: listProjectAutomationGenerationsMock,
   listProjectAutomationFailureAnalyses: listProjectAutomationFailureAnalysesMock,
+  listProjectAutomationDebugProposals: listProjectAutomationDebugProposalsMock,
   listProjectAutomationRuns: listProjectAutomationRunsMock,
   listProjectAutomationSchedules: listProjectAutomationSchedulesMock,
   listProjectAutomationReports: listProjectAutomationReportsMock,
@@ -82,6 +93,7 @@ vi.mock("../../lib/api", () => ({
   parseDocumentVersion: parseDocumentVersionMock,
   publishTestCase: publishTestCaseMock,
   updateTestCase: updateTestCaseMock,
+  reviewAutomationDebugProposal: reviewAutomationDebugProposalMock,
 }));
 
 import HomePage from "../../app/page";
@@ -403,6 +415,26 @@ describe("workspace pages", () => {
         },
       ],
     });
+    listProjectAutomationDebugProposalsMock.mockResolvedValue({
+      kind: "success",
+      items: [
+        {
+          id: "proposal-401",
+          automationFailureAnalysisId: "analysis-301",
+          status: "draft",
+          proposalType: "patch_proposal",
+          summary: "Manual review required before rerun.",
+          patchProposal: {
+            manual_review_required: true,
+          },
+          recommendations: ["Stabilize the submit button locator."],
+          reviewerId: null,
+          reviewComment: null,
+          createdAt: "2026-05-21T08:00:02Z",
+          reviewedAt: null,
+        },
+      ],
+    });
     listProjectDataSetupHintsMock.mockResolvedValue({
       kind: "success",
       hints: [
@@ -481,7 +513,8 @@ describe("workspace pages", () => {
     expect(html).toContain("Failure analysis");
     expect(html).toContain("automation_issue");
     expect(html).toContain("Retry recommended");
-    expect(html).toContain("Create rerun");
+    expect(html).toContain("Debug proposal");
+    expect(html).toContain("Approve proposal");
     expect(html).toContain("Inspect the selector");
     expect(html).toContain("Review Workspace");
   });
@@ -698,6 +731,10 @@ describe("workspace pages", () => {
       status: 503,
     });
     listProjectAutomationFailureAnalysesMock.mockResolvedValue({
+      kind: "http-error",
+      status: 503,
+    });
+    listProjectAutomationDebugProposalsMock.mockResolvedValue({
       kind: "http-error",
       status: 503,
     });

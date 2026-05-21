@@ -65,3 +65,22 @@ class AutomationFailureAnalysis(Base):
     should_rerun: Mapped[bool] = mapped_column(default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(), default=_utcnow, nullable=False)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(), nullable=True)
+
+
+class AutomationDebugProposal(Base):
+    __tablename__ = "automation_debug_proposals"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    automation_failure_analysis_id: Mapped[int] = mapped_column(
+        ForeignKey("automation_failure_analyses.id"),
+        nullable=False,
+    )
+    status: Mapped[str] = mapped_column(String(32), default="draft", nullable=False)
+    proposal_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    summary: Mapped[str] = mapped_column(Text(), nullable=False)
+    patch_proposal: Mapped[dict[str, Any]] = mapped_column(JSON(), default=dict, nullable=False)
+    recommendations: Mapped[list[str]] = mapped_column(JSON(), default=list, nullable=False)
+    reviewer_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    review_comment: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(), default=_utcnow, nullable=False)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(), nullable=True)

@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   addTestCaseReview,
   createAutomationGeneration,
+  createAutomationDebugProposal,
+  createAutomationDebugProposalRerun,
   createAutomationFailureAnalysis,
   createAutomationRerun,
   createAutomationRun,
@@ -11,6 +13,7 @@ import {
   createGenerationTask,
   createProjectDocument,
   getProject,
+  listProjectAutomationDebugProposals,
   listProjectAutomationSchedules,
   listProjectDataSetupExecutions,
   listProjectDataSetupHints,
@@ -28,6 +31,7 @@ import {
   publishTestCase,
   updateProjectEnvironment,
   updateAutomationRun,
+  reviewAutomationDebugProposal,
   updateTestCase,
 } from "../../lib/api";
 
@@ -984,6 +988,109 @@ describe("api fallbacks", () => {
     });
     expect(fetchMock).toHaveBeenCalledWith(
       "http://127.0.0.1:8000/automation-failure-analyses/12/rerun",
+      expect.objectContaining({
+        method: "POST",
+      }),
+    );
+  });
+
+  it("creates, reviews, reruns, and lists automation debug proposals through the API", async () => {
+    const proposalResponse = {
+      id: 21,
+      automation_failure_analysis_id: 12,
+      status: "draft",
+      proposal_type: "patch_proposal",
+      summary: "Manual review required before rerun.",
+      patch_proposal: {
+        manual_review_required: true,
+      },
+      recommendations: ["Stabilize the submit button locator."],
+      reviewer_id: null,
+      review_comment: null,
+      created_at: "2026-05-21T08:02:00Z",
+      reviewed_at: null,
+    };
+    const approvedResponse = {
+      ...proposalResponse,
+      status: "approved",
+      reviewer_id: "web.reviewer",
+      review_comment: "Safe to rerun",
+      reviewed_at: "2026-05-21T08:03:00Z",
+    };
+    fetchMock.mockResolvedValueOnce(jsonResponse(proposalResponse, 201));
+    fetchMock.mockResolvedValueOnce(jsonResponse(approvedResponse));
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(
+        {
+          id: 22,
+          automation_generation_id: 5,
+          status: "queued",
+          trigger_mode: "debug_rerun",
+          report_path: null,
+          summary: {},
+          error_message: null,
+          created_at: "2026-05-21T08:04:00Z",
+          started_at: null,
+          finished_at: null,
+        },
+        201,
+      ),
+    );
+    fetchMock.mockResolvedValueOnce(jsonResponse([approvedResponse]));
+
+    await expect(createAutomationDebugProposal("12")).resolves.toMatchObject({
+      kind: "success",
+      data: {
+        id: "21",
+        automationFailureAnalysisId: "12",
+        status: "draft",
+        patchProposal: {
+          manual_review_required: true,
+        },
+      },
+    });
+    await expect(
+      reviewAutomationDebugProposal("21", {
+        action: "approve",
+        reviewer_id: "web.reviewer",
+        comment: "Safe to rerun",
+      }),
+    ).resolves.toMatchObject({
+      kind: "success",
+      data: {
+        status: "approved",
+        reviewerId: "web.reviewer",
+      },
+    });
+    await expect(createAutomationDebugProposalRerun("21")).resolves.toMatchObject({
+      kind: "success",
+      data: {
+        triggerMode: "debug_rerun",
+      },
+    });
+    await expect(listProjectAutomationDebugProposals("1")).resolves.toMatchObject({
+      kind: "success",
+      items: [
+        {
+          id: "21",
+          status: "approved",
+        },
+      ],
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/automation-failure-analyses/12/debug-proposals",
+      expect.objectContaining({
+        method: "POST",
+      }),
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/automation-debug-proposals/21/review",
+      expect.objectContaining({
+        method: "PATCH",
+      }),
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/automation-debug-proposals/21/rerun",
       expect.objectContaining({
         method: "POST",
       }),

@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session
 from app.core.database import get_session
 from app.modules.automation import service as automation_service
 from app.schemas.automation import (
+    AutomationDebugProposalRead,
+    AutomationDebugProposalReview,
     AutomationFailureAnalysisRead,
     AutomationGenerationCreate,
     AutomationGenerationRead,
@@ -46,6 +48,17 @@ def list_project_automation_failure_analyses(
     session: Session = Depends(get_session),
 ) -> list[AutomationFailureAnalysisRead]:
     return automation_service.list_project_failure_analyses(session, project_id)
+
+
+@router.get(
+    "/projects/{project_id}/automation-debug-proposals",
+    response_model=list[AutomationDebugProposalRead],
+)
+def list_project_automation_debug_proposals(
+    project_id: int,
+    session: Session = Depends(get_session),
+) -> list[AutomationDebugProposalRead]:
+    return automation_service.list_project_debug_proposals(session, project_id)
 
 
 @router.post(
@@ -92,6 +105,42 @@ def create_automation_failure_analysis(
     session: Session = Depends(get_session),
 ) -> AutomationFailureAnalysisRead:
     return automation_service.create_failure_analysis(session, run_id)
+
+
+@router.post(
+    "/automation-failure-analyses/{analysis_id}/debug-proposals",
+    response_model=AutomationDebugProposalRead,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_automation_debug_proposal(
+    analysis_id: int,
+    session: Session = Depends(get_session),
+) -> AutomationDebugProposalRead:
+    return automation_service.create_debug_proposal(session, analysis_id)
+
+
+@router.patch(
+    "/automation-debug-proposals/{proposal_id}/review",
+    response_model=AutomationDebugProposalRead,
+)
+def review_automation_debug_proposal(
+    proposal_id: int,
+    payload: AutomationDebugProposalReview,
+    session: Session = Depends(get_session),
+) -> AutomationDebugProposalRead:
+    return automation_service.review_debug_proposal(session, proposal_id, payload)
+
+
+@router.post(
+    "/automation-debug-proposals/{proposal_id}/rerun",
+    response_model=AutomationRunRead,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_automation_rerun_from_debug_proposal(
+    proposal_id: int,
+    session: Session = Depends(get_session),
+) -> AutomationRunRead:
+    return automation_service.create_rerun_from_debug_proposal(session, proposal_id)
 
 
 @router.post(

@@ -27,7 +27,7 @@ class AutomationGenerationRead(BaseModel):
 
 
 class AutomationRunCreate(BaseModel):
-    trigger_mode: Literal["manual", "scheduled", "analysis_rerun"] = "manual"
+    trigger_mode: Literal["manual", "scheduled", "analysis_rerun", "debug_rerun"] = "manual"
 
 
 class AutomationRunUpdate(BaseModel):
@@ -67,3 +67,25 @@ class AutomationFailureAnalysisRead(BaseModel):
     should_rerun: bool
     created_at: datetime
     completed_at: datetime | None
+
+
+class AutomationDebugProposalReview(BaseModel):
+    action: Literal["approve", "reject"]
+    reviewer_id: str
+    comment: str | None = None
+
+
+class AutomationDebugProposalRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    automation_failure_analysis_id: int
+    status: str
+    proposal_type: str
+    summary: str
+    patch_proposal: dict[str, Any]
+    recommendations: list[str]
+    reviewer_id: str | None
+    review_comment: str | None
+    created_at: datetime
+    reviewed_at: datetime | None

@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models.automation import (
+    AutomationDebugProposal,
     AutomationFailureAnalysis,
     AutomationGeneration,
     AutomationRun,
@@ -25,6 +26,7 @@ from app.modules.automation.failure_provider import (
 from app.modules.automation.generator import generate_playwright_pom_files
 from app.modules.document.storage import LocalArtifactStorage
 from app.schemas.automation import (
+    AutomationDebugProposalReview,
     AutomationGenerationCreate,
     AutomationRunCreate,
     AutomationRunUpdate,
@@ -92,6 +94,23 @@ def _get_failure_analysis(
             detail="Automation failure analysis not found",
         )
     return analysis
+
+
+def _get_debug_proposal(
+    session: Session,
+    proposal_id: int,
+) -> AutomationDebugProposal:
+    proposal = session.scalar(
+        select(AutomationDebugProposal).where(
+            AutomationDebugProposal.id == proposal_id
+        )
+    )
+    if proposal is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Automation debug proposal not found",
+        )
+    return proposal
 
 
 def get_failure_analysis_provider(_settings=settings) -> FailureAnalysisProvider:
@@ -239,6 +258,120 @@ def create_rerun_from_analysis(
     session.commit()
     session.refresh(rerun)
     return rerun
+
+
+def create_debug_proposal(
+    session: Session,
+    analysis_id: int,
+) -> AutomationDebugProposal:
+    analysis = _get_failure_analysis(session, analysis_id)
+    if analysis.classification == "business_regression" or not analysis.should_rerun:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Only retryable non-business failures can create debug proposals",
+        )
+
+    proposal = AutomationDebugProposal(
+        automation_failure_analysis_id=analysis.id,
+        status="draft",
+        proposal_type="patch_proposal",
+        summary=(
+            "Manual review required before rerun. The proposal captures the "
+            f"failure analysis guidance for {analysis.classification}."
+        ),
+        patch_proposal={
+            "manual_review_required": True,
+            "source_analysis_id": analysis.id,
+            "classification": analysis.classification,
+            "suggested_changes": analysis.recommendations,
+        },
+        recommendations=analysis.recommendations,
+    )
+    session.add(proposal)
+    session.commit()
+    session.refresh(proposal)
+    return proposal
+
+
+def review_debug_proposal(
+    session: Session,
+    proposal_id: int,
+    payload: AutomationDebugProposalReview,
+) -> AutomationDebugProposal:
+    proposal = _get_debug_proposal(session, proposal_id)
+    if proposal.status not in {"draft", "approved", "rejected"}:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Debug proposal can no longer be reviewed",
+        )
+
+    proposal.status = "approved" if payload.action == "approve" else "rejected"
+    proposal.reviewer_id = payload.reviewer_id
+    proposal.review_comment = payload.comment
+    proposal.reviewed_at = _utcnow()
+    session.add(proposal)
+    session.commit()
+    session.refresh(proposal)
+    return proposal
+
+
+def create_rerun_from_debug_proposal(
+    session: Session,
+    proposal_id: int,
+) -> AutomationRun:
+    proposal = _get_debug_proposal(session, proposal_id)
+    if proposal.status != "approved":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Debug proposal must be approved before rerun",
+        )
+
+    analysis = _get_failure_analysis(session, proposal.automation_failure_analysis_id)
+    source_run = _get_run(session, analysis.automation_run_id)
+    generation = _get_generation(session, source_run.automation_generation_id)
+    rerun = AutomationRun(
+        automation_generation_id=generation.id,
+        status="queued",
+        trigger_mode="debug_rerun",
+        summary={},
+    )
+    proposal.status = "applied"
+    session.add(rerun)
+    session.add(proposal)
+    session.commit()
+    session.refresh(rerun)
+    return rerun
+
+
+def list_project_debug_proposals(
+    session: Session,
+    project_id: int,
+) -> list[AutomationDebugProposal]:
+    _get_project(session, project_id)
+    return list(
+        session.scalars(
+            select(AutomationDebugProposal)
+            .join(
+                AutomationFailureAnalysis,
+                AutomationDebugProposal.automation_failure_analysis_id
+                == AutomationFailureAnalysis.id,
+            )
+            .join(
+                AutomationRun,
+                AutomationFailureAnalysis.automation_run_id == AutomationRun.id,
+            )
+            .join(
+                AutomationGeneration,
+                AutomationRun.automation_generation_id == AutomationGeneration.id,
+            )
+            .join(TestCase, AutomationGeneration.test_case_id == TestCase.id)
+            .where(TestCase.project_id == project_id)
+            .order_by(
+                AutomationDebugProposal.created_at.desc(),
+                AutomationDebugProposal.id.desc(),
+            )
+        )
+    )
 
 
 def list_project_failure_analyses(

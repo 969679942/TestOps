@@ -5,10 +5,12 @@ import { AppShell } from "../../../../components/app-shell";
 import { TestCaseTable } from "../../../../components/test-case-table";
 import {
   createAutomationFailureAnalysis,
+  createAutomationDebugProposal,
+  createAutomationDebugProposalRerun,
   createAutomationGeneration,
-  createAutomationRerun,
   createAutomationRun,
   getProject,
+  listProjectAutomationDebugProposals,
   listProjectAutomationFailureAnalyses,
   listProjectAutomationGenerations,
   listProjectAutomationReports,
@@ -17,10 +19,12 @@ import {
   listProjectDataSetupHints,
   listProjectPublishedTestCases,
   listProjectTestCases,
+  reviewAutomationDebugProposal,
 } from "../../../../lib/api";
 import { copy, localizedHref, normalizeLocale, type LocaleSearchParams } from "../../../../lib/i18n";
 import type {
   AutomationFailureAnalysisRecord,
+  AutomationDebugProposalRecord,
   AutomationGenerationRecord,
   AutomationReportRecord,
   AutomationRunRecord,
@@ -102,6 +106,23 @@ function getLatestAnalysesByRun(items: AutomationFailureAnalysisRecord[]) {
   }
 
   return latestByRun;
+}
+
+function getLatestDebugProposalsByAnalysis(items: AutomationDebugProposalRecord[]) {
+  const latestByAnalysis = new Map<string, AutomationDebugProposalRecord>();
+
+  for (const item of items) {
+    const analysisId = String(item.automationFailureAnalysisId);
+    const current = latestByAnalysis.get(analysisId);
+    if (
+      current === undefined ||
+      Date.parse(item.createdAt) > Date.parse(current.createdAt)
+    ) {
+      latestByAnalysis.set(analysisId, item);
+    }
+  }
+
+  return latestByAnalysis;
 }
 
 function getLatestReportsByRun(items: AutomationReportRecord[]) {
@@ -209,6 +230,8 @@ export default async function ProjectTestCasesPage({
   const automationReportList = await listProjectAutomationReports(projectId);
   const automationFailureAnalysisList =
     await listProjectAutomationFailureAnalyses(projectId);
+  const automationDebugProposalList =
+    await listProjectAutomationDebugProposals(projectId);
   const dataSetupHintList = await listProjectDataSetupHints(projectId);
   const dataSetupExecutionList = await listProjectDataSetupExecutions(projectId);
   const items = testCaseList.kind === "http-error" ? [] : testCaseList.items;
@@ -223,6 +246,10 @@ export default async function ProjectTestCasesPage({
     automationFailureAnalysisList.kind === "http-error"
       ? []
       : automationFailureAnalysisList.items;
+  const automationDebugProposals =
+    automationDebugProposalList.kind === "http-error"
+      ? []
+      : automationDebugProposalList.items;
   const dataSetupHints =
     dataSetupHintList.kind === "http-error" ? [] : dataSetupHintList.hints;
   const dataSetupExecutions =
@@ -233,6 +260,8 @@ export default async function ProjectTestCasesPage({
   const latestRunsByGeneration = getLatestRunsByGeneration(automationRuns);
   const latestReportsByRun = getLatestReportsByRun(automationReports);
   const latestAnalysesByRun = getLatestAnalysesByRun(automationFailureAnalyses);
+  const latestDebugProposalsByAnalysis =
+    getLatestDebugProposalsByAnalysis(automationDebugProposals);
   const dataSetupHintsByCase = getDataSetupHintsByCase(dataSetupHints);
   const latestDataSetupExecutionsByHint =
     getLatestDataSetupExecutionsByHint(dataSetupExecutions);
@@ -271,6 +300,10 @@ export default async function ProjectTestCasesPage({
           error: "\u5931\u8d25\u539f\u56e0",
           analyze: "\u5206\u6790\u5931\u8d25",
           analysis: "\u5931\u8d25\u5206\u6790",
+          debugProposal: "\u8c03\u8bd5\u63d0\u6848",
+          createDebugProposal: "\u521b\u5efa\u8c03\u8bd5\u63d0\u6848",
+          approveProposal: "\u5ba1\u6279\u63d0\u6848",
+          controlledRerun: "\u53d7\u63a7\u91cd\u8bd5",
           dataSetup: "\u6570\u636e\u51c6\u5907",
           dataSetupExecution: "\u6570\u636e\u51c6\u5907\u6267\u884c",
           rerun: "\u521b\u5efa\u91cd\u8bd5",
@@ -292,6 +325,10 @@ export default async function ProjectTestCasesPage({
           error: "Failure reason",
           analyze: "Analyze failure",
           analysis: "Failure analysis",
+          debugProposal: "Debug proposal",
+          createDebugProposal: "Create debug proposal",
+          approveProposal: "Approve proposal",
+          controlledRerun: "Controlled rerun",
           dataSetup: "Data setup",
           dataSetupExecution: "Data setup execution",
           rerun: "Create rerun",
@@ -335,7 +372,7 @@ export default async function ProjectTestCasesPage({
     revalidatePath(`/projects/${projectId}/test-cases`);
   }
 
-  async function createRerunAction(formData: FormData) {
+  async function createDebugProposalAction(formData: FormData) {
     "use server";
 
     const value = formData.get("analysisId");
@@ -343,7 +380,35 @@ export default async function ProjectTestCasesPage({
       return;
     }
 
-    await createAutomationRerun(value.trim());
+    await createAutomationDebugProposal(value.trim());
+    revalidatePath(`/projects/${projectId}/test-cases`);
+  }
+
+  async function approveDebugProposalAction(formData: FormData) {
+    "use server";
+
+    const value = formData.get("proposalId");
+    if (typeof value !== "string" || !value.trim()) {
+      return;
+    }
+
+    await reviewAutomationDebugProposal(value.trim(), {
+      action: "approve",
+      reviewer_id: "web.reviewer",
+      comment: "Approved from TestOps review gate.",
+    });
+    revalidatePath(`/projects/${projectId}/test-cases`);
+  }
+
+  async function createControlledRerunAction(formData: FormData) {
+    "use server";
+
+    const value = formData.get("proposalId");
+    if (typeof value !== "string" || !value.trim()) {
+      return;
+    }
+
+    await createAutomationDebugProposalRerun(value.trim());
     revalidatePath(`/projects/${projectId}/test-cases`);
   }
 
@@ -422,6 +487,10 @@ export default async function ProjectTestCasesPage({
                 latestRun === undefined
                   ? undefined
                   : latestAnalysesByRun.get(String(latestRun.id));
+              const latestDebugProposal =
+                latestAnalysis === undefined
+                  ? undefined
+                  : latestDebugProposalsByAnalysis.get(String(latestAnalysis.id));
               const latestReport =
                 latestRun === undefined
                   ? undefined
@@ -502,6 +571,18 @@ export default async function ProjectTestCasesPage({
                                 {latestAnalysis.recommendations.length ? (
                                   <p>{latestAnalysis.recommendations[0]}</p>
                                 ) : null}
+                                {latestDebugProposal ? (
+                                  <>
+                                    <p>
+                                      <strong>{artifactText.debugProposal}</strong>:{" "}
+                                      {latestDebugProposal.status}
+                                    </p>
+                                    <p>{latestDebugProposal.summary}</p>
+                                    {latestDebugProposal.recommendations.length ? (
+                                      <p>{latestDebugProposal.recommendations[0]}</p>
+                                    ) : null}
+                                  </>
+                                ) : null}
                               </>
                             ) : null}
                           </>
@@ -562,15 +643,39 @@ export default async function ProjectTestCasesPage({
                       </button>
                     </form>
                   ) : null}
-                  {latestAnalysis?.shouldRerun ? (
-                    <form action={createRerunAction}>
+                  {latestAnalysis?.shouldRerun && !latestDebugProposal ? (
+                    <form action={createDebugProposalAction}>
                       <input
                         name="analysisId"
                         type="hidden"
                         value={String(latestAnalysis.id)}
                       />
                       <button className="secondary-button" type="submit">
-                        {artifactText.rerun}
+                        {artifactText.createDebugProposal}
+                      </button>
+                    </form>
+                  ) : null}
+                  {latestDebugProposal?.status === "draft" ? (
+                    <form action={approveDebugProposalAction}>
+                      <input
+                        name="proposalId"
+                        type="hidden"
+                        value={String(latestDebugProposal.id)}
+                      />
+                      <button className="secondary-button" type="submit">
+                        {artifactText.approveProposal}
+                      </button>
+                    </form>
+                  ) : null}
+                  {latestDebugProposal?.status === "approved" ? (
+                    <form action={createControlledRerunAction}>
+                      <input
+                        name="proposalId"
+                        type="hidden"
+                        value={String(latestDebugProposal.id)}
+                      />
+                      <button className="secondary-button" type="submit">
+                        {artifactText.controlledRerun}
                       </button>
                     </form>
                   ) : null}

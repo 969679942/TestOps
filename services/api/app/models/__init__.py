@@ -1,5 +1,6 @@
 from app.models.automation import (
     AutomationFailureAnalysis,
+    AutomationDebugProposal,
     AutomationGeneration,
     AutomationRun,
 )
@@ -14,6 +15,7 @@ from app.models.testcase import TestCase, TestCaseReview
 
 __all__ = [
     "AutomationReport",
+    "AutomationDebugProposal",
     "AutomationGeneration",
     "AutomationFailureAnalysis",
     "AutomationRun",

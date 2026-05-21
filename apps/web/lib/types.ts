@@ -236,6 +236,34 @@ export type AutomationFailureAnalysisListResult =
       status: number;
     };
 
+export type AutomationDebugProposalRecord = {
+  id: string | number;
+  automationFailureAnalysisId: string | number;
+  status: string;
+  proposalType: string;
+  summary: string;
+  patchProposal: Record<string, unknown>;
+  recommendations: string[];
+  reviewerId: string | null;
+  reviewComment: string | null;
+  createdAt: string;
+  reviewedAt: string | null;
+};
+
+export type AutomationDebugProposalListResult =
+  | {
+      kind: "success";
+      items: AutomationDebugProposalRecord[];
+    }
+  | {
+      kind: "unavailable";
+      items: AutomationDebugProposalRecord[];
+    }
+  | {
+      kind: "http-error";
+      status: number;
+    };
+
 export type DataSetupHintRecord = {
   id: string | number;
   testCaseId: string | number;

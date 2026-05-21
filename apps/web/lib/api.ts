@@ -1,6 +1,8 @@
 import type {
   AutomationGenerationListResult,
   AutomationGenerationRecord,
+  AutomationDebugProposalListResult,
+  AutomationDebugProposalRecord,
   AutomationFailureAnalysisListResult,
   AutomationFailureAnalysisRecord,
   AutomationReportListResult,
@@ -164,6 +166,20 @@ type AutomationFailureAnalysisApiRecord = {
   completed_at: string | null;
 };
 
+type AutomationDebugProposalApiRecord = {
+  id: number;
+  automation_failure_analysis_id: number;
+  status: string;
+  proposal_type: string;
+  summary: string;
+  patch_proposal: Record<string, unknown>;
+  recommendations: string[];
+  reviewer_id: string | null;
+  review_comment: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+};
+
 type AutomationReportApiRecord = {
   id: number;
   automation_run_id: number;
@@ -270,6 +286,12 @@ export type UpdateAutomationRunPayload = {
   report_path?: string | null;
   summary?: Record<string, unknown>;
   error_message?: string | null;
+};
+
+export type ReviewAutomationDebugProposalPayload = {
+  action: "approve" | "reject";
+  reviewer_id: string;
+  comment?: string | null;
 };
 
 const API_BASE_URL = process.env.TESTOPS_API_BASE_URL ?? "http://127.0.0.1:8000";
@@ -921,6 +943,24 @@ function mapAutomationFailureAnalysis(
   };
 }
 
+function mapAutomationDebugProposal(
+  item: AutomationDebugProposalApiRecord,
+): AutomationDebugProposalRecord {
+  return {
+    id: String(item.id),
+    automationFailureAnalysisId: String(item.automation_failure_analysis_id),
+    status: item.status,
+    proposalType: item.proposal_type,
+    summary: item.summary,
+    patchProposal: item.patch_proposal,
+    recommendations: item.recommendations,
+    reviewerId: item.reviewer_id,
+    reviewComment: item.review_comment,
+    createdAt: item.created_at,
+    reviewedAt: item.reviewed_at,
+  };
+}
+
 function mapAutomationReport(item: AutomationReportApiRecord): AutomationReportRecord {
   return {
     id: String(item.id),
@@ -1365,6 +1405,30 @@ export async function listProjectAutomationFailureAnalyses(
   };
 }
 
+export async function listProjectAutomationDebugProposals(
+  projectId: string,
+): Promise<AutomationDebugProposalListResult> {
+  const result = await requestJson<AutomationDebugProposalApiRecord[]>(
+    `/projects/${projectId}/automation-debug-proposals`,
+  );
+
+  if (result.kind === "unavailable") {
+    return {
+      kind: "unavailable",
+      items: [],
+    };
+  }
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    items: result.data.map(mapAutomationDebugProposal),
+  };
+}
+
 export async function listProjectDataSetupHints(
   projectId: string,
 ): Promise<DataSetupHintListResult> {
@@ -1444,6 +1508,59 @@ export async function createAutomationFailureAnalysis(
   return {
     kind: "success",
     data: mapAutomationFailureAnalysis(result.data),
+  };
+}
+
+export async function createAutomationDebugProposal(
+  analysisId: string,
+): Promise<RequestResult<AutomationDebugProposalRecord>> {
+  const result = await postJson<AutomationDebugProposalApiRecord>(
+    `/automation-failure-analyses/${analysisId}/debug-proposals`,
+  );
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: mapAutomationDebugProposal(result.data),
+  };
+}
+
+export async function reviewAutomationDebugProposal(
+  proposalId: string,
+  payload: ReviewAutomationDebugProposalPayload,
+): Promise<RequestResult<AutomationDebugProposalRecord>> {
+  const result = await patchJson<AutomationDebugProposalApiRecord>(
+    `/automation-debug-proposals/${proposalId}/review`,
+    payload,
+  );
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: mapAutomationDebugProposal(result.data),
+  };
+}
+
+export async function createAutomationDebugProposalRerun(
+  proposalId: string,
+): Promise<RequestResult<AutomationRunRecord>> {
+  const result = await postJson<AutomationRunApiRecord>(
+    `/automation-debug-proposals/${proposalId}/rerun`,
+  );
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: mapAutomationRun(result.data),
   };
 }
 
