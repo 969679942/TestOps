@@ -1,24 +1,12 @@
 import React from "react";
 
-import { copy, localizedHref, type Locale } from "../lib/i18n";
+import { copy, formatValue, localizedHref, type Locale } from "../lib/i18n";
 import type { TestCaseRecord } from "../lib/types";
 
 type TestCaseTableProps = Readonly<{
   items: TestCaseRecord[];
   locale?: Locale;
 }>;
-
-function formatLabel(value: string, fallback: string) {
-  if (!value) {
-    return fallback;
-  }
-
-  return value
-    .split(/[-_ ]+/)
-    .filter(Boolean)
-    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-    .join(" ");
-}
 
 export function TestCaseTable({ items, locale = "en" }: TestCaseTableProps) {
   const t = copy[locale].components;
@@ -34,7 +22,7 @@ export function TestCaseTable({ items, locale = "en" }: TestCaseTableProps) {
       </div>
 
       <div className="table-scroll">
-        <table className="data-table" aria-label="Project test cases">
+        <table className="data-table" aria-label={t.testCaseDrafts}>
           <thead>
             <tr>
               <th scope="col">{t.title}</th>
@@ -51,14 +39,15 @@ export function TestCaseTable({ items, locale = "en" }: TestCaseTableProps) {
                   <td>
                     <strong>{item.title}</strong>
                     <div className="table-detail">
-                      {formatLabel(item.caseType, t.case)} for {item.feature}
+                      {formatValue(item.caseType, locale, t.case)} {t.for}{" "}
+                      {item.feature}
                     </div>
                   </td>
                   <td>{item.module}</td>
-                  <td>{formatLabel(item.priority, t.unspecified)}</td>
+                  <td>{formatValue(item.priority, locale, t.unspecified)}</td>
                   <td>
                     <span className="status-pill">
-                      {formatLabel(item.status, t.draft)}
+                      {formatValue(item.status, locale, t.draft)}
                     </span>
                   </td>
                   <td>

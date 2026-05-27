@@ -66,26 +66,6 @@ export default async function ProjectGenerationTasksPage({
 
   const taskList = await listProjectGenerationTasks(projectId);
   const tasks = taskList.kind === "http-error" ? [] : taskList.tasks;
-  const actionText =
-    locale === "zh"
-      ? {
-          title: "创建生成任务",
-          copy: "输入文档 ID，选择 provider/model 后排队生成测试用例草稿。",
-          documentIds: "输入文档 IDs",
-          provider: "Provider",
-          model: "模型",
-          promptProfile: "提示词配置",
-          submit: "排队生成",
-        }
-      : {
-          title: "Queue generation run",
-          copy: "Enter document IDs and optional provider/model details to create a draft-generation task.",
-          documentIds: "Input document IDs",
-          provider: "Provider",
-          model: "Model",
-          promptProfile: "Prompt profile",
-          submit: "Queue generation",
-        };
 
   async function createGenerationAction(formData: FormData) {
     "use server";
@@ -156,30 +136,30 @@ export default async function ProjectGenerationTasksPage({
         <div className="section-heading">
           <div>
             <span className="eyebrow">{t.generationPage.eyebrow}</span>
-            <h3>{actionText.title}</h3>
+            <h3>{t.generationPage.createTitle}</h3>
           </div>
-          <p>{actionText.copy}</p>
+          <p>{t.generationPage.createCopy}</p>
         </div>
         <form action={createGenerationAction} className="review-stack">
           <div className="form-grid">
             <label className="form-field">
-              <span>{actionText.documentIds}</span>
+              <span>{t.generationPage.documentIds}</span>
               <input className="field-input" name="inputDocumentIds" placeholder="1, 2, 3" />
             </label>
             <label className="form-field">
-              <span>{actionText.provider}</span>
+              <span>{t.generationPage.provider}</span>
               <select className="field-input" name="provider" defaultValue="">
-                <option value="">Project default</option>
+                <option value="">{t.generationPage.projectDefault}</option>
                 <option value="cursor">Cursor</option>
                 <option value="openai">OpenAI</option>
               </select>
             </label>
             <label className="form-field">
-              <span>{actionText.model}</span>
+              <span>{t.generationPage.model}</span>
               <input className="field-input" name="model" placeholder={project.defaultProvider} />
             </label>
             <label className="form-field">
-              <span>{actionText.promptProfile}</span>
+              <span>{t.generationPage.promptProfile}</span>
               <input
                 className="field-input"
                 name="promptProfile"
@@ -188,7 +168,7 @@ export default async function ProjectGenerationTasksPage({
             </label>
           </div>
           <button className="primary-button" type="submit">
-            {actionText.submit}
+            {t.generationPage.queueGeneration}
           </button>
         </form>
       </section>

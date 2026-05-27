@@ -144,7 +144,7 @@ describe("workspace pages", () => {
 
     expect(html).toContain("项目目录");
     expect(html).toContain("管理项目空间");
-    expect(html).toContain("English");
+    expect(html).toContain("英文");
   });
 
   it("renders a lightweight settings page for the shell navigation target", async () => {

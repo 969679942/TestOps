@@ -1,24 +1,12 @@
 import React from "react";
 
-import { copy, type Locale } from "../lib/i18n";
+import { copy, formatValue, type Locale } from "../lib/i18n";
 import type { DocumentAsset } from "../lib/types";
 
 type DocumentTableProps = Readonly<{
   items: DocumentAsset[];
   locale?: Locale;
 }>;
-
-function formatLabel(value: string | undefined, fallback: string) {
-  if (!value) {
-    return fallback;
-  }
-
-  return value
-    .split(/[-_ ]+/)
-    .filter(Boolean)
-    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-    .join(" ");
-}
 
 export function DocumentTable({ items, locale = "en" }: DocumentTableProps) {
   const t = copy[locale].components;
@@ -34,7 +22,7 @@ export function DocumentTable({ items, locale = "en" }: DocumentTableProps) {
       </div>
 
       <div className="table-scroll">
-        <table className="data-table" aria-label="Project documents">
+        <table className="data-table" aria-label={t.documentAssets}>
           <thead>
             <tr>
               <th scope="col">{t.name}</th>
@@ -48,11 +36,11 @@ export function DocumentTable({ items, locale = "en" }: DocumentTableProps) {
               items.map((item) => (
                 <tr key={item.id}>
                   <td>{item.name}</td>
-                  <td>{formatLabel(item.type, t.unknown)}</td>
+                  <td>{formatValue(item.type, locale, t.unknown)}</td>
                   <td>{item.sourceUri ?? t.stored}</td>
                   <td>
                     <span className="status-pill">
-                      {formatLabel(item.parseStatus, t.pendingParse)}
+                      {formatValue(item.parseStatus, locale, t.pendingParse)}
                     </span>
                   </td>
                 </tr>

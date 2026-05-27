@@ -27,7 +27,7 @@ describe("AppShell", () => {
 
     expect(html).toContain(">项目<");
     expect(html).toContain(">设置<");
-    expect(html).toContain(">English<");
+    expect(html).toContain(">英文<");
     expect(html).toContain('href="/projects/payments?lang=en"');
   });
 

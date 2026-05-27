@@ -20,6 +20,81 @@ export function localizedHref(path: string, locale: Locale) {
   return locale === "en" ? path : withLocale(path, locale);
 }
 
+function titleCase(value: string) {
+  return value
+    .split(/[-_ ]+/)
+    .filter(Boolean)
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(" ");
+}
+
+const zhValueMap: Record<string, string> = {
+  active: "启用",
+  archived: "已归档",
+  approved: "已批准",
+  automation_issue: "自动化问题",
+  business_issue: "业务问题",
+  cancelled: "已取消",
+  completed: "已完成",
+  comment: "评论",
+  debug_rerun: "调试重跑",
+  draft: "草稿",
+  failed: "失败",
+  functional: "功能测试",
+  high: "高",
+  low: "低",
+  manual: "手动",
+  medium: "中",
+  needs_update: "需更新",
+  negative: "异常测试",
+  openai: "OpenAI",
+  parsed: "已解析",
+  paused: "已暂停",
+  pending: "待处理",
+  prd: "PRD",
+  figma: "Figma",
+  processing: "处理中",
+  published: "已发布",
+  queued: "排队中",
+  ready: "就绪",
+  rejected: "已拒绝",
+  request_change: "要求修改",
+  running: "运行中",
+  scheduled: "定时触发",
+  sent: "已发送",
+  skipped: "已跳过",
+  succeeded: "已成功",
+  swagger: "Swagger",
+  uploaded: "已上传",
+  upload: "上传",
+  url: "链接",
+};
+
+export function formatValue(
+  value: string | null | undefined,
+  locale: Locale,
+  fallback?: string,
+) {
+  if (!value) {
+    return fallback ?? (locale === "zh" ? "未知" : "Unknown");
+  }
+
+  if (locale === "zh") {
+    const normalized = value.trim().toLowerCase();
+    return zhValueMap[normalized] ?? titleCase(value);
+  }
+
+  return titleCase(value);
+}
+
+export function formatDateTime(value: string | null | undefined, locale: Locale) {
+  if (!value) {
+    return locale === "zh" ? "尚未运行" : "Not run yet";
+  }
+
+  return value;
+}
+
 export const copy = {
   en: {
     appShell: {
@@ -82,6 +157,9 @@ export const copy = {
       reviewWorkspace: "Review Workspace",
       reviewCopy:
         "Open generated cases for structured review before approval and publishing.",
+      environments: "Environments",
+      environmentCopy: "Target environments define UI and API bases for automation.",
+      noEnvironments: "No target environments have been configured yet.",
     },
     documentsPage: {
       workspace: "Document Workspace",
@@ -102,6 +180,15 @@ export const copy = {
       sourceVisibility: "Source Visibility",
       sourceCopy:
         "Keep input names, locations, and parse readiness visible before drafts move into review.",
+      attachTitle: "Attach source document",
+      attachCopy: "Save a document asset and its first version from pasted content or a URL.",
+      documentName: "Document name",
+      documentType: "Document type",
+      sourceUrl: "Source URL",
+      filename: "Filename",
+      content: "Paste document content",
+      triggerParse: "Trigger parse after save",
+      save: "Save source document",
     },
     generationPage: {
       eyebrow: "Generation Queue",
@@ -123,6 +210,14 @@ export const copy = {
       laterTask: "Later Task",
       reviewWorkspace: "Review Workspace",
       reviewCopy: "Draft case review remains intentionally staged for the follow-up UI task.",
+      createTitle: "Queue generation run",
+      createCopy:
+        "Enter document IDs and optional provider/model details to create a draft-generation task.",
+      documentIds: "Input document IDs",
+      provider: "Provider",
+      model: "Model",
+      queueGeneration: "Queue generation",
+      projectDefault: "Project default",
     },
     testCasesPage: {
       eyebrow: "Test Case Library",
@@ -143,6 +238,12 @@ export const copy = {
       refreshDrafts: "Refresh Drafts",
       refreshCopy:
         "Return to generation runs when the current draft set needs broader source coverage.",
+      automationEyebrow: "Automation handoff",
+      automationTitle: "Published automation handoff",
+      automationCopy:
+        "Published cases can generate Playwright + TypeScript + POM automation assets.",
+      automationEmpty: "No published cases are ready for automation generation yet.",
+      generateAutomation: "Generate automation",
     },
     reviewPage: {
       eyebrow: "Review Workspace",
@@ -159,12 +260,82 @@ export const copy = {
       documentCenter: "Document Center",
       documentCopy:
         "Check the current source evidence when a reviewer needs to confirm input coverage.",
+      untitled: "Untitled test case",
+      general: "General",
+    },
+    schedulesPage: {
+      eyebrow: "Scheduled execution",
+      title: "Automation Schedules",
+      description:
+        "Maintain cron-triggered automation plans. The worker creates automation runs when schedules become due and dispatches the runner.",
+      summary: "Automation schedule summary",
+      schedules: "Schedules",
+      environments: "Environments",
+      unavailable:
+        "Automation schedules are temporarily unavailable because the API returned an error.",
+      fallback: "Showing an empty schedule view because the API is currently unavailable.",
+      empty: "No automation schedules have been created yet.",
+      status: "Status",
+      cron: "Cron",
+      environment: "Environment",
+      targets: "Targets",
+      nextRun: "Next run",
+      lastRun: "Last run",
+      target: "target",
+      targetsPlural: "targets",
+      followUp: "Schedule follow-up",
+      testCases: "Test Cases",
+      testCaseCopy:
+        "Pick published cases and generated automation assets before building a schedule.",
+      environmentFallback: "Environment",
     },
     settings: {
       eyebrow: "Settings",
       title: "Project defaults and workspace preferences",
       description:
-        "This placeholder keeps the global shell navigation valid while settings workflows stay out of scope for Task 7.",
+        "Review runtime configuration for model providers, notifications, and runner defaults.",
+      runtime: "Runtime configuration",
+      cursorCodex: "Cursor/Codex",
+      cursorCommand: "Cursor command",
+      timeout: "Timeout",
+      workingDirectory: "Working directory",
+      failureModel: "Failure analysis model",
+      notifications: "Notifications",
+      lark: "Lark",
+      configured: "Configured",
+      notConfigured: "Not configured",
+      runnerDefaults: "Runner defaults",
+      unavailable: "Settings are temporarily unavailable because the API returned an error.",
+      defaultDirectory: "default",
+    },
+    artifacts: {
+      latest: "Latest automation artifact",
+      generated: "Generated",
+      noArtifacts: "No artifact paths yet",
+      latestRun: "Latest automation run",
+      run: "Run automation",
+      trigger: "Trigger",
+      report: "Report",
+      allureReport: "Allure report",
+      duration: "Duration",
+      passed: "Passed",
+      failed: "Failed",
+      error: "Failure reason",
+      analyze: "Analyze failure",
+      analysis: "Failure analysis",
+      debugProposal: "Debug proposal",
+      createDebugProposal: "Create debug proposal",
+      approveProposal: "Approve proposal",
+      controlledRerun: "Controlled rerun",
+      finalReport: "Final report",
+      generateFinalReport: "Generate final report",
+      pushToLark: "Push to Lark",
+      larkStatus: "Lark status",
+      dataSetup: "Data setup",
+      dataSetupExecution: "Data setup execution",
+      retryRecommended: "Retry recommended",
+      noRetry: "No direct retry recommended",
+      httpStatus: "Status",
     },
     components: {
       projectCode: "Project Code",
@@ -226,12 +397,16 @@ export const copy = {
       automationNotes: "Automation Notes",
       yes: "Yes",
       no: "No",
+      approve: "Approve",
+      publish: "Publish",
+      saveDraft: "Save draft",
+      for: "for",
     },
   },
   zh: {
     appShell: {
       title: "工作台",
-      intro: "统一管理需求、设计与接口证据，推进项目产出已评审的测试用例。",
+      intro: "统一管理需求、设计与接口证据，推动项目产出已评审的测试用例。",
       navigate: "导航",
       global: "全局",
       projectWorkspace: "项目空间",
@@ -244,7 +419,7 @@ export const copy = {
       testCases: "测试用例",
       review: "评审",
       language: "语言",
-      switchTo: "English",
+      switchTo: "英文",
     },
     home: {
       eyebrow: "项目目录",
@@ -280,6 +455,9 @@ export const copy = {
       reviewQueue: "评审队列",
       reviewWorkspace: "评审工作台",
       reviewCopy: "在审批和发布前，对生成用例进行结构化评审。",
+      environments: "环境",
+      environmentCopy: "目标环境定义自动化所需的页面地址和接口地址。",
+      noEnvironments: "暂未配置目标环境。",
     },
     documentsPage: {
       workspace: "文档工作区",
@@ -298,6 +476,15 @@ export const copy = {
       traceability: "可追溯性",
       sourceVisibility: "源证据可见性",
       sourceCopy: "在草稿进入评审前，持续展示输入名称、位置和解析状态。",
+      attachTitle: "关联源文档",
+      attachCopy: "先保存文档资产，再创建第一个版本；可以粘贴内容或填写 URL。",
+      documentName: "文档名称",
+      documentType: "文档类型",
+      sourceUrl: "源文档 URL",
+      filename: "文件名",
+      content: "粘贴文档内容",
+      triggerParse: "保存后触发解析",
+      save: "保存源文档",
     },
     generationPage: {
       eyebrow: "生成队列",
@@ -315,6 +502,13 @@ export const copy = {
       laterTask: "后续任务",
       reviewWorkspace: "评审工作台",
       reviewCopy: "草稿评审会在后续 UI 任务中继续完善。",
+      createTitle: "创建生成任务",
+      createCopy: "输入文档 ID，选择提供方/模型后排队生成测试用例草稿。",
+      documentIds: "输入文档 ID",
+      provider: "模型提供方",
+      model: "模型",
+      queueGeneration: "排队生成",
+      projectDefault: "项目默认",
     },
     testCasesPage: {
       eyebrow: "测试用例库",
@@ -332,6 +526,11 @@ export const copy = {
       generationQueue: "生成队列",
       refreshDrafts: "刷新草稿",
       refreshCopy: "当当前草稿集合需要更完整的源覆盖时，返回生成任务。",
+      automationEyebrow: "自动化交接",
+      automationTitle: "已发布用例自动化交接",
+      automationCopy: "已发布用例可以生成 Playwright + TypeScript + POM 自动化资产。",
+      automationEmpty: "暂无可生成自动化资产的已发布用例。",
+      generateAutomation: "生成自动化",
     },
     reviewPage: {
       eyebrow: "评审工作台",
@@ -345,11 +544,79 @@ export const copy = {
       traceability: "可追溯性",
       documentCenter: "文档中心",
       documentCopy: "当评审人员需要确认输入覆盖时，检查当前源证据。",
+      untitled: "未命名测试用例",
+      general: "通用",
+    },
+    schedulesPage: {
+      eyebrow: "定时执行",
+      title: "自动化计划",
+      description:
+        "维护由定时规则触发的自动化计划；到点后后台任务会创建自动化运行记录，并交给执行器执行。",
+      summary: "自动化计划概览",
+      schedules: "计划",
+      environments: "环境",
+      unavailable: "自动化计划暂时不可用，因为 API 返回了错误。",
+      fallback: "当前 API 不可用，正在展示空的计划视图。",
+      empty: "暂未创建自动化计划。",
+      status: "状态",
+      cron: "定时表达式",
+      environment: "环境",
+      targets: "目标",
+      nextRun: "下次运行",
+      lastRun: "上次运行",
+      target: "个目标",
+      targetsPlural: "个目标",
+      followUp: "计划后续动作",
+      testCases: "测试用例",
+      testCaseCopy: "先选择已发布用例并生成自动化资产，再创建计划。",
+      environmentFallback: "环境",
     },
     settings: {
       eyebrow: "设置",
       title: "项目默认值与工作台偏好",
-      description: "该占位页保持全局导航有效，设置流程暂不属于 Task 7 范围。",
+      description: "查看模型提供方、通知和执行器默认参数等运行时配置。",
+      runtime: "运行配置",
+      cursorCodex: "Cursor/Codex",
+      cursorCommand: "Cursor 命令",
+      timeout: "超时",
+      workingDirectory: "工作目录",
+      failureModel: "失败分析模型",
+      notifications: "通知",
+      lark: "Lark",
+      configured: "已配置",
+      notConfigured: "未配置",
+      runnerDefaults: "执行器默认参数",
+      unavailable: "设置暂时不可用，因为 API 返回了错误。",
+      defaultDirectory: "默认",
+    },
+    artifacts: {
+      latest: "最新自动化产物",
+      generated: "已生成",
+      noArtifacts: "暂无产物路径",
+      latestRun: "最新自动化运行",
+      run: "运行自动化",
+      trigger: "触发方式",
+      report: "报告",
+      allureReport: "Allure 报告",
+      duration: "耗时",
+      passed: "通过",
+      failed: "失败",
+      error: "失败原因",
+      analyze: "分析失败",
+      analysis: "失败分析",
+      debugProposal: "调试提案",
+      createDebugProposal: "创建调试提案",
+      approveProposal: "审批提案",
+      controlledRerun: "受控重跑",
+      finalReport: "终版报告",
+      generateFinalReport: "生成终版报告",
+      pushToLark: "推送到 Lark",
+      larkStatus: "Lark 状态",
+      dataSetup: "数据准备",
+      dataSetupExecution: "数据准备执行",
+      retryRecommended: "建议重试",
+      noRetry: "不建议直接重试",
+      httpStatus: "HTTP 状态",
     },
     components: {
       projectCode: "项目编码",
@@ -407,6 +674,10 @@ export const copy = {
       automationNotes: "自动化备注",
       yes: "是",
       no: "否",
+      approve: "批准",
+      publish: "发布",
+      saveDraft: "保存草稿",
+      for: "对应",
     },
   },
 } as const;

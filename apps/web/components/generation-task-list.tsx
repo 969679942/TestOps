@@ -1,20 +1,12 @@
 import React from "react";
 
-import { copy, type Locale } from "../lib/i18n";
+import { copy, formatValue, type Locale } from "../lib/i18n";
 import type { GenerationTaskRecord } from "../lib/types";
 
 type GenerationTaskListProps = Readonly<{
   items: GenerationTaskRecord[];
   locale?: Locale;
 }>;
-
-function formatLabel(value: string) {
-  return value
-    .split(/[-_ ]+/)
-    .filter(Boolean)
-    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-    .join(" ");
-}
 
 function getDocumentCount(inputRefs: Record<string, unknown>) {
   const documentIds = inputRefs.document_ids;
@@ -40,15 +32,15 @@ export function GenerationTaskList({ items, locale = "en" }: GenerationTaskListP
   }
 
   return (
-    <section className="task-list" aria-label="Generation task list">
+    <section className="task-list" aria-label={t.generationTasks}>
       {items.map((item) => (
         <article key={item.id} className="task-card">
           <div className="task-card-header">
             <div>
               <span className="eyebrow">{t.task} #{item.id}</span>
-              <h3>{formatLabel(item.status)}</h3>
+              <h3>{formatValue(item.status, locale)}</h3>
             </div>
-            <span className="status-pill">{formatLabel(item.provider)}</span>
+            <span className="status-pill">{formatValue(item.provider, locale)}</span>
           </div>
 
           <dl className="task-meta">

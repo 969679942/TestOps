@@ -6,7 +6,15 @@ import {
   listProjectAutomationSchedules,
   listProjectEnvironments,
 } from "../../../../lib/api";
-import { copy, localizedHref, normalizeLocale, type LocaleSearchParams } from "../../../../lib/i18n";
+import {
+  copy,
+  formatDateTime,
+  formatValue,
+  localizedHref,
+  normalizeLocale,
+  type Locale,
+  type LocaleSearchParams,
+} from "../../../../lib/i18n";
 import type { AutomationScheduleRecord, EnvironmentRecord } from "../../../../lib/types";
 
 type ProjectAutomationSchedulesPageProps = {
@@ -19,16 +27,13 @@ type ProjectAutomationSchedulesPageProps = {
 function getEnvironmentName(
   environments: EnvironmentRecord[],
   schedule: AutomationScheduleRecord,
+  locale: Locale,
 ) {
   return (
     environments.find(
       (environment) => String(environment.id) === String(schedule.environmentId),
-    )?.name ?? `Environment #${schedule.environmentId}`
+    )?.name ?? `${copy[locale].schedulesPage.environmentFallback} #${schedule.environmentId}`
   );
-}
-
-function formatDateTime(value: string | null) {
-  return value ?? "Not run yet";
 }
 
 export default async function ProjectAutomationSchedulesPage({
@@ -38,59 +43,8 @@ export default async function ProjectAutomationSchedulesPage({
   const { projectId } = await params;
   const locale = normalizeLocale((await searchParams)?.lang);
   const t = copy[locale];
+  const pageText = t.schedulesPage;
   const projectResult = await getProject(projectId);
-  const pageText =
-    locale === "zh"
-      ? {
-          eyebrow: "定时执行",
-          title: "Automation Schedules",
-          description:
-            "维护按 cron 触发的自动化计划，worker 到点会创建 automation run 并交给 runner 执行。",
-          schedules: "Schedules",
-          environments: "Environments",
-          unavailable:
-            "Automation schedules are temporarily unavailable because the API returned an error.",
-          fallback:
-            "Showing an empty schedule view because the API is currently unavailable.",
-          empty: "No automation schedules have been created yet.",
-          status: "Status",
-          cron: "Cron",
-          environment: "Environment",
-          targets: "Targets",
-          nextRun: "Next run",
-          lastRun: "Last run",
-          target: "target",
-          targetsPlural: "targets",
-          followUp: "Schedule follow-up",
-          testCases: "Test Cases",
-          testCaseCopy:
-            "Pick published cases and generated automation assets before building a schedule.",
-        }
-      : {
-          eyebrow: "Scheduled execution",
-          title: "Automation Schedules",
-          description:
-            "Maintain cron-triggered automation plans. The worker creates automation runs when schedules become due and dispatches the runner.",
-          schedules: "Schedules",
-          environments: "Environments",
-          unavailable:
-            "Automation schedules are temporarily unavailable because the API returned an error.",
-          fallback:
-            "Showing an empty schedule view because the API is currently unavailable.",
-          empty: "No automation schedules have been created yet.",
-          status: "Status",
-          cron: "Cron",
-          environment: "Environment",
-          targets: "Targets",
-          nextRun: "Next run",
-          lastRun: "Last run",
-          target: "target",
-          targetsPlural: "targets",
-          followUp: "Schedule follow-up",
-          testCases: "Test Cases",
-          testCaseCopy:
-            "Pick published cases and generated automation assets before building a schedule.",
-        };
 
   if (projectResult.kind === "not-found") {
     return (
@@ -148,7 +102,7 @@ export default async function ProjectAutomationSchedulesPage({
         <p>{pageText.description}</p>
       </section>
 
-      <section className="summary-grid" aria-label="Automation schedule summary">
+      <section className="summary-grid" aria-label={pageText.summary}>
         <article className="summary-card">
           <span className="eyebrow">{pageText.schedules}</span>
           <p className="summary-value">
@@ -196,7 +150,7 @@ export default async function ProjectAutomationSchedulesPage({
                   <div>
                     <strong>{schedule.name}</strong>
                     <p>
-                      {pageText.status}: {schedule.status}
+                      {pageText.status}: {formatValue(schedule.status, locale)}
                     </p>
                     <div className="table-detail">
                       <p>
@@ -204,7 +158,7 @@ export default async function ProjectAutomationSchedulesPage({
                       </p>
                       <p>
                         <strong>{pageText.environment}</strong>:{" "}
-                        {getEnvironmentName(environments, schedule)}
+                        {getEnvironmentName(environments, schedule, locale)}
                       </p>
                       <p>
                         <strong>{pageText.targets}</strong>: {targetCount}{" "}
@@ -212,11 +166,11 @@ export default async function ProjectAutomationSchedulesPage({
                       </p>
                       <p>
                         <strong>{pageText.nextRun}</strong>:{" "}
-                        {formatDateTime(schedule.nextRunAt)}
+                        {formatDateTime(schedule.nextRunAt, locale)}
                       </p>
                       <p>
                         <strong>{pageText.lastRun}</strong>:{" "}
-                        {formatDateTime(schedule.lastRunAt)}
+                        {formatDateTime(schedule.lastRunAt, locale)}
                       </p>
                     </div>
                   </div>

@@ -49,11 +49,16 @@ function parseAutomationFlag(value: string) {
   return ["1", "true", "yes", "y", "是", "开启"].includes(normalized);
 }
 
-function parseTestCaseMutation(formData: FormData): TestCaseMutationPayload {
+function parseTestCaseMutation(
+  formData: FormData,
+  locale: "en" | "zh",
+): TestCaseMutationPayload {
   return {
-    title: readFormText(formData, "title") || "Untitled test case",
-    module: readFormText(formData, "module") || "General",
-    feature: readFormText(formData, "feature") || "General",
+    title:
+      readFormText(formData, "title") ||
+      (locale === "zh" ? "未命名测试用例" : "Untitled test case"),
+    module: readFormText(formData, "module") || (locale === "zh" ? "通用" : "General"),
+    feature: readFormText(formData, "feature") || (locale === "zh" ? "通用" : "General"),
     case_type: readFormText(formData, "caseType") || "functional",
     priority: readFormText(formData, "priority") || "medium",
     preconditions: collectIndexedText(formData, "precondition"),
@@ -132,7 +137,7 @@ export default async function ProjectReviewPage({
 
     await updateTestCase(
       resolvedSearchParams.caseId,
-      parseTestCaseMutation(formData),
+      parseTestCaseMutation(formData, locale),
     );
     revalidatePath(`/projects/${projectId}/review`);
     revalidatePath(`/projects/${projectId}/test-cases`);
@@ -148,7 +153,7 @@ export default async function ProjectReviewPage({
     await addTestCaseReview(resolvedSearchParams.caseId, {
       reviewer_id: "web.reviewer",
       action: "approve",
-      comment: "Approved from review workspace.",
+      comment: locale === "zh" ? "已从评审工作台批准。" : "Approved from review workspace.",
     });
     revalidatePath(`/projects/${projectId}/review`);
     revalidatePath(`/projects/${projectId}/test-cases`);

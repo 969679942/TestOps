@@ -1,5 +1,5 @@
 import React from "react";
-import { copy, type Locale } from "../lib/i18n";
+import { copy, formatValue, type Locale } from "../lib/i18n";
 import type { DocumentAsset, ProjectRecord } from "../lib/types";
 
 type ProjectSummaryProps = Readonly<{
@@ -8,13 +8,6 @@ type ProjectSummaryProps = Readonly<{
   documentsUnavailable?: boolean;
   locale?: Locale;
 }>;
-
-function titleCase(value: string) {
-  return value
-    .split("-")
-    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-    .join(" ");
-}
 
 export function ProjectSummary({
   project,
@@ -25,7 +18,7 @@ export function ProjectSummary({
   const t = copy[locale];
 
   return (
-    <section className="summary-grid" aria-label="Project summary">
+    <section className="summary-grid" aria-label={t.workspace.sections}>
       <article className="summary-card">
         <span className="eyebrow">{t.components.projectCode}</span>
         <p className="summary-value">{project.code}</p>
@@ -33,7 +26,7 @@ export function ProjectSummary({
 
       <article className="summary-card">
         <span className="eyebrow">{t.components.status}</span>
-        <p className="summary-value">{titleCase(project.status)}</p>
+        <p className="summary-value">{formatValue(project.status, locale)}</p>
       </article>
 
       <article className="summary-card">

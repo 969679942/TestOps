@@ -1,0 +1,40 @@
+{
+  "name": "Quick Commerce Checkout Demo",
+  "document": {
+    "id": "0:1",
+    "name": "Quick Commerce",
+    "type": "DOCUMENT",
+    "children": [
+      {
+        "id": "1:1",
+        "name": "Page - Mobile Checkout",
+        "type": "CANVAS",
+        "children": [
+          {
+            "id": "2:1",
+            "name": "Frame - Login",
+            "type": "FRAME",
+            "children": [
+              { "id": "3:1", "name": "Input - Email", "type": "TEXT_FIELD" },
+              { "id": "3:2", "name": "Input - Password", "type": "TEXT_FIELD" },
+              { "id": "3:3", "name": "Button - Sign In", "type": "BUTTON" },
+              { "id": "3:4", "name": "Text - Inline Error", "type": "TEXT" }
+            ]
+          },
+          {
+            "id": "2:2",
+            "name": "Frame - Checkout",
+            "type": "FRAME",
+            "children": [
+              { "id": "4:1", "name": "Card - Cart Summary", "type": "COMPONENT" },
+              { "id": "4:2", "name": "Text - Delivery Address", "type": "TEXT" },
+              { "id": "4:3", "name": "Text - Total Amount", "type": "TEXT" },
+              { "id": "4:4", "name": "Button - Submit Order", "type": "BUTTON" },
+              { "id": "4:5", "name": "Banner - Order Confirmation", "type": "COMPONENT" }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

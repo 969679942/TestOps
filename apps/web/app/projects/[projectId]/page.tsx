@@ -2,7 +2,13 @@ import React from "react";
 import { AppShell } from "../../../components/app-shell";
 import { ProjectSummary } from "../../../components/project-summary";
 import { getProject, listProjectDocuments, listProjectEnvironments } from "../../../lib/api";
-import { copy, localizedHref, normalizeLocale, type LocaleSearchParams } from "../../../lib/i18n";
+import {
+  copy,
+  formatValue,
+  localizedHref,
+  normalizeLocale,
+  type LocaleSearchParams,
+} from "../../../lib/i18n";
 
 type ProjectPageProps = {
   params: Promise<{
@@ -82,16 +88,13 @@ export default async function ProjectWorkspacePage({
       <section className="data-card">
         <div className="section-heading">
           <div>
-            <span className="eyebrow">Target systems</span>
-            <h3>Target environments</h3>
+            <span className="eyebrow">{t.workspace.environments}</span>
+            <h3>{t.workspace.environments}</h3>
           </div>
-          <p>
-            Keep UI and API base URLs separated per system so later data setup,
-            scheduled runs, and reports stay scoped correctly.
-          </p>
+          <p>{t.workspace.environmentCopy}</p>
         </div>
         {environmentList.kind === "http-error" ? (
-          <p>Target environments are temporarily unavailable.</p>
+          <p>{t.states.unavailable}</p>
         ) : environments.length ? (
           <div className="automation-list">
             {environments.map((environment) => (
@@ -99,19 +102,22 @@ export default async function ProjectWorkspacePage({
                 <div>
                   <strong>{environment.name}</strong>
                   <p>
-                    {environment.code} - {environment.status}
+                    {environment.code} - {formatValue(environment.status, locale)}
                   </p>
                   <p>{environment.baseUrl}</p>
                   <p>{environment.apiBaseUrl}</p>
                   {environment.authProfile ? (
-                    <p>Auth profile: {environment.authProfile}</p>
+                    <p>
+                      {locale === "zh" ? "认证配置" : "Auth profile"}:{" "}
+                      {environment.authProfile}
+                    </p>
                   ) : null}
                 </div>
               </article>
             ))}
           </div>
         ) : (
-          <p className="empty-copy">No target environments have been configured yet.</p>
+          <p className="empty-copy">{t.workspace.noEnvironments}</p>
         )}
       </section>
 

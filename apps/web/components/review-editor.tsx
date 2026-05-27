@@ -31,7 +31,9 @@ function TextFieldList({ items, fieldNameBase, label, prefix }: TextFieldListPro
       <div className="review-stack">
         {items.map((item, index) => (
           <label key={`${prefix}-${index + 1}`} className="form-field">
-            <span>{prefix} {index + 1}</span>
+            <span>
+              {prefix} {index + 1}
+            </span>
             <textarea
               className="field-textarea"
               name={`${fieldNameBase}-${index + 1}`}
@@ -53,18 +55,6 @@ export function ReviewEditor({
   saveAction,
 }: ReviewEditorProps) {
   const t = copy[locale].components;
-  const actions =
-    locale === "zh"
-      ? {
-          approve: "批准",
-          publish: "发布",
-          save: "保存草稿",
-        }
-      : {
-          approve: "Approve",
-          publish: "Publish",
-          save: "Save draft",
-        };
 
   if (!item) {
     return (
@@ -124,7 +114,9 @@ export function ReviewEditor({
         <div className="review-stack">
           {item.preconditions.map((value, index) => (
             <label key={`precondition-${index + 1}`} className="form-field">
-              <span>{t.precondition} {index + 1}</span>
+              <span>
+                {t.precondition} {index + 1}
+              </span>
               <input
                 className="field-input"
                 name={`precondition-${index + 1}`}
@@ -174,13 +166,13 @@ export function ReviewEditor({
       </label>
       <div className="button-row">
         <button className="primary-button" type="submit">
-          {actions.save}
+          {t.saveDraft}
         </button>
         <button className="secondary-button" formAction={approveAction} type="submit">
-          {actions.approve}
+          {t.approve}
         </button>
         <button className="secondary-button" formAction={publishAction} type="submit">
-          {actions.publish}
+          {t.publish}
         </button>
       </div>
     </form>

@@ -24,7 +24,13 @@ import {
   pushAutomationFinalReportToLark,
   reviewAutomationDebugProposal,
 } from "../../../../lib/api";
-import { copy, localizedHref, normalizeLocale, type LocaleSearchParams } from "../../../../lib/i18n";
+import {
+  copy,
+  formatValue,
+  localizedHref,
+  normalizeLocale,
+  type LocaleSearchParams,
+} from "../../../../lib/i18n";
 import type {
   AutomationFailureAnalysisRecord,
   AutomationDebugProposalRecord,
@@ -295,82 +301,14 @@ export default async function ProjectTestCasesPage({
     getLatestDataSetupExecutionsByHint(dataSetupExecutions);
   const counts = getCounts(items);
   const countsUnavailable = testCaseList.kind === "http-error";
-  const automationText =
-    locale === "zh"
-      ? {
-          eyebrow: "自动化交接",
-          title: "已发布用例自动化交接",
-          copy: "已发布用例可以生成 Playwright + TypeScript + POM 自动化资产。",
-          empty: "暂无可生成自动化资产的已发布用例。",
-          action: "生成自动化",
-        }
-      : {
-          eyebrow: "Automation handoff",
-          title: "Published automation handoff",
-          copy: "Published cases can generate Playwright + TypeScript + POM automation assets.",
-          empty: "No published cases are ready for automation generation yet.",
-          action: "Generate automation",
-        };
-  const artifactText =
-    locale === "zh"
-      ? {
-          latest: "\u6700\u65b0\u81ea\u52a8\u5316\u4ea7\u7269",
-          generated: "\u5df2\u751f\u6210",
-          noArtifacts: "\u6682\u65e0\u4ea7\u7269\u8def\u5f84",
-          latestRun: "\u6700\u65b0\u81ea\u52a8\u5316\u8fd0\u884c",
-          run: "\u8fd0\u884c\u81ea\u52a8\u5316",
-          trigger: "\u89e6\u53d1\u65b9\u5f0f",
-          report: "\u62a5\u544a",
-          allureReport: "Allure \u62a5\u544a",
-          duration: "\u8017\u65f6",
-          passed: "\u901a\u8fc7",
-          failed: "\u5931\u8d25",
-          error: "\u5931\u8d25\u539f\u56e0",
-          analyze: "\u5206\u6790\u5931\u8d25",
-          analysis: "\u5931\u8d25\u5206\u6790",
-          debugProposal: "\u8c03\u8bd5\u63d0\u6848",
-          createDebugProposal: "\u521b\u5efa\u8c03\u8bd5\u63d0\u6848",
-          approveProposal: "\u5ba1\u6279\u63d0\u6848",
-          controlledRerun: "\u53d7\u63a7\u91cd\u8bd5",
-          finalReport: "\u7ec8\u7248\u62a5\u544a",
-          generateFinalReport: "\u751f\u6210\u7ec8\u7248\u62a5\u544a",
-          pushToLark: "\u63a8\u9001\u5230 Lark",
-          larkStatus: "Lark \u72b6\u6001",
-          dataSetup: "\u6570\u636e\u51c6\u5907",
-          dataSetupExecution: "\u6570\u636e\u51c6\u5907\u6267\u884c",
-          rerun: "\u521b\u5efa\u91cd\u8bd5",
-          retryRecommended: "\u5efa\u8bae\u91cd\u8bd5",
-          noRetry: "\u4e0d\u5efa\u8bae\u76f4\u63a5\u91cd\u8bd5",
-        }
-      : {
-          latest: "Latest automation artifact",
-          generated: "Generated",
-          noArtifacts: "No artifact paths yet",
-          latestRun: "Latest automation run",
-          run: "Run automation",
-          trigger: "Trigger",
-          report: "Report",
-          allureReport: "Allure report",
-          duration: "Duration",
-          passed: "Passed",
-          failed: "Failed",
-          error: "Failure reason",
-          analyze: "Analyze failure",
-          analysis: "Failure analysis",
-          debugProposal: "Debug proposal",
-          createDebugProposal: "Create debug proposal",
-          approveProposal: "Approve proposal",
-          controlledRerun: "Controlled rerun",
-          finalReport: "Final report",
-          generateFinalReport: "Generate final report",
-          pushToLark: "Push to Lark",
-          larkStatus: "Lark status",
-          dataSetup: "Data setup",
-          dataSetupExecution: "Data setup execution",
-          rerun: "Create rerun",
-          retryRecommended: "Retry recommended",
-          noRetry: "No direct retry recommended",
-        };
+  const automationText = {
+    eyebrow: t.testCasesPage.automationEyebrow,
+    title: t.testCasesPage.automationTitle,
+    copy: t.testCasesPage.automationCopy,
+    empty: t.testCasesPage.automationEmpty,
+    action: t.testCasesPage.generateAutomation,
+  };
+  const artifactText = t.artifacts;
 
   async function generateAutomationAction(formData: FormData) {
     "use server";
@@ -431,7 +369,7 @@ export default async function ProjectTestCasesPage({
     await reviewAutomationDebugProposal(value.trim(), {
       action: "approve",
       reviewer_id: "web.reviewer",
-      comment: "Approved from TestOps review gate.",
+      comment: locale === "zh" ? "已从 TestOps 评审门禁批准。" : "Approved from TestOps review gate.",
     });
     revalidatePath(`/projects/${projectId}/test-cases`);
   }
@@ -576,7 +514,11 @@ export default async function ProjectTestCasesPage({
                       <div className="table-detail">
                         <strong>{artifactText.latest}</strong>
                         <p>
-                          {latestGeneration.status} - {artifactText.generated}{" "}
+                          {locale === "zh"
+                            ? formatValue(latestGeneration.status, locale)
+                            : latestGeneration.status}{" "}
+                          -{" "}
+                          {artifactText.generated}{" "}
                           {latestGeneration.completedAt ?? latestGeneration.createdAt}
                         </p>
                         <p>
@@ -587,8 +529,13 @@ export default async function ProjectTestCasesPage({
                         {latestRun ? (
                           <>
                             <p>
-                              <strong>{artifactText.latestRun}</strong>: {latestRun.status} -{" "}
-                              {artifactText.trigger} {latestRun.triggerMode}
+                              <strong>{artifactText.latestRun}</strong>:{" "}
+                              {locale === "zh"
+                                ? formatValue(latestRun.status, locale)
+                                : latestRun.status}{" "}
+                              -{" "}
+                              {artifactText.trigger}{" "}
+                              {formatValue(latestRun.triggerMode, locale)}
                             </p>
                             {latestRun.reportPath ? (
                               <p>
@@ -624,7 +571,11 @@ export default async function ProjectTestCasesPage({
                               <>
                                 <p>
                                   <strong>{artifactText.analysis}</strong>:{" "}
-                                  {latestAnalysis.classification} · {latestAnalysis.provider}
+                                  {locale === "zh"
+                                    ? formatValue(latestAnalysis.classification, locale)
+                                    : latestAnalysis.classification}{" "}
+                                  /{" "}
+                                  {formatValue(latestAnalysis.provider, locale)}
                                 </p>
                                 <p>
                                   {latestAnalysis.shouldRerun
@@ -639,7 +590,7 @@ export default async function ProjectTestCasesPage({
                                   <>
                                     <p>
                                       <strong>{artifactText.debugProposal}</strong>:{" "}
-                                      {latestDebugProposal.status}
+                                      {formatValue(latestDebugProposal.status, locale)}
                                     </p>
                                     <p>{latestDebugProposal.summary}</p>
                                     {latestDebugProposal.recommendations.length ? (
@@ -653,12 +604,14 @@ export default async function ProjectTestCasesPage({
                               <>
                                 <p>
                                   <strong>{artifactText.finalReport}</strong>:{" "}
-                                  {latestFinalReport.status}
+                                  {formatValue(latestFinalReport.status, locale)}
                                 </p>
                                 <p>{latestFinalReport.title}</p>
                                 <p>
                                   {artifactText.larkStatus}:{" "}
-                                  {latestFinalReport.larkStatus}
+                                  {locale === "zh"
+                                    ? formatValue(latestFinalReport.larkStatus, locale)
+                                    : latestFinalReport.larkStatus}
                                 </p>
                                 {latestFinalReport.larkError ? (
                                   <p>{latestFinalReport.larkError}</p>
@@ -693,8 +646,10 @@ export default async function ProjectTestCasesPage({
                               {latestExecution ? (
                                 <p>
                                   <strong>{artifactText.dataSetupExecution}</strong>:{" "}
-                                  {latestExecution.status}
-                                  {statusCode ? ` - Status ${statusCode}` : null}
+                                  {formatValue(latestExecution.status, locale)}
+                                  {statusCode
+                                    ? ` - ${artifactText.httpStatus} ${statusCode}`
+                                    : null}
                                 </p>
                               ) : null}
                             </React.Fragment>

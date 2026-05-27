@@ -67,30 +67,6 @@ export default async function ProjectDocumentsPage({
 
   const documentList = await listProjectDocuments(projectId);
   const documents = documentList.kind === "http-error" ? [] : documentList.documents;
-  const actionText =
-    locale === "zh"
-      ? {
-          title: "关联源文档",
-          copy: "先保存文档资产，再创建首个版本；可以粘贴内容或填写 URL。",
-          name: "文档名称",
-          type: "文档类型",
-          sourceUri: "源文档 URL",
-          filename: "文件名",
-          content: "粘贴文档内容",
-          parse: "保存后触发解析",
-          submit: "保存源文档",
-        }
-      : {
-          title: "Attach source document",
-          copy: "Save a document asset and its first version from pasted content or a URL.",
-          name: "Document name",
-          type: "Document type",
-          sourceUri: "Source URL",
-          filename: "Filename",
-          content: "Paste document content",
-          parse: "Trigger parse after save",
-          submit: "Save source document",
-        };
 
   async function createDocumentAction(formData: FormData) {
     "use server";
@@ -100,7 +76,7 @@ export default async function ProjectDocumentsPage({
       return typeof value === "string" ? value.trim() : "";
     };
     const type = read("type") || "prd";
-    const name = read("name") || "Untitled document";
+    const name = read("name") || (locale === "zh" ? "未命名文档" : "Untitled document");
     const sourceUri = read("sourceUri");
     const filename = read("filename");
     const content = read("content");
@@ -173,18 +149,18 @@ export default async function ProjectDocumentsPage({
         <div className="section-heading">
           <div>
             <span className="eyebrow">{t.documentsPage.workspace}</span>
-            <h3>{actionText.title}</h3>
+            <h3>{t.documentsPage.attachTitle}</h3>
           </div>
-          <p>{actionText.copy}</p>
+          <p>{t.documentsPage.attachCopy}</p>
         </div>
         <form action={createDocumentAction} className="review-stack">
           <div className="form-grid">
             <label className="form-field">
-              <span>{actionText.name}</span>
+              <span>{t.documentsPage.documentName}</span>
               <input className="field-input" name="name" required />
             </label>
             <label className="form-field">
-              <span>{actionText.type}</span>
+              <span>{t.documentsPage.documentType}</span>
               <select className="field-input" name="type" defaultValue="prd">
                 <option value="prd">PRD</option>
                 <option value="figma">Figma</option>
@@ -192,24 +168,24 @@ export default async function ProjectDocumentsPage({
               </select>
             </label>
             <label className="form-field">
-              <span>{actionText.sourceUri}</span>
+              <span>{t.documentsPage.sourceUrl}</span>
               <input className="field-input" name="sourceUri" type="url" />
             </label>
             <label className="form-field">
-              <span>{actionText.filename}</span>
+              <span>{t.documentsPage.filename}</span>
               <input className="field-input" name="filename" placeholder="prd.md" />
             </label>
           </div>
           <label className="form-field">
-            <span>{actionText.content}</span>
+            <span>{t.documentsPage.content}</span>
             <textarea className="field-textarea" name="content" />
           </label>
           <label className="inline-check">
             <input name="triggerParse" type="checkbox" defaultChecked />
-            <span>{actionText.parse}</span>
+            <span>{t.documentsPage.triggerParse}</span>
           </label>
           <button className="primary-button" type="submit">
-            {actionText.submit}
+            {t.documentsPage.save}
           </button>
         </form>
       </section>
