@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
-import type { TestCaseRecord } from "../lib/workspace-api";
 import { copy, labelPriority, statusLabels } from "../lib/copy";
+import type { TestCaseRecord } from "../lib/workspace-api";
 import { StatusBadge } from "./status-badge";
 
 type TestCaseListPanelProps = Readonly<{
@@ -61,36 +61,44 @@ export function TestCaseListPanel({
         </section>
       ) : null}
 
-      <div className="list-toolbar">
-        <label className="field field-inline">
-          <span className="sr-only">{copy.searchLabel}</span>
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={copy.searchPlaceholder}
-          />
-        </label>
+      <section className="list-toolbar case-list-toolbar">
+        <div className="case-list-toolbar-copy">
+          <span className="eyebrow">用例清单</span>
+          <p className="toolbar-meta">{copy.listCount(filtered.length, testCases.length)}</p>
+        </div>
 
-        <label className="field field-inline">
-          <span className="sr-only">{copy.statusFilterLabel}</span>
-          <select value={status} onChange={(event) => setStatus(event.target.value as typeof status)}>
-            <option value="all">{copy.filterAll}</option>
-            {statusFilters
-              .filter((item) => item !== "all")
-              .map((item) => (
-                <option key={item} value={item}>
-                  {statusLabels[item]}
-                </option>
-              ))}
-          </select>
-        </label>
+        <div className="case-list-toolbar-filters">
+          <label className="field field-inline">
+            <span className="sr-only">{copy.searchLabel}</span>
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={copy.searchPlaceholder}
+            />
+          </label>
 
-        <span className="toolbar-meta">{copy.listCount(filtered.length, testCases.length)}</span>
+          <label className="field field-inline">
+            <span className="sr-only">{copy.statusFilterLabel}</span>
+            <select
+              value={status}
+              onChange={(event) => setStatus(event.target.value as typeof status)}
+            >
+              <option value="all">{copy.filterAll}</option>
+              {statusFilters
+                .filter((item) => item !== "all")
+                .map((item) => (
+                  <option key={item} value={item}>
+                    {statusLabels[item]}
+                  </option>
+                ))}
+            </select>
+          </label>
+        </div>
 
         <Link className="button-primary" href={`/projects/${projectId}/test-cases/new`}>
           + {copy.newTestCase}
         </Link>
-      </div>
+      </section>
 
       <section className="case-list" aria-label="用例列表">
         {filtered.length === 0 ? (
@@ -118,14 +126,17 @@ export function TestCaseListPanel({
               href={`/projects/${projectId}/test-cases/${testCase.id}`}
             >
               <div className="case-list-main">
+                <div className="case-list-main-top">
+                  <span className="case-list-kicker">{testCase.module}</span>
+                  <StatusBadge status={testCase.status} />
+                </div>
                 <h3>{testCase.title}</h3>
-                <p>
-                  {testCase.module} · {testCase.feature} · {labelPriority(testCase.priority)}
-                </p>
+                <p>{testCase.feature}</p>
               </div>
+
               <div className="case-list-meta">
-                <StatusBadge status={testCase.status} />
-                <span>{copy.stepCount(testCase.steps.length)}</span>
+                <span className="case-list-priority">{labelPriority(testCase.priority)}</span>
+                <span className="case-list-steps">{copy.stepCount(testCase.steps.length)}</span>
                 <span className="list-arrow" aria-hidden="true">
                   →
                 </span>

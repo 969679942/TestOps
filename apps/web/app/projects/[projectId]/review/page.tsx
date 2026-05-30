@@ -11,6 +11,7 @@ import {
   updateTestCase,
 } from "../../../../lib/api";
 import { copy, localizedHref, normalizeLocale } from "../../../../lib/i18n";
+import { translateProjectName } from "../../../../lib/project-display";
 import type { StructuredTextField, TestCaseMutationPayload } from "../../../../lib/types";
 
 type ProjectReviewPageProps = {
@@ -46,7 +47,7 @@ function collectStructuredText(formData: FormData, prefix: string): StructuredTe
 
 function parseAutomationFlag(value: string) {
   const normalized = value.trim().toLowerCase();
-  return ["1", "true", "yes", "y", "是", "开启"].includes(normalized);
+  return ["1", "true", "yes", "y", "on", "是", "开启"].includes(normalized);
 }
 
 function parseTestCaseMutation(
@@ -121,6 +122,8 @@ export default async function ProjectReviewPage({
     );
   }
 
+  const projectDisplayName = translateProjectName(project.name, locale);
+
   const testCaseList = await listProjectTestCases(projectId);
   const selectedItem =
     resolvedSearchParams.caseId && testCaseList.kind !== "http-error"
@@ -175,7 +178,7 @@ export default async function ProjectReviewPage({
     <AppShell currentPath={`/projects/${projectId}/review`} locale={locale} project={project}>
       <section className="page-header">
         <span className="eyebrow">{t.reviewPage.eyebrow}</span>
-        <h2>{project.name}</h2>
+        <h2>{projectDisplayName}</h2>
         <p>{t.reviewPage.description}</p>
       </section>
 

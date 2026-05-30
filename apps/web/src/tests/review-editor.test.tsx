@@ -8,8 +8,8 @@ describe("ReviewEditor", () => {
   it("renders a no-selection message when no review item is active", () => {
     const html = renderToStaticMarkup(<ReviewEditor item={null} />);
 
-    expect(html).toContain("No test case selected");
-    expect(html).toContain("Choose a draft from the review queue");
+    expect(html).toContain("未选择测试用例");
+    expect(html).toContain("从评审队列中选择一个草稿");
   });
 
   it("renders editable step fields when a review item is selected", () => {
@@ -34,8 +34,11 @@ describe("ReviewEditor", () => {
       />,
     );
 
-    expect(html).toContain("Review draft");
+    expect(html).toContain("评审草稿");
+    expect(html).toContain("当前状态");
+    expect(html).toContain("新增步骤");
     expect(html).toContain('name="step-1"');
     expect(html).toContain(">Open order page</textarea>");
+    expect(html).toContain('type="checkbox"');
   });
 });

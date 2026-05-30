@@ -2,8 +2,8 @@
 
 import { useCallback, useState } from "react";
 
-import type { ProjectDocumentRecord } from "../lib/workspace-api";
 import { copy } from "../lib/copy";
+import type { ProjectDocumentRecord } from "../lib/workspace-api";
 import { useTabList } from "../lib/use-tab-list";
 import { DocumentUploadPanel } from "./document-upload-panel";
 import { TestCaseImportPanel } from "./test-case-import-panel";
@@ -33,6 +33,16 @@ export function ProjectWorkspaceTabs({
 
   return (
     <section className="workspace-tabs" aria-label="用例来源">
+      <div className="workspace-tabs-header">
+        <div>
+          <span className="eyebrow">工作区模式</span>
+          <h3>选择用例来源</h3>
+        </div>
+        <p className="workspace-mode-hint">
+          {mode === "generate" ? copy.modeGenerateHint : copy.modeImportHint}
+        </p>
+      </div>
+
       <div
         ref={tablistRef}
         className="workspace-mode-tabs"
@@ -65,12 +75,9 @@ export function ProjectWorkspaceTabs({
         </button>
       </div>
 
-      <p className="workspace-mode-hint">
-        {mode === "generate" ? copy.modeGenerateHint : copy.modeImportHint}
-      </p>
-
       {mode === "generate" ? (
         <div
+          className="workspace-panel-frame"
           id="workspace-panel-generate"
           role="tabpanel"
           aria-labelledby="workspace-tab-generate"
@@ -83,7 +90,12 @@ export function ProjectWorkspaceTabs({
           />
         </div>
       ) : (
-        <div id="workspace-panel-import" role="tabpanel" aria-labelledby="workspace-tab-import">
+        <div
+          className="workspace-panel-frame"
+          id="workspace-panel-import"
+          role="tabpanel"
+          aria-labelledby="workspace-tab-import"
+        >
           <TestCaseImportPanel projectId={projectId} />
         </div>
       )}

@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { AppShell } from "../../components/app-shell";
 
 describe("AppShell", () => {
-  it("renders global navigation links", () => {
+  it("renders Chinese global navigation links only", () => {
     const html = renderToStaticMarkup(
       <AppShell>
         <div>content</div>
@@ -14,25 +14,16 @@ describe("AppShell", () => {
 
     expect(html).toContain('href="/"');
     expect(html).toContain(">项目<");
-  });
-
-  it("renders Chinese navigation and a matching language switch link", () => {
-    const html = renderToStaticMarkup(
-      <AppShell currentPath="/projects/payments" locale="zh">
-        <div>content</div>
-      </AppShell>,
-    );
-
-    expect(html).toContain(">项目<");
     expect(html).toContain(">设置<");
-    expect(html).toContain(">英文<");
-    expect(html).toContain('href="/projects/payments?lang=en"');
+    expect(html).not.toContain("语言");
+    expect(html).not.toContain("?lang=");
   });
 
-  it("renders the Task 9 project navigation links when a project is present", () => {
+  it("renders translated project navigation without locale query parameters", () => {
     const html = renderToStaticMarkup(
       <AppShell
         currentPath="/projects/payments/review"
+        contentWidth="wide"
         project={{
           id: "payments",
           name: "Payments Platform",
@@ -47,10 +38,13 @@ describe("AppShell", () => {
       </AppShell>,
     );
 
+    expect(html).toContain("shell-panel shell-panel--wide");
+    expect(html).toContain(">支付平台<");
     expect(html).toContain('href="/projects/payments/test-cases"');
-    expect(html).toContain(">Test Cases<");
+    expect(html).toContain(">测试用例<");
     expect(html).toContain('href="/projects/payments/review"');
-    expect(html).toContain(">Review<");
+    expect(html).toContain(">评审<");
     expect(html).toContain('aria-current="page"');
+    expect(html).not.toContain("?lang=");
   });
 });

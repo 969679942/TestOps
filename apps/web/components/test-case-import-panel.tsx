@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { ApiError, importTestCases } from "../lib/workspace-api";
 import { copy } from "../lib/copy";
+import { ApiError, importTestCases } from "../lib/workspace-api";
 import {
   downloadImportTemplate,
   parseTestCaseImportFile,
@@ -111,6 +111,14 @@ export function TestCaseImportPanel({ projectId }: TestCaseImportPanelProps) {
       </div>
 
       <div className="import-panel-body">
+        <div className="workspace-stage-header workspace-stage-header--compact">
+          <div>
+            <span className="eyebrow">导入前校验</span>
+            <h4>校验文件结构后再导入</h4>
+          </div>
+          <p>先解析 JSON 文件结构，确认预览无误后再批量导入项目，避免格式异常的文件直接进入评审流程。</p>
+        </div>
+
         <div className="field">
           <span>{copy.importFileLabel}</span>
           <FileUploadField
@@ -124,16 +132,20 @@ export function TestCaseImportPanel({ projectId }: TestCaseImportPanelProps) {
 
         {fileName ? (
           <article className="import-preview-card">
-            <strong>{fileName}</strong>
+            <div className="import-preview-card-header">
+              <div>
+                <span className="eyebrow">导入预览</span>
+                <strong>{fileName}</strong>
+              </div>
+              <span className="status-pill">共 {previewCount} 条用例</span>
+            </div>
             <p>{copy.importPreviewSummary(previewCount)}</p>
             {parsedCases && parsedCases.length > 0 ? (
               <ul className="import-preview-list">
                 {parsedCases.slice(0, 5).map((item, index) => (
                   <li key={`${item.title}-${index}`}>{item.title}</li>
                 ))}
-                {parsedCases.length > 5 ? (
-                  <li>… 另有 {parsedCases.length - 5} 条</li>
-                ) : null}
+                {parsedCases.length > 5 ? <li>另有 {parsedCases.length - 5} 条用例</li> : null}
               </ul>
             ) : null}
           </article>
@@ -144,14 +156,16 @@ export function TestCaseImportPanel({ projectId }: TestCaseImportPanelProps) {
           </article>
         )}
 
-        <button
-          className="button-primary"
-          type="button"
-          disabled={importing || !parsedCases || parsedCases.length === 0}
-          onClick={handleImport}
-        >
-          {importing ? copy.importing : copy.importAction}
-        </button>
+        <div className="import-actions">
+          <button
+            className="button-primary"
+            type="button"
+            disabled={importing || !parsedCases || parsedCases.length === 0}
+            onClick={handleImport}
+          >
+            {importing ? copy.importing : copy.importAction}
+          </button>
+        </div>
       </div>
     </section>
   );

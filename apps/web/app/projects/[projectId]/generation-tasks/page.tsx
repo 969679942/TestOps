@@ -9,6 +9,7 @@ import {
   listProjectGenerationTasks,
 } from "../../../../lib/api";
 import { copy, localizedHref, normalizeLocale, type LocaleSearchParams } from "../../../../lib/i18n";
+import { translateProjectName } from "../../../../lib/project-display";
 
 type ProjectGenerationTasksPageProps = {
   params: Promise<{
@@ -64,6 +65,8 @@ export default async function ProjectGenerationTasksPage({
     );
   }
 
+  const projectDisplayName = translateProjectName(project.name, locale);
+
   const taskList = await listProjectGenerationTasks(projectId);
   const tasks = taskList.kind === "http-error" ? [] : taskList.tasks;
 
@@ -99,7 +102,7 @@ export default async function ProjectGenerationTasksPage({
     >
       <section className="page-header">
         <span className="eyebrow">{t.generationPage.eyebrow}</span>
-        <h2>{project.name}</h2>
+        <h2>{projectDisplayName}</h2>
         <p>{t.generationPage.description}</p>
       </section>
 
@@ -132,7 +135,7 @@ export default async function ProjectGenerationTasksPage({
         </section>
       ) : null}
 
-      <section className="data-card">
+      <section className="data-card generation-create-card">
         <div className="section-heading">
           <div>
             <span className="eyebrow">{t.generationPage.eyebrow}</span>
@@ -140,7 +143,7 @@ export default async function ProjectGenerationTasksPage({
           </div>
           <p>{t.generationPage.createCopy}</p>
         </div>
-        <form action={createGenerationAction} className="review-stack">
+        <form action={createGenerationAction} className="review-stack generation-create-form">
           <div className="form-grid">
             <label className="form-field">
               <span>{t.generationPage.documentIds}</span>

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 
-import { ApiError } from "./api";
+import { ApiError } from "./workspace-api";
 
 export async function loadOrThrow<T>(loader: () => Promise<T>): Promise<T> {
   try {

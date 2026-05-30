@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { copy, localizedHref, type Locale, withLocale } from "../lib/i18n";
+import { copy, localizedHref, type Locale } from "../lib/i18n";
+import { translateProjectName } from "../lib/project-display";
 import type { ProjectRecord } from "../lib/types";
 
 type AppShellProps = Readonly<{
@@ -10,6 +11,7 @@ type AppShellProps = Readonly<{
   locale?: Locale;
   project?: ProjectRecord | null;
   testCaseCount?: number;
+  contentWidth?: "default" | "wide";
 }>;
 
 type NavItem = {
@@ -33,13 +35,15 @@ function isCurrentPath(currentPath: string | undefined, href: string) {
 export function AppShell({
   children,
   currentPath,
-  locale = "en",
+  locale = "zh",
   project,
   testCaseCount = 0,
+  contentWidth = "default",
 }: AppShellProps) {
   const t = copy[locale].appShell;
-  const switchLocale: Locale = locale === "zh" ? "en" : "zh";
-  const languageHref = withLocale(currentPath ?? "/", switchLocale);
+  const isWide = contentWidth === "wide" || Boolean(project);
+  const panelClassName = isWide ? "shell-panel shell-panel--wide" : "shell-panel";
+  const projectDisplayName = project ? translateProjectName(project.name, locale) : null;
   const globalNav: NavItem[] = [
     { href: "/", label: t.projects },
     { href: "/settings", label: t.settings },
@@ -85,16 +89,9 @@ export function AppShell({
           ))}
         </nav>
 
-        <nav className="shell-nav-group" aria-label={t.language}>
-          <span className="shell-nav-label">{t.language}</span>
-          <a className="shell-language-link" href={languageHref}>
-            {t.switchTo}
-          </a>
-        </nav>
-
         {project ? (
           <nav className="shell-nav-group" aria-label={t.projectWorkspace}>
-            <span className="shell-nav-label">{project.name}</span>
+            <span className="shell-nav-label">{projectDisplayName}</span>
             {projectNav.map((item) => (
               <Link
                 key={item.href}
@@ -113,7 +110,7 @@ export function AppShell({
       </aside>
 
       <main className="shell-main">
-        <div className="shell-panel">{children}</div>
+        <div className={panelClassName}>{children}</div>
       </main>
     </div>
   );

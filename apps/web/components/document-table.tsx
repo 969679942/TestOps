@@ -8,7 +8,7 @@ type DocumentTableProps = Readonly<{
   locale?: Locale;
 }>;
 
-export function DocumentTable({ items, locale = "en" }: DocumentTableProps) {
+export function DocumentTable({ items, locale = "zh" }: DocumentTableProps) {
   const t = copy[locale].components;
 
   return (

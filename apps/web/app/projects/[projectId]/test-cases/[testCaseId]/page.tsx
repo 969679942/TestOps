@@ -1,10 +1,17 @@
 import React from "react";
+
 import { AppShell } from "../../../../../components/app-shell";
 import { Breadcrumbs } from "../../../../../components/breadcrumbs";
 import { TestCaseEditor } from "../../../../../components/test-case-editor";
 import { TestCaseReviewPanel } from "../../../../../components/test-case-review-panel";
 import { WorkflowSteps } from "../../../../../components/workflow-steps";
 import { copy } from "../../../../../lib/copy";
+import {
+  localizedHref,
+  normalizeLocale,
+  type LocaleSearchParams,
+} from "../../../../../lib/i18n";
+import { translateProjectName } from "../../../../../lib/project-display";
 import {
   getProject,
   getTestCase,
@@ -19,10 +26,15 @@ type TestCaseDetailPageProps = {
     projectId: string;
     testCaseId: string;
   }>;
+  searchParams?: Promise<LocaleSearchParams>;
 };
 
-export default async function TestCaseDetailPage({ params }: TestCaseDetailPageProps) {
+export default async function TestCaseDetailPage({
+  params,
+  searchParams,
+}: TestCaseDetailPageProps) {
   const { projectId, testCaseId } = await params;
+  const locale = normalizeLocale((await searchParams)?.lang);
   const [project, documents, testCases, testCase, reviews] = await loadOrThrow(() =>
     Promise.all([
       getProject(projectId),
@@ -34,18 +46,26 @@ export default async function TestCaseDetailPage({ params }: TestCaseDetailPageP
   );
 
   const publishedCount = testCases.filter((item) => item.status === "published").length;
+  const projectDisplayName = translateProjectName(project.name, locale);
 
   return (
     <AppShell
       currentPath={`/projects/${projectId}/test-cases`}
+      locale={locale}
       project={project}
       testCaseCount={testCases.length}
     >
       <Breadcrumbs
         items={[
-          { label: copy.projects, href: "/" },
-          { label: project.name, href: `/projects/${projectId}` },
-          { label: copy.testCases, href: `/projects/${projectId}/test-cases` },
+          { label: copy.projects, href: localizedHref("/", locale) },
+          {
+            label: projectDisplayName,
+            href: localizedHref(`/projects/${projectId}`, locale),
+          },
+          {
+            label: copy.testCases,
+            href: localizedHref(`/projects/${projectId}/test-cases`, locale),
+          },
           { label: testCase.title },
         ]}
       />

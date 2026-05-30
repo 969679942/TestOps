@@ -1,23 +1,21 @@
-export type Locale = "en" | "zh";
+export type Locale = "zh";
 
 export type LocaleSearchParams = Readonly<{
   lang?: string | string[];
 }>;
 
 export function normalizeLocale(value: string | string[] | undefined): Locale {
-  const candidate = Array.isArray(value) ? value[0] : value;
-  return candidate === "zh" ? "zh" : "en";
+  void value;
+  return "zh";
 }
 
 export function withLocale(path: string, locale: Locale) {
-  const [pathname, query = ""] = path.split("?");
-  const params = new URLSearchParams(query);
-  params.set("lang", locale);
-  return `${pathname}?${params.toString()}`;
+  void locale;
+  return path;
 }
 
 export function localizedHref(path: string, locale: Locale) {
-  return locale === "en" ? path : withLocale(path, locale);
+  return withLocale(path, locale);
 }
 
 function titleCase(value: string) {
@@ -400,6 +398,17 @@ export const copy = {
       approve: "Approve",
       publish: "Publish",
       saveDraft: "Save draft",
+      reviewMetadata: "Review metadata",
+      currentStatus: "Current status",
+      statusReadonlyCopy: "Status changes come from review and publish actions.",
+      caseProfile: "Case profile",
+      automationReadiness: "Automation readiness",
+      automationHint: "Mark this when the case should move toward UI automation.",
+      tagsPlaceholder: "smoke, checkout, regression",
+      addPrecondition: "Add precondition",
+      addStep: "Add step",
+      addExpectedResult: "Add expected result",
+      removeItem: "Remove",
       for: "for",
     },
   },
@@ -677,6 +686,17 @@ export const copy = {
       approve: "批准",
       publish: "发布",
       saveDraft: "保存草稿",
+      reviewMetadata: "评审元信息",
+      currentStatus: "当前状态",
+      statusReadonlyCopy: "状态由评审和发布动作驱动，这里仅展示。",
+      caseProfile: "用例画像",
+      automationReadiness: "自动化准备度",
+      automationHint: "若该用例后续要生成 UI 自动化，请在这里标记。",
+      tagsPlaceholder: "smoke, checkout, regression",
+      addPrecondition: "新增前置条件",
+      addStep: "新增步骤",
+      addExpectedResult: "新增预期结果",
+      removeItem: "删除",
       for: "对应",
     },
   },

@@ -8,7 +8,7 @@ type TestCaseTableProps = Readonly<{
   locale?: Locale;
 }>;
 
-export function TestCaseTable({ items, locale = "en" }: TestCaseTableProps) {
+export function TestCaseTable({ items, locale = "zh" }: TestCaseTableProps) {
   const t = copy[locale].components;
 
   return (

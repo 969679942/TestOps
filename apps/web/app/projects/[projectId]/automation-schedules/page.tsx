@@ -133,7 +133,7 @@ export default async function ProjectAutomationSchedulesPage({
         </section>
       ) : null}
 
-      <section className="data-card">
+      <section className="data-card automation-schedules-card">
         <div className="section-heading">
           <div>
             <span className="eyebrow">{pageText.eyebrow}</span>

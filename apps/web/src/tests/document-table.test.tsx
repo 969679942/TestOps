@@ -22,7 +22,7 @@ describe("DocumentTable", () => {
     const html = renderToStaticMarkup(<DocumentTable items={items} />);
 
     expect(html).toContain("Checkout PRD");
-    expect(html).toContain("Parsed");
+    expect(html).toContain("已解析");
     expect(html).toContain("<table");
   });
 });

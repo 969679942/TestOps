@@ -9,6 +9,12 @@ import { TestCaseListPanel } from "../../../../components/test-case-list-panel";
 import { WorkflowSteps } from "../../../../components/workflow-steps";
 
 import { copy } from "../../../../lib/copy";
+import {
+  localizedHref,
+  normalizeLocale,
+  type LocaleSearchParams,
+} from "../../../../lib/i18n";
+import { translateProjectName } from "../../../../lib/project-display";
 
 import {
 
@@ -31,13 +37,11 @@ type TestCaseListPageProps = {
     projectId: string;
 
   }>;
-
-  searchParams: Promise<{
-
+  searchParams?: Promise<
+    LocaleSearchParams & {
     generated?: string;
 
     imported?: string;
-
   }>;
 
 };
@@ -54,7 +58,9 @@ export default async function TestCaseListPage({
 
   const { projectId } = await params;
 
-  const { generated, imported } = await searchParams;
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const locale = normalizeLocale(resolvedSearchParams.lang);
+  const { generated, imported } = resolvedSearchParams;
 
   const [project, documents, testCases] = await loadOrThrow(() =>
 
@@ -73,6 +79,7 @@ export default async function TestCaseListPage({
 
 
   const publishedCount = testCases.filter((item) => item.status === "published").length;
+  const projectDisplayName = translateProjectName(project.name, locale);
 
 
 
@@ -81,7 +88,7 @@ export default async function TestCaseListPage({
     <AppShell
 
       currentPath={`/projects/${projectId}/test-cases`}
-
+      locale={locale}
       project={project}
 
       testCaseCount={testCases.length}
@@ -92,9 +99,12 @@ export default async function TestCaseListPage({
 
         items={[
 
-          { label: copy.projects, href: "/" },
+          { label: copy.projects, href: localizedHref("/", locale) },
 
-          { label: project.name, href: `/projects/${projectId}` },
+          {
+            label: projectDisplayName,
+            href: localizedHref(`/projects/${projectId}`, locale),
+          },
 
           { label: copy.testCases },
 
@@ -108,7 +118,7 @@ export default async function TestCaseListPage({
 
         <span className="eyebrow">{copy.testCasePreviewEyebrow}</span>
 
-        <h2>{project.name}</h2>
+        <h2>{projectDisplayName}</h2>
 
         <p>{copy.testCasePreviewHint}</p>
 

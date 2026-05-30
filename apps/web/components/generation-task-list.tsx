@@ -13,7 +13,7 @@ function getDocumentCount(inputRefs: Record<string, unknown>) {
   return Array.isArray(documentIds) ? documentIds.length : 0;
 }
 
-export function GenerationTaskList({ items, locale = "en" }: GenerationTaskListProps) {
+export function GenerationTaskList({ items, locale = "zh" }: GenerationTaskListProps) {
   const t = copy[locale].components;
 
   if (!items.length) {

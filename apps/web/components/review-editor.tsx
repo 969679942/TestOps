@@ -1,6 +1,8 @@
-import React from "react";
+"use client";
 
-import { copy, type Locale } from "../lib/i18n";
+import React, { useEffect, useState } from "react";
+
+import { copy, formatValue, type Locale } from "../lib/i18n";
 import type { StructuredTextField, TestCaseRecord } from "../lib/types";
 
 type ReviewEditorProps = Readonly<{
@@ -11,36 +13,88 @@ type ReviewEditorProps = Readonly<{
   saveAction?: (formData: FormData) => Promise<void>;
 }>;
 
-type TextFieldListProps = Readonly<{
-  items: StructuredTextField[];
+type DynamicTextListProps = Readonly<{
+  addLabel: string;
   fieldNameBase: string;
+  items: string[];
+  kind?: "input" | "textarea";
   label: string;
+  onChange: (index: number, value: string) => void;
+  onAdd: () => void;
+  onRemove: (index: number) => void;
   prefix: string;
+  removeLabel: string;
 }>;
 
-function TextFieldList({ items, fieldNameBase, label, prefix }: TextFieldListProps) {
+const CASE_TYPE_OPTIONS = ["functional", "negative"];
+const PRIORITY_OPTIONS = ["high", "medium", "low"];
+
+function ensureEditableItems(items: string[]) {
+  return items.length ? items : [""];
+}
+
+function DynamicTextList({
+  addLabel,
+  fieldNameBase,
+  items,
+  kind = "textarea",
+  label,
+  onChange,
+  onAdd,
+  onRemove,
+  prefix,
+  removeLabel,
+}: DynamicTextListProps) {
   return (
     <section className="review-section">
-      <div className="section-heading">
+      <div className="section-heading review-list-heading">
         <div>
           <span className="eyebrow">{label}</span>
           <h3>{label}</h3>
         </div>
+        <button className="secondary-button" onClick={onAdd} type="button">
+          {addLabel}
+        </button>
       </div>
 
       <div className="review-stack">
-        {items.map((item, index) => (
-          <label key={`${prefix}-${index + 1}`} className="form-field">
-            <span>
-              {prefix} {index + 1}
-            </span>
-            <textarea
-              className="field-textarea"
-              name={`${fieldNameBase}-${index + 1}`}
-              defaultValue={item.text}
-              rows={3}
-            />
-          </label>
+        {items.map((value, index) => (
+          <div className="review-list-item" key={`${fieldNameBase}-${index + 1}`}>
+            <label
+              className="form-field review-list-field"
+              htmlFor={`${fieldNameBase}-${index + 1}`}
+            >
+              <span>
+                {prefix} {index + 1}
+              </span>
+              {kind === "input" ? (
+                <input
+                  className="field-input"
+                  id={`${fieldNameBase}-${index + 1}`}
+                  name={`${fieldNameBase}-${index + 1}`}
+                  onChange={(event) => onChange(index, event.target.value)}
+                  value={value}
+                />
+              ) : (
+                <textarea
+                  className="field-textarea"
+                  id={`${fieldNameBase}-${index + 1}`}
+                  name={`${fieldNameBase}-${index + 1}`}
+                  onChange={(event) => onChange(index, event.target.value)}
+                  rows={3}
+                  value={value}
+                />
+              )}
+            </label>
+            <button
+              className="review-remove-button"
+              disabled={items.length === 1}
+              onClick={() => onRemove(index)}
+              type="button"
+            >
+              {removeLabel}
+            </button>
+          </div>
         ))}
       </div>
     </section>
@@ -49,12 +103,29 @@ function TextFieldList({ items, fieldNameBase, label, prefix }: TextFieldListPro
 
 export function ReviewEditor({
   item,
-  locale = "en",
+  locale = "zh",
   approveAction,
   publishAction,
   saveAction,
 }: ReviewEditorProps) {
   const t = copy[locale].components;
+  const [preconditions, setPreconditions] = useState(
+    ensureEditableItems(item?.preconditions ?? []),
+  );
+  const [steps, setSteps] = useState(
+    ensureEditableItems((item?.steps ?? []).map((entry) => entry.text)),
+  );
+  const [expectedResults, setExpectedResults] = useState(
+    ensureEditableItems((item?.expectedResults ?? []).map((entry) => entry.text)),
+  );
+
+  useEffect(() => {
+    setPreconditions(ensureEditableItems(item?.preconditions ?? []));
+    setSteps(ensureEditableItems((item?.steps ?? []).map((entry) => entry.text)));
+    setExpectedResults(
+      ensureEditableItems((item?.expectedResults ?? []).map((entry) => entry.text)),
+    );
+  }, [item]);
 
   if (!item) {
     return (
@@ -76,6 +147,28 @@ export function ReviewEditor({
         <p>{t.reviewDraftCopy}</p>
       </div>
 
+      <section className="review-meta-grid" aria-label={t.reviewMetadata}>
+        <article className="review-meta-card">
+          <span className="eyebrow">{t.currentStatus}</span>
+          <p className="summary-value">
+            <span className="status-pill">{formatValue(item.status, locale, t.draft)}</span>
+          </p>
+          <p>{t.statusReadonlyCopy}</p>
+        </article>
+        <article className="review-meta-card">
+          <span className="eyebrow">{t.caseProfile}</span>
+          <p className="summary-value">{formatValue(item.caseType, locale, t.case)}</p>
+          <p>
+            {t.priority}: {formatValue(item.priority, locale, t.unspecified)}
+          </p>
+        </article>
+        <article className="review-meta-card">
+          <span className="eyebrow">{t.automationReadiness}</span>
+          <p className="summary-value">{item.automationFlag ? t.yes : t.no}</p>
+          <p>{t.automationHint}</p>
+        </article>
+      </section>
+
       <div className="form-grid">
         <label className="form-field">
           <span>{t.title}</span>
@@ -91,69 +184,100 @@ export function ReviewEditor({
         </label>
         <label className="form-field">
           <span>{t.caseType}</span>
-          <input className="field-input" name="caseType" defaultValue={item.caseType} />
+          <select className="field-input" defaultValue={item.caseType} name="caseType">
+            {CASE_TYPE_OPTIONS.map((option) => (
+              <option key={option} value={option}>
+                {formatValue(option, locale)}
+              </option>
+            ))}
+          </select>
         </label>
         <label className="form-field">
           <span>{t.priority}</span>
-          <input className="field-input" name="priority" defaultValue={item.priority} />
+          <select className="field-input" defaultValue={item.priority} name="priority">
+            {PRIORITY_OPTIONS.map((option) => (
+              <option key={option} value={option}>
+                {formatValue(option, locale)}
+              </option>
+            ))}
+          </select>
         </label>
-        <label className="form-field">
-          <span>{t.status}</span>
-          <input className="field-input" name="status" defaultValue={item.status} />
-        </label>
-      </div>
-
-      <section className="review-section">
-        <div className="section-heading">
-          <div>
-            <span className="eyebrow">{t.preconditions}</span>
-            <h3>{t.preconditions}</h3>
-          </div>
-        </div>
-
-        <div className="review-stack">
-          {item.preconditions.map((value, index) => (
-            <label key={`precondition-${index + 1}`} className="form-field">
-              <span>
-                {t.precondition} {index + 1}
-              </span>
-              <input
-                className="field-input"
-                name={`precondition-${index + 1}`}
-                defaultValue={value}
-              />
-            </label>
-          ))}
-        </div>
-      </section>
-
-      <TextFieldList
-        items={item.steps}
-        fieldNameBase="step"
-        label={t.steps}
-        prefix={t.step}
-      />
-      <TextFieldList
-        items={item.expectedResults}
-        fieldNameBase="expected-result"
-        label={t.expectedResults}
-        prefix={t.expectedResult}
-      />
-
-      <div className="form-grid">
         <label className="form-field">
           <span>{t.tags}</span>
-          <input className="field-input" name="tags" defaultValue={item.tags.join(", ")} />
-        </label>
-        <label className="form-field">
-          <span>{t.automationCandidate}</span>
           <input
             className="field-input"
-            name="automationFlag"
-            defaultValue={item.automationFlag ? t.yes : t.no}
+            name="tags"
+            defaultValue={item.tags.join(", ")}
+            placeholder={t.tagsPlaceholder}
           />
         </label>
       </div>
+
+      <label className="inline-check review-toggle">
+        <input defaultChecked={item.automationFlag} name="automationFlag" type="checkbox" />
+        <span>{t.automationCandidate}</span>
+      </label>
+
+      <DynamicTextList
+        addLabel={t.addPrecondition}
+        fieldNameBase="precondition"
+        items={preconditions}
+        kind="input"
+        label={t.preconditions}
+        onAdd={() => setPreconditions((current) => [...current, ""])}
+        onChange={(index, value) =>
+          setPreconditions((current) =>
+            current.map((entry, currentIndex) => (currentIndex === index ? value : entry)),
+          )
+        }
+        onRemove={(index) =>
+          setPreconditions((current) =>
+            current.length === 1 ? current : current.filter((_, currentIndex) => currentIndex !== index),
+          )
+        }
+        prefix={t.precondition}
+        removeLabel={t.removeItem}
+      />
+
+      <DynamicTextList
+        addLabel={t.addStep}
+        fieldNameBase="step"
+        items={steps}
+        label={t.steps}
+        onAdd={() => setSteps((current) => [...current, ""])}
+        onChange={(index, value) =>
+          setSteps((current) =>
+            current.map((entry, currentIndex) => (currentIndex === index ? value : entry)),
+          )
+        }
+        onRemove={(index) =>
+          setSteps((current) =>
+            current.length === 1 ? current : current.filter((_, currentIndex) => currentIndex !== index),
+          )
+        }
+        prefix={t.step}
+        removeLabel={t.removeItem}
+      />
+
+      <DynamicTextList
+        addLabel={t.addExpectedResult}
+        fieldNameBase="expected-result"
+        items={expectedResults}
+        label={t.expectedResults}
+        onAdd={() => setExpectedResults((current) => [...current, ""])}
+        onChange={(index, value) =>
+          setExpectedResults((current) =>
+            current.map((entry, currentIndex) => (currentIndex === index ? value : entry)),
+          )
+        }
+        onRemove={(index) =>
+          setExpectedResults((current) =>
+            current.length === 1 ? current : current.filter((_, currentIndex) => currentIndex !== index),
+          )
+        }
+        prefix={t.expectedResult}
+        removeLabel={t.removeItem}
+      />
 
       <label className="form-field">
         <span>{t.automationNotes}</span>
@@ -164,6 +288,7 @@ export function ReviewEditor({
           rows={4}
         />
       </label>
+
       <div className="button-row">
         <button className="primary-button" type="submit">
           {t.saveDraft}
