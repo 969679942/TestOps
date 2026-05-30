@@ -1,4 +1,4 @@
-import React from "react";
+import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { copy, localizedHref, type Locale, withLocale } from "../lib/i18n";
@@ -9,16 +9,22 @@ type AppShellProps = Readonly<{
   currentPath?: string;
   locale?: Locale;
   project?: ProjectRecord | null;
+  testCaseCount?: number;
 }>;
 
 type NavItem = {
-  href?: string;
+  href: string;
   label: string;
+  badge?: number;
 };
 
 function isCurrentPath(currentPath: string | undefined, href: string) {
   if (!currentPath) {
     return false;
+  }
+
+  if (href === "/") {
+    return currentPath === "/";
   }
 
   return currentPath === href || currentPath.startsWith(`${href}/`);
@@ -29,6 +35,7 @@ export function AppShell({
   currentPath,
   locale = "en",
   project,
+  testCaseCount = 0,
 }: AppShellProps) {
   const t = copy[locale].appShell;
   const switchLocale: Locale = locale === "zh" ? "en" : "zh";
@@ -46,7 +53,11 @@ export function AppShell({
           href: `/projects/${project.id}/automation-schedules`,
           label: t.automationSchedules,
         },
-        { href: `/projects/${project.id}/test-cases`, label: t.testCases },
+        {
+          href: `/projects/${project.id}/test-cases`,
+          label: t.testCases,
+          badge: testCaseCount,
+        },
         { href: `/projects/${project.id}/review`, label: t.review },
       ]
     : [];
@@ -62,22 +73,16 @@ export function AppShell({
 
         <nav className="shell-nav-group" aria-label={t.global}>
           <span className="shell-nav-label">{t.navigate}</span>
-          {globalNav.map((item) =>
-            item.href ? (
-              <a
-                key={item.label}
-                className="shell-nav-link"
-                href={localizedHref(item.href, locale)}
-                aria-current={isCurrentPath(currentPath, item.href) ? "page" : undefined}
-              >
-                {item.label}
-              </a>
-            ) : (
-              <span key={item.label} className="shell-nav-disabled" aria-disabled="true">
-                {item.label}
-              </span>
-            ),
-          )}
+          {globalNav.map((item) => (
+            <Link
+              key={item.label}
+              className="shell-nav-link"
+              href={localizedHref(item.href, locale)}
+              aria-current={isCurrentPath(currentPath, item.href) ? "page" : undefined}
+            >
+              {item.label}
+            </Link>
+          ))}
         </nav>
 
         <nav className="shell-nav-group" aria-label={t.language}>
@@ -91,14 +96,17 @@ export function AppShell({
           <nav className="shell-nav-group" aria-label={t.projectWorkspace}>
             <span className="shell-nav-label">{project.name}</span>
             {projectNav.map((item) => (
-              <a
+              <Link
                 key={item.href}
                 className="shell-nav-link"
-                href={localizedHref(item.href ?? "/", locale)}
-                aria-current={isCurrentPath(currentPath, item.href ?? "") ? "page" : undefined}
+                href={localizedHref(item.href, locale)}
+                aria-current={isCurrentPath(currentPath, item.href) ? "page" : undefined}
               >
-                {item.label}
-              </a>
+                <span>{item.label}</span>
+                {item.badge && item.badge > 0 ? (
+                  <span className="nav-badge">{item.badge}</span>
+                ) : null}
+              </Link>
             ))}
           </nav>
         ) : null}

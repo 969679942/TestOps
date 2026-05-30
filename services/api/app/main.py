@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.modules.automation.router import router as automation_router
 from app.modules.data_setup.router import router as data_setup_router
@@ -13,6 +14,17 @@ from app.modules.settings.router import router as settings_router
 from app.modules.testcase.router import router as testcase_router
 
 app = FastAPI(title="TestOps API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(automation_router)
 app.include_router(data_setup_router)

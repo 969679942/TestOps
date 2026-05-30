@@ -5,10 +5,12 @@ from app.modules.provider.base import (
     UnknownProviderError,
 )
 from app.modules.provider.cursor_provider import CursorProvider
+from app.modules.provider.mock_provider import MockProvider
 from app.modules.provider.openai_provider import OpenAIProvider
 
 PROVIDERS = {
     "cursor": CursorProvider,
+    "mock": MockProvider,
     "openai": OpenAIProvider,
 }
 
@@ -31,6 +33,7 @@ def resolve_provider(
 __all__ = [
     "AIProvider",
     "CursorProvider",
+    "MockProvider",
     "OpenAIProvider",
     "PROVIDERS",
     "ProviderGenerationRequest",

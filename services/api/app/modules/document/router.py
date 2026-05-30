@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_session
@@ -32,6 +32,41 @@ def create_document_asset(
     session: Session = Depends(get_session),
 ) -> DocumentRead:
     return document_service.create_asset(session, project_id, payload)
+
+
+@router.post(
+    "/projects/{project_id}/documents/upload",
+    response_model=DocumentRead,
+    status_code=status.HTTP_201_CREATED,
+)
+async def upload_document_file(
+    project_id: int,
+    file: UploadFile = File(...),
+    type: str = Form(...),
+    name: str = Form(...),
+    source_mode: str = Form(default="upload"),
+    session: Session = Depends(get_session),
+) -> DocumentRead:
+    return await document_service.upload_asset_file(
+        session,
+        project_id,
+        doc_type=type,
+        name=name,
+        source_mode=source_mode,
+        file=file,
+    )
+
+
+@router.delete(
+    "/projects/{project_id}/documents/{document_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_document_asset(
+    project_id: int,
+    document_id: int,
+    session: Session = Depends(get_session),
+) -> None:
+    document_service.delete_asset(session, project_id, document_id)
 
 
 @router.post(

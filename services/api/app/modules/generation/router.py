@@ -30,7 +30,19 @@ def create_generation_task(
     session: Session = Depends(get_session),
 ) -> GenerationTaskRead:
     task = generation_service.create_task(session, project_id, payload)
+
+    if task.provider == "mock":
+        return generation_service.execute_generation_task(session, task.id)
+
     dispatch_issue = generation_service.dispatch_generation_task(task.id)
     if dispatch_issue:
         task = generation_service.record_dispatch_issue(session, task, dispatch_issue)
     return task
+
+
+@router.get("/generation-tasks/{task_id}", response_model=GenerationTaskRead)
+def get_generation_task(
+    task_id: int,
+    session: Session = Depends(get_session),
+) -> GenerationTaskRead:
+    return generation_service.get_task(session, task_id)

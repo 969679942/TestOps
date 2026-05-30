@@ -1,7 +1,11 @@
+from __future__ import annotations
+
+import re
+import uuid
 from hashlib import sha256
 from pathlib import Path
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException, UploadFile, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -10,6 +14,20 @@ from app.models.document import DocumentAsset, DocumentVersion
 from app.models.project import Project
 from app.modules.document.storage import LocalArtifactStorage
 from app.schemas.document import DocumentCreate, DocumentVersionCreate
+
+_MAX_UPLOAD_BYTES = 20 * 1024 * 1024
+_SAFE_NAME = re.compile(r"[^a-zA-Z0-9._-]+")
+
+
+def _storage_root() -> Path:
+    root = Path(settings.document_storage_path)
+    root.mkdir(parents=True, exist_ok=True)
+    return root
+
+
+def _sanitize_filename(name: str) -> str:
+    cleaned = _SAFE_NAME.sub("_", name.strip()) or "upload.bin"
+    return cleaned[:180]
 
 
 def _get_project(session: Session, project_id: int) -> Project:
@@ -37,6 +55,73 @@ def create_asset(session: Session, project_id: int, payload: DocumentCreate) -> 
     session.commit()
     session.refresh(asset)
     return asset
+
+
+async def upload_asset_file(
+    session: Session,
+    project_id: int,
+    *,
+    doc_type: str,
+    name: str,
+    source_mode: str,
+    file: UploadFile,
+) -> DocumentAsset:
+    _get_project(session, project_id)
+
+    raw = await file.read()
+    if not raw:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Uploaded file is empty",
+        )
+    if len(raw) > _MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File exceeds 20 MB limit",
+        )
+
+    original_name = file.filename or name or "upload.bin"
+    safe_name = f"{uuid.uuid4().hex[:12]}-{_sanitize_filename(original_name)}"
+    project_dir = _storage_root() / str(project_id)
+    project_dir.mkdir(parents=True, exist_ok=True)
+    target = project_dir / safe_name
+    target.write_bytes(raw)
+
+    relative = f"{project_id}/{safe_name}"
+    asset = DocumentAsset(
+        project_id=project_id,
+        type=doc_type,
+        name=name.strip() or original_name,
+        source_mode=source_mode,
+        source_uri=f"storage://{relative}",
+    )
+    session.add(asset)
+    session.commit()
+    session.refresh(asset)
+    return asset
+
+
+def delete_asset(session: Session, project_id: int, document_id: int) -> None:
+    asset = session.scalar(
+        select(DocumentAsset).where(
+            DocumentAsset.id == document_id,
+            DocumentAsset.project_id == project_id,
+        )
+    )
+    if asset is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found",
+        )
+
+    if asset.source_uri and asset.source_uri.startswith("storage://"):
+        relative = asset.source_uri.removeprefix("storage://")
+        file_path = _storage_root() / relative
+        if file_path.is_file():
+            file_path.unlink()
+
+    session.delete(asset)
+    session.commit()
 
 
 def _get_document_asset(session: Session, document_id: int) -> DocumentAsset:

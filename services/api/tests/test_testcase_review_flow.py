@@ -109,6 +109,7 @@ def test_review_publish_and_handoff_flow(client):
             "tags": ["smoke", "checkout"],
             "automation_flag": True,
             "automation_notes": "Stable happy path for downstream automation.",
+            "ui_context": None,
             "status": "published",
             "created_at": publish.json()["created_at"],
             "updated_at": publish.json()["updated_at"],

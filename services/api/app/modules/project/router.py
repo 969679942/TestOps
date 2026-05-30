@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_session
 from app.modules.project import service as project_service
-from app.schemas.project import ProjectCreate, ProjectRead
+from app.schemas.project import ProjectCreate, ProjectRead, ProjectSummaryRead
 
 router = APIRouter(tags=["projects"])
 
@@ -11,6 +11,13 @@ router = APIRouter(tags=["projects"])
 @router.get("/projects", response_model=list[ProjectRead])
 def list_projects(session: Session = Depends(get_session)) -> list[ProjectRead]:
     return project_service.list_projects(session)
+
+
+@router.get("/project-summaries", response_model=list[ProjectSummaryRead])
+def list_project_summaries(
+    session: Session = Depends(get_session),
+) -> list[ProjectSummaryRead]:
+    return project_service.list_project_summaries(session)
 
 
 @router.post("/projects", response_model=ProjectRead, status_code=status.HTTP_201_CREATED)

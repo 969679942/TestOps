@@ -13,9 +13,7 @@ describe("AppShell", () => {
     );
 
     expect(html).toContain('href="/"');
-    expect(html).toContain(">Projects<");
-    expect(html).toContain('href="/settings"');
-    expect(html).toContain(">Settings<");
+    expect(html).toContain(">项目<");
   });
 
   it("renders Chinese navigation and a matching language switch link", () => {

@@ -16,15 +16,34 @@
 
 ## Local development
 
-1. Start dependencies:
-   `docker compose up -d postgres redis`
-2. Install frontend deps:
-   `cd apps/web && npm install`
-3. Install backend deps:
-   `cd services/api && uv sync`
-4. Install worker deps:
-   `cd services/worker && uv sync`
-5. Run services in separate terminals.
+### Dependencies
+
+Use either Docker or native services:
+
+- **Docker:** `docker compose up -d postgres redis`
+- **Native (no virtualization):** install PostgreSQL 17 and Redis for Windows, then create database/user `testops` / `testops`
+
+### Install
+
+1. `cd apps/web && npm install`
+2. `cd services/api && uv sync`
+3. `cd services/worker && uv sync`
+4. `cd services/api && uv run alembic upgrade head`
+
+### Run
+
+1. API: `cd services/api && uv run uvicorn app.main:app --reload`
+2. Worker (optional for non-mock providers): `cd services/worker && uv run celery -A worker_app.celery_app worker -l info -P solo`
+3. Web: `cd apps/web && npm run dev`
+
+Open http://localhost:3000
+
+### Product flow
+
+1. Create a project on the home page
+2. Upload PRD / Swagger / Figma sources in the project workspace
+3. Click **Generate test cases** (uses the `mock` provider synchronously in local dev)
+4. Preview, edit, approve, and publish cases in **Test Cases**
 
 ## Verification
 

@@ -14,6 +14,7 @@ from app.models.project import Project
 from app.models.testcase import TestCase
 from app.modules.project import service as project_service
 from app.modules.provider import UnknownProviderError, resolve_provider
+from app.modules.provider.base import ProviderGenerationRequest
 from app.schemas.generation import GenerationTaskCreate
 
 
@@ -116,7 +117,64 @@ def persist_generated_cases(
         )
         session.add(draft)
         drafts.append(draft)
+    session.commit()
+    for draft in drafts:
+        session.refresh(draft)
     return drafts
+
+
+def get_task(session: Session, task_id: int) -> GenerationTask:
+    task = session.scalar(select(GenerationTask).where(GenerationTask.id == task_id))
+    if task is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Generation task not found",
+        )
+    return task
+
+
+def execute_generation_task(session: Session, task_id: int) -> GenerationTask:
+    task = get_task(session, task_id)
+
+    task.status = "running"
+    task.started_at = task.started_at or _utcnow()
+    task.error_message = None
+    session.add(task)
+    session.commit()
+    session.refresh(task)
+
+    try:
+        provider = resolve_provider(
+            task.provider,
+            model=task.model,
+            prompt_version=task.prompt_version,
+        )
+        response = provider.generate_test_cases(
+            ProviderGenerationRequest(
+                project_id=task.project_id,
+                prompt_version=task.prompt_version,
+                input_refs=task.input_refs,
+            )
+        )
+        normalized_cases = normalize_generated_cases(response.payload)
+        persist_generated_cases(
+            session,
+            project_id=task.project_id,
+            cases=normalized_cases,
+        )
+
+        task.status = "completed"
+        task.finished_at = _utcnow()
+        task.error_message = None
+    except Exception as exc:
+        task.status = "failed"
+        task.finished_at = _utcnow()
+        task.error_message = str(exc)
+
+    session.add(task)
+    session.commit()
+    session.refresh(task)
+    return task
 
 
 def create_task(

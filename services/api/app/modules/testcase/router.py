@@ -3,7 +3,12 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_session
 from app.modules.testcase import service as testcase_service
-from app.schemas.testcase import TestCaseCreate, TestCaseRead, TestCaseUpdate
+from app.schemas.testcase import (
+    TestCaseCreate,
+    TestCaseImportRequest,
+    TestCaseRead,
+    TestCaseUpdate,
+)
 
 router = APIRouter(tags=["testcases"])
 
@@ -14,6 +19,14 @@ def list_test_cases(
     session: Session = Depends(get_session),
 ) -> list[TestCaseRead]:
     return testcase_service.list_test_cases(session, project_id)
+
+
+@router.get("/test-cases/{test_case_id}", response_model=TestCaseRead)
+def get_test_case(
+    test_case_id: int,
+    session: Session = Depends(get_session),
+) -> TestCaseRead:
+    return testcase_service.get_test_case_or_404(session, test_case_id)
 
 
 @router.post(
@@ -27,6 +40,19 @@ def create_test_case(
     session: Session = Depends(get_session),
 ) -> TestCaseRead:
     return testcase_service.create_test_case(session, project_id, payload)
+
+
+@router.post(
+    "/projects/{project_id}/test-cases/import",
+    response_model=list[TestCaseRead],
+    status_code=status.HTTP_201_CREATED,
+)
+def import_test_cases(
+    project_id: int,
+    payload: TestCaseImportRequest,
+    session: Session = Depends(get_session),
+) -> list[TestCaseRead]:
+    return testcase_service.import_test_cases(session, project_id, payload.cases)
 
 
 @router.patch("/test-cases/{test_case_id}", response_model=TestCaseRead)

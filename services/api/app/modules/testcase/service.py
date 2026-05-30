@@ -46,6 +46,7 @@ def create_test_case(
         tags=list(payload.tags),
         automation_flag=payload.automation_flag,
         automation_notes=payload.automation_notes,
+        ui_context=payload.ui_context.model_dump() if payload.ui_context else None,
         status=payload.status,
     )
     session.add(test_case)
@@ -54,14 +55,45 @@ def create_test_case(
     return test_case
 
 
+def import_test_cases(
+    session: Session,
+    project_id: int,
+    cases: list[TestCaseCreate],
+) -> list[TestCase]:
+    _get_project_or_404(session, project_id)
+
+    created_cases: list[TestCase] = []
+    for payload in cases:
+        test_case = TestCase(
+            project_id=project_id,
+            title=payload.title,
+            module=payload.module,
+            feature=payload.feature,
+            case_type=payload.case_type,
+            priority=payload.priority,
+            preconditions=list(payload.preconditions),
+            steps=[step.model_dump() for step in payload.steps],
+            expected_results=[item.model_dump() for item in payload.expected_results],
+            tags=list(payload.tags),
+            automation_flag=payload.automation_flag,
+            automation_notes=payload.automation_notes,
+            ui_context=payload.ui_context.model_dump() if payload.ui_context else None,
+            status=payload.status,
+        )
+        session.add(test_case)
+        created_cases.append(test_case)
+
+    session.commit()
+    for test_case in created_cases:
+        session.refresh(test_case)
+    return created_cases
+
+
 def list_test_cases(session: Session, project_id: int) -> list[TestCase]:
     _get_project_or_404(session, project_id)
     cases = session.scalars(
         select(TestCase)
-        .where(
-            TestCase.project_id == project_id,
-            TestCase.status.in_(REVIEW_QUEUE_STATUSES),
-        )
+        .where(TestCase.project_id == project_id)
         .order_by(TestCase.id)
     )
     return list(cases)
@@ -79,19 +111,22 @@ def update_test_case(
             detail="Published test cases cannot be edited",
         )
 
-    test_case.title = payload.title
-    test_case.module = payload.module
-    test_case.feature = payload.feature
-    test_case.case_type = payload.case_type
-    test_case.priority = payload.priority
-    test_case.preconditions = list(payload.preconditions)
-    test_case.steps = [step.model_dump() for step in payload.steps]
-    test_case.expected_results = [
-        item.model_dump() for item in payload.expected_results
-    ]
-    test_case.tags = list(payload.tags)
-    test_case.automation_flag = payload.automation_flag
-    test_case.automation_notes = payload.automation_notes
+    updates = payload.model_dump(exclude_unset=True)
+    if "steps" in updates and updates["steps"] is not None:
+        updates["steps"] = [step.model_dump() for step in payload.steps or []]
+    if "expected_results" in updates and updates["expected_results"] is not None:
+        updates["expected_results"] = [
+            item.model_dump() for item in payload.expected_results or []
+        ]
+    if "preconditions" in updates and updates["preconditions"] is not None:
+        updates["preconditions"] = list(payload.preconditions or [])
+    if "tags" in updates and updates["tags"] is not None:
+        updates["tags"] = list(payload.tags or [])
+    if "ui_context" in updates and payload.ui_context is not None:
+        updates["ui_context"] = payload.ui_context.model_dump()
+
+    for field, value in updates.items():
+        setattr(test_case, field, value)
 
     session.add(test_case)
     session.commit()

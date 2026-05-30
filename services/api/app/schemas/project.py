@@ -24,3 +24,9 @@ class ProjectRead(BaseModel):
     default_prompt_profile: str
     created_at: datetime
     updated_at: datetime
+
+
+class ProjectSummaryRead(ProjectRead):
+    document_count: int
+    test_case_count: int
+    published_count: int

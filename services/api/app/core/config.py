@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     codex_failure_analysis_model: str = "codex-provider-boundary"
     lark_webhook_url: str | None = None
     artifact_storage_root: str = "var/artifacts"
+    document_storage_path: str = "data/documents"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

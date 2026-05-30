@@ -18,4 +18,7 @@ __pycache__/
 .venv/
 venv/
 *.log
+tsconfig.tsbuildinfo
+*.egg-info/
+data/documents/
 services/api/var/

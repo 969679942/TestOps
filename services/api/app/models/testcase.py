@@ -33,6 +33,7 @@ class TestCase(Base):
     tags: Mapped[list[str]] = mapped_column(JSON(), default=list, nullable=False)
     automation_flag: Mapped[bool] = mapped_column(default=False, nullable=False)
     automation_notes: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    ui_context: Mapped[dict[str, Any] | None] = mapped_column(JSON(), nullable=True)
     status: Mapped[str] = mapped_column(String(32), default="draft", nullable=False)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(), default=_utcnow, nullable=False)
