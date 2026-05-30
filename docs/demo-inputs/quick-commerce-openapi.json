@@ -1,0 +1,36 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Quick Commerce Demo API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/orders": {
+      "post": {
+        "operationId": "createDemoOrder",
+        "summary": "Create a demo checkout order",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["sku", "quantity", "addressId"],
+                "properties": {
+                  "sku": { "type": "string" },
+                  "quantity": { "type": "integer" },
+                  "addressId": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Order created"
+          }
+        }
+      }
+    }
+  }
+}

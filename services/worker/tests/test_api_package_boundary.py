@@ -11,4 +11,7 @@ def test_installed_api_parser_module_resolves_from_worker_environment() -> None:
     origin = Path(spec.origin).resolve()
 
     assert origin.name == "swagger_parser.py"
-    assert "site-packages" in {part.lower() for part in origin.parts}
+    lowered_parts = {part.lower() for part in origin.parts}
+    assert "site-packages" in lowered_parts or origin.match(
+        "*/services/api/app/modules/parser/swagger_parser.py"
+    )

@@ -8,6 +8,17 @@ from app.schemas.generation import GenerationTaskCreate, GenerationTaskRead
 router = APIRouter(tags=["generation"])
 
 
+@router.get(
+    "/projects/{project_id}/generation-tasks",
+    response_model=list[GenerationTaskRead],
+)
+def list_generation_tasks(
+    project_id: int,
+    session: Session = Depends(get_session),
+) -> list[GenerationTaskRead]:
+    return generation_service.list_tasks(session, project_id)
+
+
 @router.post(
     "/projects/{project_id}/generation-tasks",
     response_model=GenerationTaskRead,

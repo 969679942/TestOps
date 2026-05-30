@@ -7,7 +7,9 @@ from sqlalchemy.orm import Session
 from app.models.project import Project
 from app.models.testcase import TestCase, TestCaseReview
 from app.modules.review import service as review_service
-from app.schemas.testcase import TestCaseCreate
+from app.schemas.testcase import TestCaseCreate, TestCaseUpdate
+
+REVIEW_QUEUE_STATUSES = ("draft", "needs_update", "approved")
 
 
 def _get_project_or_404(session: Session, project_id: int) -> Project:
@@ -46,6 +48,51 @@ def create_test_case(
         automation_notes=payload.automation_notes,
         status=payload.status,
     )
+    session.add(test_case)
+    session.commit()
+    session.refresh(test_case)
+    return test_case
+
+
+def list_test_cases(session: Session, project_id: int) -> list[TestCase]:
+    _get_project_or_404(session, project_id)
+    cases = session.scalars(
+        select(TestCase)
+        .where(
+            TestCase.project_id == project_id,
+            TestCase.status.in_(REVIEW_QUEUE_STATUSES),
+        )
+        .order_by(TestCase.id)
+    )
+    return list(cases)
+
+
+def update_test_case(
+    session: Session,
+    test_case_id: int,
+    payload: TestCaseUpdate,
+) -> TestCase:
+    test_case = get_test_case_or_404(session, test_case_id)
+    if test_case.status == "published":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Published test cases cannot be edited",
+        )
+
+    test_case.title = payload.title
+    test_case.module = payload.module
+    test_case.feature = payload.feature
+    test_case.case_type = payload.case_type
+    test_case.priority = payload.priority
+    test_case.preconditions = list(payload.preconditions)
+    test_case.steps = [step.model_dump() for step in payload.steps]
+    test_case.expected_results = [
+        item.model_dump() for item in payload.expected_results
+    ]
+    test_case.tags = list(payload.tags)
+    test_case.automation_flag = payload.automation_flag
+    test_case.automation_notes = payload.automation_notes
+
     session.add(test_case)
     session.commit()
     session.refresh(test_case)

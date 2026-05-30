@@ -8,6 +8,11 @@ from app.schemas.project import ProjectCreate, ProjectRead
 router = APIRouter(tags=["projects"])
 
 
+@router.get("/projects", response_model=list[ProjectRead])
+def list_projects(session: Session = Depends(get_session)) -> list[ProjectRead]:
+    return project_service.list_projects(session)
+
+
 @router.post("/projects", response_model=ProjectRead, status_code=status.HTTP_201_CREATED)
 def create_project(
     payload: ProjectCreate,
@@ -20,3 +25,8 @@ def create_project(
             status_code=status.HTTP_409_CONFLICT,
             detail="Project with this name or code already exists",
         ) from exc
+
+
+@router.get("/projects/{project_id}", response_model=ProjectRead)
+def get_project(project_id: int, session: Session = Depends(get_session)) -> ProjectRead:
+    return project_service.get_project(session, project_id)

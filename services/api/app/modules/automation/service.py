@@ -1,0 +1,478 @@
+from __future__ import annotations
+
+from datetime import UTC, datetime
+from pathlib import Path
+
+from fastapi import HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.core.config import settings
+from app.models.automation import (
+    AutomationDebugProposal,
+    AutomationFailureAnalysis,
+    AutomationGeneration,
+    AutomationRun,
+)
+from app.models.project import Project
+from app.models.report import AutomationReport
+from app.models.testcase import TestCase
+from app.modules.automation.failure_provider import (
+    CodexFailureAnalysisProvider,
+    FailureAnalysisProvider,
+    FailureAnalysisRequest,
+    FailureReportContext,
+)
+from app.modules.automation.generator import generate_playwright_pom_files
+from app.modules.document.storage import LocalArtifactStorage
+from app.schemas.automation import (
+    AutomationDebugProposalReview,
+    AutomationGenerationCreate,
+    AutomationRunCreate,
+    AutomationRunUpdate,
+)
+
+
+def _utcnow() -> datetime:
+    return datetime.now(UTC).replace(tzinfo=None)
+
+
+def _get_test_case(session: Session, test_case_id: int) -> TestCase:
+    test_case = session.scalar(select(TestCase).where(TestCase.id == test_case_id))
+    if test_case is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Test case not found",
+        )
+    return test_case
+
+
+def _get_project(session: Session, project_id: int) -> Project:
+    project = session.scalar(select(Project).where(Project.id == project_id))
+    if project is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found",
+        )
+    return project
+
+
+def _get_generation(session: Session, generation_id: int) -> AutomationGeneration:
+    generation = session.scalar(
+        select(AutomationGeneration).where(AutomationGeneration.id == generation_id)
+    )
+    if generation is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Automation generation not found",
+        )
+    return generation
+
+
+def _get_run(session: Session, run_id: int) -> AutomationRun:
+    run = session.scalar(select(AutomationRun).where(AutomationRun.id == run_id))
+    if run is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Automation run not found",
+        )
+    return run
+
+
+def _get_failure_analysis(
+    session: Session,
+    analysis_id: int,
+) -> AutomationFailureAnalysis:
+    analysis = session.scalar(
+        select(AutomationFailureAnalysis).where(
+            AutomationFailureAnalysis.id == analysis_id
+        )
+    )
+    if analysis is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Automation failure analysis not found",
+        )
+    return analysis
+
+
+def _get_debug_proposal(
+    session: Session,
+    proposal_id: int,
+) -> AutomationDebugProposal:
+    proposal = session.scalar(
+        select(AutomationDebugProposal).where(
+            AutomationDebugProposal.id == proposal_id
+        )
+    )
+    if proposal is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Automation debug proposal not found",
+        )
+    return proposal
+
+
+def get_failure_analysis_provider(_settings=settings) -> FailureAnalysisProvider:
+    return CodexFailureAnalysisProvider(model=_settings.codex_failure_analysis_model)
+
+
+def list_project_generations(
+    session: Session,
+    project_id: int,
+) -> list[AutomationGeneration]:
+    _get_project(session, project_id)
+    return list(
+        session.scalars(
+            select(AutomationGeneration)
+            .join(TestCase, AutomationGeneration.test_case_id == TestCase.id)
+            .where(TestCase.project_id == project_id)
+            .order_by(AutomationGeneration.created_at.desc(), AutomationGeneration.id.desc())
+        )
+    )
+
+
+def create_run(
+    session: Session,
+    generation_id: int,
+    payload: AutomationRunCreate,
+) -> AutomationRun:
+    generation = _get_generation(session, generation_id)
+    if generation.status != "completed":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Only completed automation generations can be run",
+        )
+
+    run = AutomationRun(
+        automation_generation_id=generation.id,
+        status="queued",
+        trigger_mode=payload.trigger_mode,
+        summary={},
+    )
+    session.add(run)
+    session.commit()
+    session.refresh(run)
+    return run
+
+
+def list_project_runs(
+    session: Session,
+    project_id: int,
+) -> list[AutomationRun]:
+    _get_project(session, project_id)
+    return list(
+        session.scalars(
+            select(AutomationRun)
+            .join(
+                AutomationGeneration,
+                AutomationRun.automation_generation_id == AutomationGeneration.id,
+            )
+            .join(TestCase, AutomationGeneration.test_case_id == TestCase.id)
+            .where(TestCase.project_id == project_id)
+            .order_by(AutomationRun.created_at.desc(), AutomationRun.id.desc())
+        )
+    )
+
+
+def _build_failure_analysis(
+    run: AutomationRun,
+    reports: list[AutomationReport],
+) -> AutomationFailureAnalysis:
+    provider = get_failure_analysis_provider(settings)
+    result = provider.analyze(
+        FailureAnalysisRequest(
+            automation_run_id=run.id,
+            run_summary=run.summary,
+            error_message=run.error_message or "No failure details were recorded.",
+            report_path=run.report_path,
+            reports=[
+                FailureReportContext(
+                    kind=report.kind,
+                    index_path=report.index_path,
+                    summary=report.summary,
+                )
+                for report in reports
+            ],
+        )
+    )
+    return AutomationFailureAnalysis(
+        automation_run_id=run.id,
+        status="completed",
+        provider=provider.name,
+        model=provider.model,
+        classification=result.classification,
+        confidence=result.confidence,
+        summary=result.summary,
+        recommendations=result.recommendations,
+        should_rerun=result.should_rerun,
+        completed_at=_utcnow(),
+    )
+
+
+def create_failure_analysis(
+    session: Session,
+    run_id: int,
+) -> AutomationFailureAnalysis:
+    run = _get_run(session, run_id)
+    if run.status != "failed":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Only failed automation runs can be analyzed",
+        )
+
+    reports = list(
+        session.scalars(
+            select(AutomationReport)
+            .where(AutomationReport.automation_run_id == run.id)
+            .order_by(AutomationReport.created_at.desc(), AutomationReport.id.desc())
+        )
+    )
+    analysis = _build_failure_analysis(run, reports)
+    session.add(analysis)
+    session.commit()
+    session.refresh(analysis)
+    return analysis
+
+
+def create_rerun_from_analysis(
+    session: Session,
+    analysis_id: int,
+) -> AutomationRun:
+    analysis = _get_failure_analysis(session, analysis_id)
+    if not analysis.should_rerun:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Failure analysis does not recommend rerun",
+        )
+
+    source_run = _get_run(session, analysis.automation_run_id)
+    generation = _get_generation(session, source_run.automation_generation_id)
+    rerun = AutomationRun(
+        automation_generation_id=generation.id,
+        status="queued",
+        trigger_mode="analysis_rerun",
+        summary={},
+    )
+    session.add(rerun)
+    session.commit()
+    session.refresh(rerun)
+    return rerun
+
+
+def create_debug_proposal(
+    session: Session,
+    analysis_id: int,
+) -> AutomationDebugProposal:
+    analysis = _get_failure_analysis(session, analysis_id)
+    if analysis.classification == "business_regression" or not analysis.should_rerun:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Only retryable non-business failures can create debug proposals",
+        )
+
+    proposal = AutomationDebugProposal(
+        automation_failure_analysis_id=analysis.id,
+        status="draft",
+        proposal_type="patch_proposal",
+        summary=(
+            "Manual review required before rerun. The proposal captures the "
+            f"failure analysis guidance for {analysis.classification}."
+        ),
+        patch_proposal={
+            "manual_review_required": True,
+            "source_analysis_id": analysis.id,
+            "classification": analysis.classification,
+            "suggested_changes": analysis.recommendations,
+        },
+        recommendations=analysis.recommendations,
+    )
+    session.add(proposal)
+    session.commit()
+    session.refresh(proposal)
+    return proposal
+
+
+def review_debug_proposal(
+    session: Session,
+    proposal_id: int,
+    payload: AutomationDebugProposalReview,
+) -> AutomationDebugProposal:
+    proposal = _get_debug_proposal(session, proposal_id)
+    if proposal.status not in {"draft", "approved", "rejected"}:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Debug proposal can no longer be reviewed",
+        )
+
+    proposal.status = "approved" if payload.action == "approve" else "rejected"
+    proposal.reviewer_id = payload.reviewer_id
+    proposal.review_comment = payload.comment
+    proposal.reviewed_at = _utcnow()
+    session.add(proposal)
+    session.commit()
+    session.refresh(proposal)
+    return proposal
+
+
+def create_rerun_from_debug_proposal(
+    session: Session,
+    proposal_id: int,
+) -> AutomationRun:
+    proposal = _get_debug_proposal(session, proposal_id)
+    if proposal.status != "approved":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Debug proposal must be approved before rerun",
+        )
+
+    analysis = _get_failure_analysis(session, proposal.automation_failure_analysis_id)
+    source_run = _get_run(session, analysis.automation_run_id)
+    generation = _get_generation(session, source_run.automation_generation_id)
+    rerun = AutomationRun(
+        automation_generation_id=generation.id,
+        status="queued",
+        trigger_mode="debug_rerun",
+        summary={},
+    )
+    proposal.status = "applied"
+    session.add(rerun)
+    session.add(proposal)
+    session.commit()
+    session.refresh(rerun)
+    return rerun
+
+
+def list_project_debug_proposals(
+    session: Session,
+    project_id: int,
+) -> list[AutomationDebugProposal]:
+    _get_project(session, project_id)
+    return list(
+        session.scalars(
+            select(AutomationDebugProposal)
+            .join(
+                AutomationFailureAnalysis,
+                AutomationDebugProposal.automation_failure_analysis_id
+                == AutomationFailureAnalysis.id,
+            )
+            .join(
+                AutomationRun,
+                AutomationFailureAnalysis.automation_run_id == AutomationRun.id,
+            )
+            .join(
+                AutomationGeneration,
+                AutomationRun.automation_generation_id == AutomationGeneration.id,
+            )
+            .join(TestCase, AutomationGeneration.test_case_id == TestCase.id)
+            .where(TestCase.project_id == project_id)
+            .order_by(
+                AutomationDebugProposal.created_at.desc(),
+                AutomationDebugProposal.id.desc(),
+            )
+        )
+    )
+
+
+def list_project_failure_analyses(
+    session: Session,
+    project_id: int,
+) -> list[AutomationFailureAnalysis]:
+    _get_project(session, project_id)
+    return list(
+        session.scalars(
+            select(AutomationFailureAnalysis)
+            .join(
+                AutomationRun,
+                AutomationFailureAnalysis.automation_run_id == AutomationRun.id,
+            )
+            .join(
+                AutomationGeneration,
+                AutomationRun.automation_generation_id == AutomationGeneration.id,
+            )
+            .join(TestCase, AutomationGeneration.test_case_id == TestCase.id)
+            .where(TestCase.project_id == project_id)
+            .order_by(
+                AutomationFailureAnalysis.created_at.desc(),
+                AutomationFailureAnalysis.id.desc(),
+            )
+        )
+    )
+
+
+def update_run(
+    session: Session,
+    run_id: int,
+    payload: AutomationRunUpdate,
+) -> AutomationRun:
+    run = _get_run(session, run_id)
+    run.status = payload.status
+    run.report_path = payload.report_path
+    run.summary = payload.summary
+    run.error_message = payload.error_message
+
+    if payload.status == "running" and run.started_at is None:
+        run.started_at = _utcnow()
+    if payload.status in {"passed", "failed"}:
+        if run.started_at is None:
+            run.started_at = _utcnow()
+        run.finished_at = _utcnow()
+
+    session.add(run)
+    session.commit()
+    session.refresh(run)
+    return run
+
+
+def create_generation(
+    session: Session,
+    test_case_id: int,
+    payload: AutomationGenerationCreate,
+) -> AutomationGeneration:
+    test_case = _get_test_case(session, test_case_id)
+    if test_case.status != "published":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Only published test cases can generate automation",
+        )
+
+    generation = AutomationGeneration(
+        test_case_id=test_case.id,
+        status="running",
+        framework=payload.framework,
+        language=payload.language,
+        pattern=payload.pattern,
+        artifact_paths={},
+    )
+    session.add(generation)
+    session.commit()
+    session.refresh(generation)
+
+    root = (
+        Path("automation")
+        / "test-cases"
+        / str(test_case.id)
+        / f"generation-{generation.id}"
+    )
+    files = generate_playwright_pom_files(test_case)
+    storage = LocalArtifactStorage(Path(settings.artifact_storage_root))
+    spec_path = storage.save_bytes(
+        str(root / files.spec_relative_path),
+        files.spec_content.encode("utf-8"),
+    )
+    page_object_path = storage.save_bytes(
+        str(root / files.page_object_relative_path),
+        files.page_object_content.encode("utf-8"),
+    )
+
+    generation.status = "completed"
+    generation.artifact_root = str((Path(settings.artifact_storage_root) / root).resolve())
+    generation.artifact_paths = {
+        "spec": spec_path,
+        "page_object": page_object_path,
+    }
+    generation.completed_at = _utcnow()
+    session.add(generation)
+    session.commit()
+    session.refresh(generation)
+    return generation

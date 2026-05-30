@@ -37,6 +37,39 @@ def test_create_project(client):
     assert response.json()["description"] == "Main banking workflows"
 
 
+def test_list_projects_returns_created_projects(client):
+    client.post("/projects", json={"name": "Core Banking", "code": "core-banking"})
+    client.post("/projects", json={"name": "Retail Banking", "code": "retail-banking"})
+
+    response = client.get("/projects")
+
+    assert response.status_code == 200
+    assert [project["code"] for project in response.json()] == [
+        "core-banking",
+        "retail-banking",
+    ]
+
+
+def test_get_project_returns_existing_project(client):
+    created_project = client.post(
+        "/projects",
+        json={"name": "Core Banking", "code": "core-banking"},
+    ).json()
+
+    response = client.get(f"/projects/{created_project['id']}")
+
+    assert response.status_code == 200
+    assert response.json()["id"] == created_project["id"]
+    assert response.json()["code"] == "core-banking"
+
+
+def test_get_project_returns_404_for_missing_project(client):
+    response = client.get("/projects/999")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Project not found"
+
+
 def test_create_project_rejects_duplicate_code(client):
     first_response = client.post(
         "/projects",

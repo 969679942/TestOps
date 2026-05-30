@@ -93,3 +93,48 @@ def test_create_generation_task_marks_dispatch_failures(client, monkeypatch):
     assert response.status_code == 201
     assert response.json()["status"] == "failed"
     assert response.json()["error_message"] == "broker unreachable"
+
+
+def test_list_generation_tasks_returns_project_history(client, monkeypatch):
+    project = client.post("/projects", json={"name": "Search", "code": "search"}).json()
+
+    generation_service = _load_generation_service_module()
+    monkeypatch.setattr(
+        generation_service,
+        "dispatch_generation_task",
+        lambda task_id: None,
+    )
+
+    first_response = client.post(
+        f"/projects/{project['id']}/generation-tasks",
+        json={
+            "provider": "cursor",
+            "prompt_profile": "default",
+            "input_document_ids": [3],
+        },
+    )
+    second_response = client.post(
+        f"/projects/{project['id']}/generation-tasks",
+        json={
+            "provider": "openai",
+            "prompt_profile": "review-heavy",
+            "input_document_ids": [4, 5],
+        },
+    )
+
+    assert first_response.status_code == 201
+    assert second_response.status_code == 201
+
+    response = client.get(f"/projects/{project['id']}/generation-tasks")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert [item["provider"] for item in payload] == ["openai", "cursor"]
+    assert payload[0]["input_refs"] == {"document_ids": [4, 5]}
+
+
+def test_list_generation_tasks_returns_not_found_for_unknown_project(client):
+    response = client.get("/projects/9999/generation-tasks")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Project not found"}

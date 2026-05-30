@@ -1,39 +1,44 @@
 import React from "react";
-import type { ProjectDocumentRecord, ProjectRecord } from "../lib/api";
+import { copy, formatValue, type Locale } from "../lib/i18n";
+import type { DocumentAsset, ProjectRecord } from "../lib/types";
 
 type ProjectSummaryProps = Readonly<{
   project: ProjectRecord;
-  documents: ProjectDocumentRecord[];
+  documents: DocumentAsset[];
+  documentsUnavailable?: boolean;
+  locale?: Locale;
 }>;
 
-function titleCase(value: string) {
-  return value
-    .split("-")
-    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-    .join(" ");
-}
+export function ProjectSummary({
+  project,
+  documents,
+  documentsUnavailable = false,
+  locale = "en",
+}: ProjectSummaryProps) {
+  const t = copy[locale];
 
-export function ProjectSummary({ project, documents }: ProjectSummaryProps) {
   return (
-    <section className="summary-grid" aria-label="Project summary">
+    <section className="summary-grid" aria-label={t.workspace.sections}>
       <article className="summary-card">
-        <span className="eyebrow">Project Code</span>
+        <span className="eyebrow">{t.components.projectCode}</span>
         <p className="summary-value">{project.code}</p>
       </article>
 
       <article className="summary-card">
-        <span className="eyebrow">Status</span>
-        <p className="summary-value">{titleCase(project.status)}</p>
+        <span className="eyebrow">{t.components.status}</span>
+        <p className="summary-value">{formatValue(project.status, locale)}</p>
       </article>
 
       <article className="summary-card">
-        <span className="eyebrow">Default Provider</span>
+        <span className="eyebrow">{t.components.defaultProvider}</span>
         <p className="summary-value">{project.defaultProvider}</p>
       </article>
 
       <article className="summary-card">
-        <span className="eyebrow">Source Documents</span>
-        <p className="summary-value">{documents.length}</p>
+        <span className="eyebrow">{t.components.sourceDocuments}</span>
+        <p className="summary-value">
+          {documentsUnavailable ? t.states.unavailable : documents.length}
+        </p>
       </article>
     </section>
   );

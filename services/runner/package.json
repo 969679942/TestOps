@@ -1,0 +1,20 @@
+{
+  "name": "testops-runner",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "scripts": {
+    "test": "node --import tsx --test src/api-client.test.ts src/artifacts.test.ts src/run.test.ts"
+  },
+  "dependencies": {
+    "@playwright/test": "1.52.0",
+    "allure-playwright": "3.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "24.0.0",
+    "tsx": "4.19.2",
+    "typescript": "5.8.3"
+  }
+}
