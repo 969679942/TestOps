@@ -6,6 +6,17 @@ from app.core.database import get_session
 from app.main import app
 
 
+def _force_project_status(test_database_url: str, project_id: int, status: str) -> None:
+    import sqlite3
+
+    with sqlite3.connect(test_database_url.removeprefix("sqlite:///")) as connection:
+        connection.execute(
+            "UPDATE projects SET status = ? WHERE id = ?",
+            (status, project_id),
+        )
+        connection.commit()
+
+
 def test_client_uses_migrated_test_database(client, test_database_url):
     import sqlite3
 
@@ -186,6 +197,38 @@ def test_openapi_project_read_status_is_limited_to_active_or_archived(client):
     ]
     assert status_schema["type"] == "string"
     assert status_schema["enum"] == ["active", "archived"]
+
+
+def test_get_project_normalizes_invalid_persisted_status(
+    client, test_database_url: str
+):
+    project = client.post(
+        "/projects",
+        json={"name": "Core Banking", "code": "core-banking"},
+    ).json()
+    _force_project_status(test_database_url, project["id"], "paused")
+
+    with TestClient(app, raise_server_exceptions=False) as test_client:
+        response = test_client.get(f"/projects/{project['id']}")
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "active"
+
+
+def test_list_projects_all_normalizes_invalid_persisted_status(
+    client, test_database_url: str
+):
+    project = client.post(
+        "/projects",
+        json={"name": "Core Banking", "code": "core-banking"},
+    ).json()
+    _force_project_status(test_database_url, project["id"], "paused")
+
+    with TestClient(app, raise_server_exceptions=False) as test_client:
+        response = test_client.get("/projects", params={"status": "all"})
+
+    assert response.status_code == 200
+    assert response.json()[0]["status"] == "active"
 
 
 def test_get_project_returns_existing_project(client):

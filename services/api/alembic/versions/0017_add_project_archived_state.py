@@ -20,7 +20,9 @@ def upgrade() -> None:
     op.execute(
         sa.text(
             "UPDATE projects SET status = 'active' "
-            "WHERE status IS NULL OR status = ''"
+            "WHERE status IS NULL "
+            "OR TRIM(status) = '' "
+            "OR status NOT IN ('active', 'archived')"
         )
     )
     with op.batch_alter_table("projects") as batch_op:

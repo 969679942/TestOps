@@ -9,10 +9,13 @@ from app.models.project import Project
 from app.models.testcase import TestCase
 from app.schemas.project import (
     ProjectCreate,
+    ProjectRead,
     ProjectStatus,
     ProjectStatusFilter,
     ProjectSummaryRead,
 )
+
+_VALID_PROJECT_STATUSES = {"active", "archived"}
 
 
 class ProjectConflictError(Exception):
@@ -43,16 +46,47 @@ def _apply_project_status_filter(
     return statement.where(Project.status == status_filter)
 
 
+def _normalize_project_status_value(status_value: str | None) -> ProjectStatus:
+    if status_value in _VALID_PROJECT_STATUSES:
+        return status_value
+    return "active"
+
+
+def _build_project_read(project: Project) -> ProjectRead:
+    return ProjectRead(
+        id=project.id,
+        name=project.name,
+        code=project.code,
+        description=project.description,
+        status=_normalize_project_status_value(project.status),
+        default_provider=project.default_provider,
+        default_prompt_profile=project.default_prompt_profile,
+        created_at=project.created_at,
+        updated_at=project.updated_at,
+    )
+
+
+def _get_project_model(session: Session, project_id: int) -> Project:
+    project = session.scalar(select(Project).where(Project.id == project_id))
+    if project is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found",
+        )
+
+    return project
+
+
 def list_projects(
     session: Session,
     *,
     status_filter: ProjectStatusFilter = "active",
-) -> list[Project]:
+) -> list[ProjectRead]:
     statement = _apply_project_status_filter(
         select(Project).order_by(Project.id),
         status_filter,
     )
-    return list(session.scalars(statement))
+    return [_build_project_read(project) for project in session.scalars(statement)]
 
 
 def list_project_summaries(
@@ -60,7 +94,11 @@ def list_project_summaries(
     *,
     status_filter: ProjectStatusFilter = "active",
 ) -> list[ProjectSummaryRead]:
-    projects = list_projects(session, status_filter=status_filter)
+    statement = _apply_project_status_filter(
+        select(Project).order_by(Project.id),
+        status_filter,
+    )
+    projects = list(session.scalars(statement))
     summaries: list[ProjectSummaryRead] = []
     for project in projects:
         document_count = session.scalar(
@@ -87,7 +125,7 @@ def list_project_summaries(
                 name=project.name,
                 code=project.code,
                 description=project.description,
-                status=project.status,
+                status=_normalize_project_status_value(project.status),
                 default_provider=project.default_provider,
                 default_prompt_profile=project.default_prompt_profile,
                 created_at=project.created_at,
@@ -100,15 +138,9 @@ def list_project_summaries(
     return summaries
 
 
-def get_project(session: Session, project_id: int) -> Project:
-    project = session.scalar(select(Project).where(Project.id == project_id))
-    if project is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Project not found",
-        )
-
-    return project
+def get_project(session: Session, project_id: int) -> ProjectRead:
+    project = _get_project_model(session, project_id)
+    return _build_project_read(project)
 
 
 def update_project_status(
@@ -116,7 +148,7 @@ def update_project_status(
     project_id: int,
     status_value: ProjectStatus,
 ) -> Project:
-    project = get_project(session, project_id)
+    project = _get_project_model(session, project_id)
     project.status = status_value
     session.commit()
     session.refresh(project)
