@@ -1,8 +1,8 @@
 from fastapi import HTTPException, status
 from sqlalchemy import func, or_, select
-from sqlalchemy.sql import Select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import Select
 
 from app.models.document import DocumentAsset
 from app.models.project import Project
@@ -45,9 +45,7 @@ def _apply_project_status_filter(
         return statement
     if status_filter == "archived":
         return statement.where(Project.status == "archived")
-    return statement.where(
-        or_(Project.status.is_(None), Project.status != "archived")
-    )
+    return statement.where(or_(Project.status.is_(None), Project.status != "archived"))
 
 
 def _normalize_project_status_value(status_value: str | None) -> ProjectStatus:
@@ -80,15 +78,13 @@ def _get_project_model(session: Session, project_id: int) -> Project:
 
     return project
 
+
 def list_projects(
     session: Session,
     *,
     status_filter: ProjectStatusFilter = "active",
 ) -> list[ProjectRead]:
-    statement = _apply_project_status_filter(
-        select(Project).order_by(Project.id),
-        status_filter,
-    )
+    statement = _apply_project_status_filter(select(Project).order_by(Project.id), status_filter)
     return [_build_project_read(project) for project in session.scalars(statement)]
 
 
@@ -97,10 +93,7 @@ def list_project_summaries(
     *,
     status_filter: ProjectStatusFilter = "active",
 ) -> list[ProjectSummaryRead]:
-    statement = _apply_project_status_filter(
-        select(Project).order_by(Project.id),
-        status_filter,
-    )
+    statement = _apply_project_status_filter(select(Project).order_by(Project.id), status_filter)
     projects = list(session.scalars(statement))
     summaries: list[ProjectSummaryRead] = []
     for project in projects:
@@ -160,9 +153,7 @@ def update_project_status(
 
 def create_project(session: Session, payload: ProjectCreate) -> Project:
     existing_project = session.scalar(
-        select(Project).where(
-            or_(Project.name == payload.name, Project.code == payload.code)
-        )
+        select(Project).where(or_(Project.name == payload.name, Project.code == payload.code))
     )
     if existing_project is not None:
         raise ProjectConflictError
