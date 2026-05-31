@@ -80,7 +80,6 @@ def _get_project_model(session: Session, project_id: int) -> Project:
 
     return project
 
-
 def list_projects(
     session: Session,
     *,

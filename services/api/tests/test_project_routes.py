@@ -82,7 +82,6 @@ def test_list_projects_defaults_to_active_status(client):
     assert response.status_code == 200
     assert [project["code"] for project in response.json()] == [active_project["code"]]
 
-
 def test_list_projects_supports_archived_status_filter(client):
     client.post(
         "/projects",
@@ -127,7 +126,6 @@ def test_list_projects_supports_all_status_filter(client):
         archived_project["code"],
     ]
 
-
 def test_list_project_summaries_supports_archived_status_filter(client):
     active_project = client.post(
         "/projects",
@@ -149,7 +147,6 @@ def test_list_project_summaries_supports_archived_status_filter(client):
     assert [project["code"] for project in response.json()] == [archived_project["code"]]
     assert active_project["code"] not in [project["code"] for project in response.json()]
 
-
 def test_list_project_summaries_defaults_to_active_status(client):
     active_project = client.post(
         "/projects",
@@ -169,7 +166,6 @@ def test_list_project_summaries_defaults_to_active_status(client):
     assert archive_response.status_code == 200
     assert response.status_code == 200
     assert [project["code"] for project in response.json()] == [active_project["code"]]
-
 
 def test_patch_project_status_restores_archived_project_to_active(client):
     project = client.post(
@@ -207,7 +203,6 @@ def test_patch_project_status_rejects_invalid_status(client):
     )
 
     assert response.status_code == 422
-
 
 def test_openapi_project_read_status_is_limited_to_active_or_archived(client):
     response = client.get("/openapi.json")
@@ -284,7 +279,6 @@ def test_list_project_summaries_defaults_include_invalid_persisted_status_as_act
     assert response.status_code == 200
     assert [item["id"] for item in response.json()] == [project["id"]]
     assert response.json()[0]["status"] == "active"
-
 
 def test_get_project_returns_existing_project(client):
     created_project = client.post(
