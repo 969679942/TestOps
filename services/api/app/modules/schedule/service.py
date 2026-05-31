@@ -11,6 +11,7 @@ from app.models.environment import Environment
 from app.models.project import Project
 from app.models.schedule import AutomationSchedule
 from app.models.testcase import TestCase
+from app.modules.project import service as project_service
 from app.schemas.schedule import AutomationScheduleCreate, AutomationScheduleUpdate
 
 
@@ -83,7 +84,7 @@ def create_schedule(
     project_id: int,
     payload: AutomationScheduleCreate,
 ) -> AutomationSchedule:
-    _get_project(session, project_id)
+    project_service.ensure_project_is_active(_get_project(session, project_id))
     _validate_references(
         session,
         project_id,
@@ -126,6 +127,7 @@ def update_schedule(
     payload: AutomationScheduleUpdate,
 ) -> AutomationSchedule:
     schedule = _get_schedule(session, schedule_id)
+    project_service.ensure_project_is_active(_get_project(session, schedule.project_id))
     update_data = payload.model_dump(exclude_unset=True)
     environment_id = update_data.get("environment_id", schedule.environment_id)
     target_generation_ids = update_data.get(

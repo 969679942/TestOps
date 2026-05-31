@@ -16,6 +16,7 @@ from app.schemas.project import (
 )
 
 _VALID_PROJECT_STATUSES = {"active", "archived"}
+_ARCHIVED_PROJECT_MESSAGE = "Project is archived. Restore it before making changes."
 
 
 class ProjectConflictError(Exception):
@@ -76,6 +77,15 @@ def _get_project_model(session: Session, project_id: int) -> Project:
             detail="Project not found",
         )
 
+    return project
+
+
+def ensure_project_is_active(project: Project) -> Project:
+    if project.status == "archived":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=_ARCHIVED_PROJECT_MESSAGE,
+        )
     return project
 
 

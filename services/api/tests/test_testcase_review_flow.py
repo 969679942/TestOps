@@ -1,5 +1,7 @@
 import sqlite3
 
+ARCHIVED_PROJECT_MESSAGE = "Project is archived. Restore it before making changes."
+
 
 def _create_project(client):
     response = client.post(
@@ -13,6 +15,15 @@ def _create_project(client):
 
     assert response.status_code == 201
     return response.json()
+
+
+def _archive_project(client, project_id: int) -> None:
+    response = client.patch(
+        f"/projects/{project_id}/status",
+        json={"status": "archived"},
+    )
+
+    assert response.status_code == 200
 
 
 def _create_test_case(client, project_id: int):
@@ -138,6 +149,59 @@ def test_review_publish_and_handoff_flow(client):
             "created_at": reviews_after_publish.json()[1]["created_at"],
         },
     ]
+
+
+def test_create_test_case_rejects_archived_project(client):
+    project = _create_project(client)
+    _archive_project(client, project["id"])
+
+    response = client.post(
+        f"/projects/{project['id']}/test-cases",
+        json={
+            "title": "Archived draft",
+            "module": "Checkout",
+            "feature": "Order submission",
+            "case_type": "functional",
+            "priority": "high",
+            "preconditions": ["User has items in cart"],
+            "steps": [{"text": "Open the checkout page"}],
+            "expected_results": [{"text": "The checkout form is displayed."}],
+            "tags": ["smoke"],
+            "automation_flag": False,
+            "automation_notes": None,
+        },
+    )
+
+    assert response.status_code == 409
+    assert response.json() == {"detail": ARCHIVED_PROJECT_MESSAGE}
+
+
+def test_import_test_cases_rejects_archived_project(client):
+    project = _create_project(client)
+    _archive_project(client, project["id"])
+
+    response = client.post(
+        f"/projects/{project['id']}/test-cases/import",
+        json={
+            "cases": [
+                {
+                    "title": "Archived import",
+                    "module": "Checkout",
+                    "feature": "Order submission",
+                    "case_type": "functional",
+                    "priority": "medium",
+                    "preconditions": [],
+                    "steps": [{"text": "Submit the form"}],
+                    "expected_results": [{"text": "The case is imported"}],
+                    "tags": ["import"],
+                    "automation_flag": False,
+                }
+            ]
+        },
+    )
+
+    assert response.status_code == 409
+    assert response.json() == {"detail": ARCHIVED_PROJECT_MESSAGE}
 
 
 def test_list_test_cases_returns_project_drafts(client):

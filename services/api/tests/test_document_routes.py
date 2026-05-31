@@ -1,5 +1,16 @@
 import pytest
 
+ARCHIVED_PROJECT_MESSAGE = "Project is archived. Restore it before making changes."
+
+
+def _archive_project(client, project_id: int) -> None:
+    response = client.patch(
+        f"/projects/{project_id}/status",
+        json={"status": "archived"},
+    )
+
+    assert response.status_code == 200
+
 
 def test_create_document_asset(client):
     project = client.post("/projects", json={"name": "A", "code": "a"}).json()
@@ -17,6 +28,42 @@ def test_create_document_asset(client):
     assert response.status_code == 201
     assert response.json()["type"] == "figma"
     assert response.json()["parse_status"] == "uploaded"
+
+
+def test_create_document_asset_rejects_archived_project(client):
+    project = client.post("/projects", json={"name": "A", "code": "a"}).json()
+    _archive_project(client, project["id"])
+
+    response = client.post(
+        f"/projects/{project['id']}/documents",
+        json={
+            "type": "figma",
+            "name": "Checkout UI",
+            "source_mode": "external_link",
+            "source_uri": "https://figma.com/file/abc",
+        },
+    )
+
+    assert response.status_code == 409
+    assert response.json() == {"detail": ARCHIVED_PROJECT_MESSAGE}
+
+
+def test_upload_document_asset_rejects_archived_project(client):
+    project = client.post("/projects", json={"name": "A2", "code": "a2"}).json()
+    _archive_project(client, project["id"])
+
+    response = client.post(
+        f"/projects/{project['id']}/documents/upload",
+        data={
+            "type": "markdown",
+            "name": "Archived upload",
+            "source_mode": "upload",
+        },
+        files={"file": ("archived.md", b"# archived", "text/markdown")},
+    )
+
+    assert response.status_code == 409
+    assert response.json() == {"detail": ARCHIVED_PROJECT_MESSAGE}
 
 
 def test_list_document_assets_returns_project_documents(client):

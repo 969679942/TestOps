@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+ARCHIVED_PROJECT_MESSAGE = "Project is archived. Restore it before making changes."
+
 
 def _create_project(client, code: str = "schedule-project"):
     response = client.post(
@@ -11,6 +13,15 @@ def _create_project(client, code: str = "schedule-project"):
     )
     assert response.status_code == 201
     return response.json()
+
+
+def _archive_project(client, project_id: int) -> None:
+    response = client.patch(
+        f"/projects/{project_id}/status",
+        json={"status": "archived"},
+    )
+
+    assert response.status_code == 200
 
 
 def _create_environment(client, project_id: int):
@@ -125,3 +136,64 @@ def test_create_automation_schedule_rejects_cross_project_references(
     assert response.json() == {
         "detail": "Automation schedule references must belong to the same project"
     }
+
+
+def test_create_automation_schedule_rejects_archived_project(
+    client,
+    tmp_path,
+    monkeypatch,
+):
+    from app.modules.automation import service as automation_service
+
+    monkeypatch.setattr(automation_service.settings, "artifact_storage_root", str(tmp_path))
+    project = _create_project(client, "schedule-project-archived-create")
+    environment = _create_environment(client, project["id"])
+    generation = _create_completed_generation(client, project["id"])
+    _archive_project(client, project["id"])
+
+    response = client.post(
+        f"/projects/{project['id']}/automation-schedules",
+        json={
+            "name": "Archived schedule",
+            "environment_id": environment["id"],
+            "target_generation_ids": [generation["id"]],
+            "cron_expression": "@daily",
+            "next_run_at": "2026-05-21T10:00:00",
+        },
+    )
+
+    assert response.status_code == 409
+    assert response.json() == {"detail": ARCHIVED_PROJECT_MESSAGE}
+
+
+def test_update_automation_schedule_rejects_archived_project(
+    client,
+    tmp_path,
+    monkeypatch,
+):
+    from app.modules.automation import service as automation_service
+
+    monkeypatch.setattr(automation_service.settings, "artifact_storage_root", str(tmp_path))
+    project = _create_project(client, "schedule-project-archived-update")
+    environment = _create_environment(client, project["id"])
+    generation = _create_completed_generation(client, project["id"])
+    created = client.post(
+        f"/projects/{project['id']}/automation-schedules",
+        json={
+            "name": "Before archive",
+            "environment_id": environment["id"],
+            "target_generation_ids": [generation["id"]],
+            "cron_expression": "@hourly",
+            "next_run_at": "2026-05-21T10:00:00",
+        },
+    )
+    _archive_project(client, project["id"])
+
+    response = client.patch(
+        f"/automation-schedules/{created.json()['id']}",
+        json={"name": "After archive"},
+    )
+
+    assert created.status_code == 201
+    assert response.status_code == 409
+    assert response.json() == {"detail": ARCHIVED_PROJECT_MESSAGE}

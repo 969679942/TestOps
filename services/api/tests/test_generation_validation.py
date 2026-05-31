@@ -2,6 +2,8 @@ import importlib
 
 import pytest
 
+ARCHIVED_PROJECT_MESSAGE = "Project is archived. Restore it before making changes."
+
 
 def _load_generation_service_module():
     try:
@@ -43,6 +45,27 @@ def test_create_generation_task_rejects_unknown_provider(client):
     )
 
     assert response.status_code == 422
+
+
+def test_create_generation_task_rejects_archived_project(client):
+    project = client.post("/projects", json={"name": "Archive Gen", "code": "archive-gen"}).json()
+    archive_response = client.patch(
+        f"/projects/{project['id']}/status",
+        json={"status": "archived"},
+    )
+
+    response = client.post(
+        f"/projects/{project['id']}/generation-tasks",
+        json={
+            "provider": "cursor",
+            "prompt_profile": "smoke",
+            "input_document_ids": [],
+        },
+    )
+
+    assert archive_response.status_code == 200
+    assert response.status_code == 409
+    assert response.json() == {"detail": ARCHIVED_PROJECT_MESSAGE}
 
 
 def test_create_generation_task_persists_provider_configuration(client, monkeypatch):

@@ -13,6 +13,7 @@ from app.core.config import settings
 from app.models.document import DocumentAsset, DocumentVersion
 from app.models.project import Project
 from app.modules.document.storage import LocalArtifactStorage
+from app.modules.project import service as project_service
 from app.schemas.document import DocumentCreate, DocumentVersionCreate
 
 _MAX_UPLOAD_BYTES = 20 * 1024 * 1024
@@ -42,7 +43,7 @@ def _get_project(session: Session, project_id: int) -> Project:
 
 
 def create_asset(session: Session, project_id: int, payload: DocumentCreate) -> DocumentAsset:
-    _get_project(session, project_id)
+    project_service.ensure_project_is_active(_get_project(session, project_id))
 
     asset = DocumentAsset(
         project_id=project_id,
@@ -66,7 +67,7 @@ async def upload_asset_file(
     source_mode: str,
     file: UploadFile,
 ) -> DocumentAsset:
-    _get_project(session, project_id)
+    project_service.ensure_project_is_active(_get_project(session, project_id))
 
     raw = await file.read()
     if not raw:

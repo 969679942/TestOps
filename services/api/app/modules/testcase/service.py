@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.project import Project
+from app.modules.project import service as project_service
 from app.models.testcase import TestCase, TestCaseReview
 from app.modules.review import service as review_service
 from app.schemas.testcase import TestCaseCreate, TestCaseUpdate
@@ -31,7 +32,7 @@ def create_test_case(
     project_id: int,
     payload: TestCaseCreate,
 ) -> TestCase:
-    _get_project_or_404(session, project_id)
+    project_service.ensure_project_is_active(_get_project_or_404(session, project_id))
 
     test_case = TestCase(
         project_id=project_id,
@@ -60,7 +61,7 @@ def import_test_cases(
     project_id: int,
     cases: list[TestCaseCreate],
 ) -> list[TestCase]:
-    _get_project_or_404(session, project_id)
+    project_service.ensure_project_is_active(_get_project_or_404(session, project_id))
 
     created_cases: list[TestCase] = []
     for payload in cases:

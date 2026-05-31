@@ -188,6 +188,7 @@ def create_task(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Project not found",
         )
+    project_service.ensure_project_is_active(project)
 
     provider_name = payload.provider or project.default_provider
     prompt_version = payload.prompt_profile or project.default_prompt_profile
