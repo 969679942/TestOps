@@ -16,18 +16,18 @@ router = APIRouter(tags=["projects"])
 
 @router.get("/projects", response_model=list[ProjectRead])
 def list_projects(
-    status: ProjectStatusFilter = Query(default="active"),
+    status_filter: ProjectStatusFilter = Query(default="active", alias="status"),
     session: Session = Depends(get_session),
 ) -> list[ProjectRead]:
-    return project_service.list_projects(session, status_filter=status)
+    return project_service.list_projects(session, status_filter=status_filter)
 
 
 @router.get("/project-summaries", response_model=list[ProjectSummaryRead])
 def list_project_summaries(
-    status: ProjectStatusFilter = Query(default="active"),
+    status_filter: ProjectStatusFilter = Query(default="active", alias="status"),
     session: Session = Depends(get_session),
 ) -> list[ProjectSummaryRead]:
-    return project_service.list_project_summaries(session, status_filter=status)
+    return project_service.list_project_summaries(session, status_filter=status_filter)
 
 
 @router.post("/projects", response_model=ProjectRead, status_code=status.HTTP_201_CREATED)

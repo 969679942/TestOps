@@ -72,6 +72,51 @@ def test_list_projects_defaults_to_active_status(client):
     assert [project["code"] for project in response.json()] == [active_project["code"]]
 
 
+def test_list_projects_supports_archived_status_filter(client):
+    client.post(
+        "/projects",
+        json={"name": "Core Banking", "code": "core-banking"},
+    )
+    archived_project = client.post(
+        "/projects",
+        json={"name": "Legacy Banking", "code": "legacy-banking"},
+    ).json()
+
+    archive_response = client.patch(
+        f"/projects/{archived_project['id']}/status",
+        json={"status": "archived"},
+    )
+    response = client.get("/projects", params={"status": "archived"})
+
+    assert archive_response.status_code == 200
+    assert response.status_code == 200
+    assert [project["code"] for project in response.json()] == [archived_project["code"]]
+
+
+def test_list_projects_supports_all_status_filter(client):
+    active_project = client.post(
+        "/projects",
+        json={"name": "Core Banking", "code": "core-banking"},
+    ).json()
+    archived_project = client.post(
+        "/projects",
+        json={"name": "Legacy Banking", "code": "legacy-banking"},
+    ).json()
+
+    archive_response = client.patch(
+        f"/projects/{archived_project['id']}/status",
+        json={"status": "archived"},
+    )
+    response = client.get("/projects", params={"status": "all"})
+
+    assert archive_response.status_code == 200
+    assert response.status_code == 200
+    assert [project["code"] for project in response.json()] == [
+        active_project["code"],
+        archived_project["code"],
+    ]
+
+
 def test_list_project_summaries_supports_archived_status_filter(client):
     active_project = client.post(
         "/projects",
@@ -130,6 +175,17 @@ def test_patch_project_status_rejects_invalid_status(client):
     )
 
     assert response.status_code == 422
+
+
+def test_openapi_project_read_status_is_limited_to_active_or_archived(client):
+    response = client.get("/openapi.json")
+
+    assert response.status_code == 200
+    status_schema = response.json()["components"]["schemas"]["ProjectRead"]["properties"][
+        "status"
+    ]
+    assert status_schema["type"] == "string"
+    assert status_schema["enum"] == ["active", "archived"]
 
 
 def test_get_project_returns_existing_project(client):

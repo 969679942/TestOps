@@ -21,7 +21,7 @@ class ProjectRead(BaseModel):
     name: str
     code: str
     description: str | None
-    status: str
+    status: ProjectStatus
     default_provider: str
     default_prompt_profile: str
     created_at: datetime
