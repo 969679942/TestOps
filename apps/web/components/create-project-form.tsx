@@ -1,31 +1,23 @@
 "use client";
-
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { ApiError, createProject } from "../lib/workspace-api";
+import { ApiError, createProject, type ProjectRecord } from "../lib/workspace-api";
 import { copy } from "../lib/copy";
 import { slugifyProjectCode } from "../lib/slug";
 
 type CreateProjectFormProps = Readonly<{
-  onSuccess?: () => void;
+  onSuccess?: (project: ProjectRecord) => void;
   onSubmittingChange?: (submitting: boolean) => void;
 }>;
 
 export function CreateProjectForm({ onSuccess, onSubmittingChange }: CreateProjectFormProps) {
-  const router = useRouter();
   const [name, setName] = useState("");
-  const [code, setCode] = useState("");
   const [description, setDescription] = useState("");
-  const [codeTouched, setCodeTouched] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   function handleNameChange(value: string) {
     setName(value);
-    if (!codeTouched) {
-      setCode(slugifyProjectCode(value));
-    }
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -37,12 +29,10 @@ export function CreateProjectForm({ onSuccess, onSubmittingChange }: CreateProje
     try {
       const project = await createProject({
         name: name.trim(),
-        code: code.trim(),
+        code: slugifyProjectCode(name),
         description: description.trim() || undefined,
       });
-      onSuccess?.();
-      router.push(`/projects/${project.id}`);
-      router.refresh();
+      onSuccess?.(project);
     } catch (submitError) {
       const message =
         submitError instanceof ApiError
@@ -69,20 +59,7 @@ export function CreateProjectForm({ onSuccess, onSubmittingChange }: CreateProje
           required
           value={name}
           onChange={(event) => handleNameChange(event.target.value)}
-          placeholder="支付平台"
-        />
-      </label>
-
-      <label className="field">
-        <span>{copy.projectCode}</span>
-        <input
-          required
-          value={code}
-          onChange={(event) => {
-            setCodeTouched(true);
-            setCode(event.target.value);
-          }}
-          placeholder="payments-platform"
+          placeholder=""
         />
       </label>
 
@@ -92,7 +69,7 @@ export function CreateProjectForm({ onSuccess, onSubmittingChange }: CreateProje
           rows={3}
           value={description}
           onChange={(event) => setDescription(event.target.value)}
-          placeholder="结账、退款与结算相关流程"
+          placeholder=""
         />
       </label>
 

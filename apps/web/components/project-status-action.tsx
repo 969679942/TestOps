@@ -3,7 +3,9 @@
 import { useState } from "react";
 
 import { copy } from "../lib/copy";
+import { ConfirmActionModal } from "./confirm-action-modal";
 import {
+  ApiError,
   type ProjectStatus,
   updateProjectStatus,
 } from "../lib/workspace-api";
@@ -22,41 +24,67 @@ export function ProjectStatusAction({
   className,
 }: ProjectStatusActionProps) {
   const [submitting, setSubmitting] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const nextStatus: ProjectStatus = status === "archived" ? "active" : "archived";
+  const confirmationTitle = nextStatus === "archived" ? copy.archiveProject : copy.restoreProject;
+  const confirmationDescription =
+    nextStatus === "archived" ? copy.archiveProjectConfirm : copy.restoreProjectConfirm;
+  const confirmationButtonLabel = confirmationTitle;
 
   async function handleClick() {
-    const nextStatus: ProjectStatus = status === "archived" ? "active" : "archived";
-    const confirmed = window.confirm(
-      nextStatus === "archived"
-        ? copy.archiveProjectConfirm
-        : copy.restoreProjectConfirm,
-    );
+    setError(null);
+    setConfirmOpen(true);
+  }
 
-    if (!confirmed) {
-      return;
-    }
-
+  async function handleConfirm() {
     setSubmitting(true);
+    setError(null);
     try {
       const updated = await updateProjectStatus(projectId, nextStatus);
+      setConfirmOpen(false);
       if (onUpdated) {
         onUpdated(updated.status as ProjectStatus);
         return;
       }
 
       window.location.reload();
+    } catch (submitError) {
+      setError(submitError instanceof ApiError ? submitError.message : copy.updateProjectStatusFailed);
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <button
-      className={className ?? "button-secondary"}
-      type="button"
-      disabled={submitting}
-      onClick={handleClick}
-    >
-      {status === "archived" ? copy.restoreProject : copy.archiveProject}
-    </button>
+    <>
+      <button
+        className={className ?? "button-secondary"}
+        type="button"
+        disabled={submitting}
+        onClick={handleClick}
+      >
+        {status === "archived" ? copy.restoreProject : copy.archiveProject}
+      </button>
+      <ConfirmActionModal
+        open={confirmOpen}
+        title={confirmationTitle}
+        description={confirmationDescription}
+        confirmLabel={confirmationButtonLabel}
+        tone={nextStatus === "archived" ? "danger" : "primary"}
+        submitting={submitting}
+        error={error}
+        onClose={() => {
+          if (submitting) {
+            return;
+          }
+
+          setConfirmOpen(false);
+          setError(null);
+        }}
+        onConfirm={handleConfirm}
+      />
+    </>
   );
 }

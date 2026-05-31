@@ -129,6 +129,16 @@ a {
   text-transform: uppercase;
 }
 
+.shell-project-name {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
 .shell-nav-link {
   display: flex;
   align-items: center;
@@ -215,6 +225,7 @@ a {
 .page-header-copy {
   display: grid;
   gap: 0.35rem;
+  min-width: 0;
 }
 
 .page-header.compact h2 {
@@ -227,6 +238,13 @@ a {
   font-size: 1.75rem;
   font-weight: 700;
   letter-spacing: -0.02em;
+}
+
+.page-title-truncate {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .page-header p {
@@ -678,23 +696,23 @@ a.workspace-link:focus-visible {
 }
 
 .project-card-header {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.75rem;
+  display: grid;
+  gap: 0.65rem;
   align-items: flex-start;
 }
 
-.project-card-actions {
+.project-card-meta-row {
   display: flex;
-  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 0.55rem;
   align-items: center;
+  min-width: 0;
 }
 
 .project-card-title-group {
   display: grid;
   gap: 0.2rem;
+  min-width: 0;
 }
 
 .project-card-kicker {
@@ -711,6 +729,13 @@ a.workspace-link:focus-visible {
   line-height: 1.35;
 }
 
+.project-card-title {
+  max-width: 12em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .project-card-summary {
   margin-top: 0.9rem;
   min-height: 3rem;
@@ -723,16 +748,6 @@ a.workspace-link:focus-visible {
   line-height: 1.55;
 }
 
-.project-code {
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  border-radius: 999px;
-  background: rgba(248, 250, 252, 0.92);
-  color: #64748b;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 0.25rem 0.6rem;
-  white-space: nowrap;
-}
 
 .project-stats {
   display: flex;
@@ -788,6 +803,13 @@ a.workspace-link:focus-visible {
   outline: 2px solid rgba(37, 99, 235, 0.35);
   outline-offset: 3px;
   border-radius: 6px;
+}
+
+.project-card-status-action {
+  min-height: 2rem;
+  padding: 0.35rem 0.7rem;
+  font-size: 12px;
+  flex: 0 0 auto;
 }
 
 .project-archive-banner {
@@ -1846,14 +1868,25 @@ a.workflow-step:focus-visible {
 
 .breadcrumbs {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 0.35rem;
+  min-width: 0;
   color: var(--muted);
   font-size: 13px;
+  overflow: hidden;
 }
 
-.breadcrumbs a {
+.breadcrumb-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.breadcrumbs a,
+.breadcrumb-link {
   position: relative;
+  min-width: 0;
   transition: color var(--motion-fast) ease;
 }
 
@@ -1878,7 +1911,17 @@ a.workflow-step:focus-visible {
 }
 
 .breadcrumb-sep {
+  flex: 0 0 auto;
   color: var(--border-strong);
+}
+
+.breadcrumb-label {
+  display: inline-block;
+  max-width: min(48vw, 32ch);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
 }
 
 /* —— Review —— */
@@ -2050,6 +2093,79 @@ a.workflow-step:focus-visible {
   animation: modalIn var(--motion-normal) var(--ease-out) both;
 }
 
+.project-status-modal {
+  width: min(100%, 320px);
+  padding: 1.2rem;
+  display: grid;
+  gap: 1rem;
+  justify-self: center;
+  align-self: center;
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.18);
+}
+
+.project-status-modal-copy {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.project-status-modal-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.project-status-modal-copy h3,
+.project-status-modal-copy p {
+  margin: 0;
+}
+
+.project-status-modal-copy h3 {
+  font-size: 1.05rem;
+}
+
+.project-status-modal-copy p {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.project-status-modal-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.project-status-modal-icon.is-danger {
+  background: #ff4d4f;
+}
+
+.project-status-modal-icon.is-primary {
+  background: var(--accent);
+}
+
+.project-status-modal-error {
+  margin: 0;
+}
+
+.project-status-modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-top: 0.15rem;
+}
+
+.project-status-modal-actions .button-secondary,
+.project-status-modal-actions .button-danger,
+.project-status-modal-actions .button-primary {
+  min-width: 4.5rem;
+}
+
 .modal-panel.is-closing {
   animation: modalOut var(--motion-fast) ease both;
 }
@@ -2182,6 +2298,21 @@ a.workflow-step:focus-visible {
 
   .page-header-with-actions {
     grid-template-columns: 1fr;
+  }
+
+  .project-card-meta-row {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .project-status-modal {
+    width: 100%;
+    padding: 1rem;
+  }
+
+  .project-status-modal-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
   }
 
   .inline-actions {

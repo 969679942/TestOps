@@ -54,6 +54,12 @@ describe("ProjectDirectory", () => {
     expect(html).toContain("project-card-header");
     expect(html).toContain("project-card-summary");
     expect(html).toContain("project-card-stat");
+    expect(html).toContain("project-card-status-action");
+    expect(html).toContain("project-card-meta-row");
+    expect(html).toContain("project-card-title");
+    expect(html).toContain('title="即时零售演示项目 20260527225325"');
+    expect(html).not.toContain("project-code");
+    expect(html).not.toContain('title="quick-commerce-demo-20260527225325"');
     expect(html).toContain("进入项目工作区");
   });
 });

@@ -150,7 +150,7 @@ describe("workspace pages", () => {
     expect(html).toContain("project-directory-toolbar");
     expect(html).toContain("支付平台");
     expect(html).toContain("/projects/1");
-    expect(html).toContain("payments");
+    expect(html).not.toContain(">payments<");
   });
 
   it("renders the project workspace header and wide content shell", async () => {

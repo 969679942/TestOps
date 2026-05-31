@@ -58,7 +58,9 @@ export default async function ProjectWorkspacePage({
       <section className="page-header page-header-with-actions">
         <div className="page-header-copy">
           <span className="eyebrow">{copy.workspaceEyebrow}</span>
-          <h2>{projectDisplayName}</h2>
+          <h2 className="page-title-truncate" title={projectDisplayName}>
+            {projectDisplayName}
+          </h2>
           <p>{projectDescription}</p>
         </div>
         <ProjectStatusAction

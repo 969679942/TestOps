@@ -1,12 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { copy } from "../lib/copy";
 import { localizedHref, type Locale } from "../lib/i18n";
+import {
+  moveProjectBetweenLists,
+  prependProject,
+  toProjectSummaryRecord,
+} from "../lib/project-directory-state";
 import { translateProjectDescription, translateProjectName } from "../lib/project-display";
-import type { ProjectSummaryRecord } from "../lib/workspace-api";
+import type { ProjectRecord, ProjectSummaryRecord } from "../lib/workspace-api";
 import { CreateProjectModal } from "./create-project-modal";
 import { ProjectStatusAction } from "./project-status-action";
 
@@ -27,6 +32,24 @@ export function ProjectDirectory({
   const [view, setView] = useState<"active" | "archived">("active");
   const [activeItems, setActiveItems] = useState(projects);
   const [archivedItems, setArchivedItems] = useState(archivedProjects);
+  const [toast, setToast] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  useEffect(() => {
+    setActiveItems(projects);
+  }, [projects]);
+
+  useEffect(() => {
+    setArchivedItems(archivedProjects);
+  }, [archivedProjects]);
+
+  useEffect(() => {
+    if (!toast) {
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => setToast(null), 2600);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
 
   const visibleProjects = useMemo(
     () => (view === "active" ? activeItems : archivedItems),
@@ -34,24 +57,30 @@ export function ProjectDirectory({
   );
 
   function handleStatusUpdated(projectId: string, nextStatus: "active" | "archived") {
-    if (nextStatus === "archived") {
-      const moved = activeItems.find((project) => project.id === projectId);
-      if (!moved) {
-        return;
-      }
+    const movedState = moveProjectBetweenLists(
+      activeItems,
+      archivedItems,
+      projectId,
+      nextStatus,
+    );
+    setActiveItems(movedState.activeItems);
+    setArchivedItems(movedState.archivedItems);
+    setToast({
+      type: "success",
+      text: nextStatus === "archived" ? copy.projectArchivedToast : copy.projectRestoredToast,
+    });
+  }
 
-      setActiveItems((items) => items.filter((project) => project.id !== projectId));
-      setArchivedItems((items) => [...items, { ...moved, status: "archived" }]);
-      return;
+  function handleProjectCreated(project: ProjectRecord) {
+    const summary = toProjectSummaryRecord(project);
+    if (summary.status === "archived") {
+      setArchivedItems((items) => prependProject(items, summary));
+      setView("archived");
+    } else {
+      setActiveItems((items) => prependProject(items, summary));
+      setView("active");
     }
-
-    const moved = archivedItems.find((project) => project.id === projectId);
-    if (!moved) {
-      return;
-    }
-
-    setArchivedItems((items) => items.filter((project) => project.id !== projectId));
-    setActiveItems((items) => [...items, { ...moved, status: "active" }]);
+    setToast({ type: "success", text: copy.projectCreated });
   }
 
   return (
@@ -84,6 +113,8 @@ export function ProjectDirectory({
         </button>
       </div>
 
+      {toast ? <div className={`toast toast-${toast.type}`} role="status">{toast.text}</div> : null}
+
       <section className="project-grid" aria-label={copy.projectListLabel}>
         {visibleProjects.length === 0 ? (
           <article className="empty-card wide">
@@ -114,13 +145,15 @@ export function ProjectDirectory({
                 <div className="project-card-header">
                   <div className="project-card-title-group">
                     <span className="project-card-kicker">项目概览</span>
-                    <h2>{displayName}</h2>
+                    <h2 className="project-card-title" title={displayName}>
+                      {displayName}
+                    </h2>
                   </div>
-                  <div className="project-card-actions">
-                    <span className="project-code">{project.code}</span>
+                  <div className="project-card-meta-row">
                     <ProjectStatusAction
                       projectId={project.id}
                       status={project.status as "active" | "archived"}
+                      className="button-secondary project-card-status-action"
                       onUpdated={(status) => handleStatusUpdated(project.id, status)}
                     />
                   </div>
@@ -154,7 +187,11 @@ export function ProjectDirectory({
         )}
       </section>
 
-      <CreateProjectModal open={modalOpen} onClose={() => setModalOpen(false)} />
+      <CreateProjectModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onCreated={handleProjectCreated}
+      />
     </>
   );
 }

@@ -1,21 +1,21 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { copy } from "../lib/copy";
+import type { ProjectRecord } from "../lib/workspace-api";
 import { useModalA11y } from "../lib/use-modal-a11y";
 import { CreateProjectForm } from "./create-project-form";
 
 type CreateProjectModalProps = Readonly<{
   open: boolean;
   onClose: () => void;
+  onCreated?: (project: ProjectRecord) => void;
 }>;
 
 const CLOSE_MS = 220;
 
-export function CreateProjectModal({ open, onClose }: CreateProjectModalProps) {
-  const router = useRouter();
+export function CreateProjectModal({ open, onClose, onCreated }: CreateProjectModalProps) {
   const [visible, setVisible] = useState(open);
   const [closing, setClosing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -79,9 +79,9 @@ export function CreateProjectModal({ open, onClose }: CreateProjectModalProps) {
         </button>
         <CreateProjectForm
           onSubmittingChange={setSubmitting}
-          onSuccess={() => {
+          onSuccess={(project) => {
+            onCreated?.(project);
             handleClose();
-            router.refresh();
           }}
         />
       </div>

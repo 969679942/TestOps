@@ -91,7 +91,9 @@ export function AppShell({
 
         {project ? (
           <nav className="shell-nav-group" aria-label={t.projectWorkspace}>
-            <span className="shell-nav-label">{projectDisplayName}</span>
+            <span className="shell-nav-label shell-project-name" title={projectDisplayName ?? undefined}>
+              {projectDisplayName}
+            </span>
             {projectNav.map((item) => (
               <Link
                 key={item.href}
