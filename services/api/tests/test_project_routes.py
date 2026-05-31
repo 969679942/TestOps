@@ -150,6 +150,27 @@ def test_list_project_summaries_supports_archived_status_filter(client):
     assert active_project["code"] not in [project["code"] for project in response.json()]
 
 
+def test_list_project_summaries_defaults_to_active_status(client):
+    active_project = client.post(
+        "/projects",
+        json={"name": "Core Banking", "code": "core-banking"},
+    ).json()
+    archived_project = client.post(
+        "/projects",
+        json={"name": "Legacy Banking", "code": "legacy-banking"},
+    ).json()
+
+    archive_response = client.patch(
+        f"/projects/{archived_project['id']}/status",
+        json={"status": "archived"},
+    )
+    response = client.get("/project-summaries")
+
+    assert archive_response.status_code == 200
+    assert response.status_code == 200
+    assert [project["code"] for project in response.json()] == [active_project["code"]]
+
+
 def test_patch_project_status_restores_archived_project_to_active(client):
     project = client.post(
         "/projects",
