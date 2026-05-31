@@ -1,9 +1,11 @@
-from typing import Annotated
+from typing import Annotated, Literal
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, StringConstraints
 
 NonEmptyStr = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
+ProjectStatus = Literal["active", "archived"]
+ProjectStatusFilter = Literal["active", "archived", "all"]
 
 
 class ProjectCreate(BaseModel):
@@ -24,6 +26,10 @@ class ProjectRead(BaseModel):
     default_prompt_profile: str
     created_at: datetime
     updated_at: datetime
+
+
+class ProjectStatusUpdate(BaseModel):
+    status: ProjectStatus
 
 
 class ProjectSummaryRead(ProjectRead):

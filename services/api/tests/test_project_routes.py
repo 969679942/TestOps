@@ -50,6 +50,88 @@ def test_list_projects_returns_created_projects(client):
     ]
 
 
+def test_list_projects_defaults_to_active_status(client):
+    active_project = client.post(
+        "/projects",
+        json={"name": "Core Banking", "code": "core-banking"},
+    ).json()
+    archived_project = client.post(
+        "/projects",
+        json={"name": "Legacy Banking", "code": "legacy-banking"},
+    ).json()
+
+    archive_response = client.patch(
+        f"/projects/{archived_project['id']}/status",
+        json={"status": "archived"},
+    )
+
+    response = client.get("/projects")
+
+    assert archive_response.status_code == 200
+    assert response.status_code == 200
+    assert [project["code"] for project in response.json()] == [active_project["code"]]
+
+
+def test_list_project_summaries_supports_archived_status_filter(client):
+    active_project = client.post(
+        "/projects",
+        json={"name": "Core Banking", "code": "core-banking"},
+    ).json()
+    archived_project = client.post(
+        "/projects",
+        json={"name": "Legacy Banking", "code": "legacy-banking"},
+    ).json()
+
+    archive_response = client.patch(
+        f"/projects/{archived_project['id']}/status",
+        json={"status": "archived"},
+    )
+    response = client.get("/project-summaries", params={"status": "archived"})
+
+    assert archive_response.status_code == 200
+    assert response.status_code == 200
+    assert [project["code"] for project in response.json()] == [archived_project["code"]]
+    assert active_project["code"] not in [project["code"] for project in response.json()]
+
+
+def test_patch_project_status_restores_archived_project_to_active(client):
+    project = client.post(
+        "/projects",
+        json={"name": "Legacy Banking", "code": "legacy-banking"},
+    ).json()
+    archive_response = client.patch(
+        f"/projects/{project['id']}/status",
+        json={"status": "archived"},
+    )
+
+    restore_response = client.patch(
+        f"/projects/{project['id']}/status",
+        json={"status": "active"},
+    )
+    list_response = client.get("/projects")
+
+    assert archive_response.status_code == 200
+    assert restore_response.status_code == 200
+    assert restore_response.json()["status"] == "active"
+    assert [listed_project["id"] for listed_project in list_response.json()] == [
+        project["id"]
+    ]
+
+
+def test_patch_project_status_rejects_invalid_status(client):
+    project = client.post(
+        "/projects",
+        json={"name": "Core Banking", "code": "core-banking"},
+    ).json()
+
+    response = client.patch(
+        f"/projects/{project['id']}/status",
+        json={"status": "deleted"},
+    )
+
+    assert response.status_code == 422
+
+
 def test_get_project_returns_existing_project(client):
     created_project = client.post(
         "/projects",

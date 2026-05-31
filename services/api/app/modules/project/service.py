@@ -1,12 +1,18 @@
 from fastapi import HTTPException, status
 from sqlalchemy import func, or_, select
+from sqlalchemy.sql import Select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models.document import DocumentAsset
 from app.models.project import Project
 from app.models.testcase import TestCase
-from app.schemas.project import ProjectCreate, ProjectSummaryRead
+from app.schemas.project import (
+    ProjectCreate,
+    ProjectStatus,
+    ProjectStatusFilter,
+    ProjectSummaryRead,
+)
 
 
 class ProjectConflictError(Exception):
@@ -28,12 +34,33 @@ def _is_project_uniqueness_error(error: IntegrityError) -> bool:
     return False
 
 
-def list_projects(session: Session) -> list[Project]:
-    return list(session.scalars(select(Project).order_by(Project.id)))
+def _apply_project_status_filter(
+    statement: Select[tuple[Project]],
+    status_filter: ProjectStatusFilter,
+) -> Select[tuple[Project]]:
+    if status_filter == "all":
+        return statement
+    return statement.where(Project.status == status_filter)
 
 
-def list_project_summaries(session: Session) -> list[ProjectSummaryRead]:
-    projects = list_projects(session)
+def list_projects(
+    session: Session,
+    *,
+    status_filter: ProjectStatusFilter = "active",
+) -> list[Project]:
+    statement = _apply_project_status_filter(
+        select(Project).order_by(Project.id),
+        status_filter,
+    )
+    return list(session.scalars(statement))
+
+
+def list_project_summaries(
+    session: Session,
+    *,
+    status_filter: ProjectStatusFilter = "active",
+) -> list[ProjectSummaryRead]:
+    projects = list_projects(session, status_filter=status_filter)
     summaries: list[ProjectSummaryRead] = []
     for project in projects:
         document_count = session.scalar(
@@ -81,6 +108,18 @@ def get_project(session: Session, project_id: int) -> Project:
             detail="Project not found",
         )
 
+    return project
+
+
+def update_project_status(
+    session: Session,
+    project_id: int,
+    status_value: ProjectStatus,
+) -> Project:
+    project = get_project(session, project_id)
+    project.status = status_value
+    session.commit()
+    session.refresh(project)
     return project
 
 
