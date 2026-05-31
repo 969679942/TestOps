@@ -333,7 +333,7 @@ def test_list_test_cases_returns_404_for_missing_project(client):
     assert response.json() == {"detail": "Project not found"}
 
 
-def test_list_test_cases_excludes_closed_cases(client):
+def test_list_test_cases_returns_all_project_cases_with_current_statuses(client):
     project = _create_project(client)
     published_case = _create_test_case(client, project["id"])
     rejected_case = client.post(
@@ -376,7 +376,11 @@ def test_list_test_cases_excludes_closed_cases(client):
     assert reject.status_code == 201
     assert publish.status_code == 200
     assert response.status_code == 200
-    assert response.json() == []
+    assert [item["title"] for item in response.json()] == [
+        published_case["title"],
+        rejected_case["title"],
+    ]
+    assert [item["status"] for item in response.json()] == ["published", "rejected"]
 
 
 def _read_test_case_status(test_database_url: str, test_case_id: int) -> str:

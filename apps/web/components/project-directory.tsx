@@ -1,30 +1,83 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
+import { copy } from "../lib/copy";
 import { localizedHref, type Locale } from "../lib/i18n";
 import { translateProjectDescription, translateProjectName } from "../lib/project-display";
 import type { ProjectSummaryRecord } from "../lib/workspace-api";
-import { copy } from "../lib/copy";
 import { CreateProjectModal } from "./create-project-modal";
+import { ProjectStatusAction } from "./project-status-action";
 
 export type ProjectWithStats = ProjectSummaryRecord;
 
 type ProjectDirectoryProps = Readonly<{
   projects: ProjectWithStats[];
+  archivedProjects?: ProjectWithStats[];
   locale?: Locale;
 }>;
 
-export function ProjectDirectory({ projects, locale = "zh" }: ProjectDirectoryProps) {
+export function ProjectDirectory({
+  projects,
+  archivedProjects = [],
+  locale = "zh",
+}: ProjectDirectoryProps) {
   const [modalOpen, setModalOpen] = useState(false);
+  const [view, setView] = useState<"active" | "archived">("active");
+  const [activeItems, setActiveItems] = useState(projects);
+  const [archivedItems, setArchivedItems] = useState(archivedProjects);
+
+  const visibleProjects = useMemo(
+    () => (view === "active" ? activeItems : archivedItems),
+    [activeItems, archivedItems, view],
+  );
+
+  function handleStatusUpdated(projectId: string, nextStatus: "active" | "archived") {
+    if (nextStatus === "archived") {
+      const moved = activeItems.find((project) => project.id === projectId);
+      if (!moved) {
+        return;
+      }
+
+      setActiveItems((items) => items.filter((project) => project.id !== projectId));
+      setArchivedItems((items) => [...items, { ...moved, status: "archived" }]);
+      return;
+    }
+
+    const moved = archivedItems.find((project) => project.id === projectId);
+    if (!moved) {
+      return;
+    }
+
+    setArchivedItems((items) => items.filter((project) => project.id !== projectId));
+    setActiveItems((items) => [...items, { ...moved, status: "active" }]);
+  }
 
   return (
     <>
       <div className="page-toolbar project-directory-toolbar">
         <div className="project-directory-toolbar-copy">
           <span className="project-directory-toolbar-kicker">企业控制台视图</span>
-          <p className="toolbar-meta">{copy.projectCount(projects.length)}</p>
+          <p className="toolbar-meta">{copy.projectCount(visibleProjects.length)}</p>
+          <div className="project-filter-tabs" role="tablist" aria-label={copy.projectListLabel}>
+            <button
+              className={`filter-tab ${view === "active" ? "is-active" : ""}`}
+              type="button"
+              aria-pressed={view === "active"}
+              onClick={() => setView("active")}
+            >
+              {copy.activeProjects}
+            </button>
+            <button
+              className={`filter-tab ${view === "archived" ? "is-active" : ""}`}
+              type="button"
+              aria-pressed={view === "archived"}
+              onClick={() => setView("archived")}
+            >
+              {copy.archivedProjects}
+            </button>
+          </div>
         </div>
         <button className="button-primary" type="button" onClick={() => setModalOpen(true)}>
           + {copy.newProject}
@@ -32,32 +85,45 @@ export function ProjectDirectory({ projects, locale = "zh" }: ProjectDirectoryPr
       </div>
 
       <section className="project-grid" aria-label={copy.projectListLabel}>
-        {projects.length === 0 ? (
+        {visibleProjects.length === 0 ? (
           <article className="empty-card wide">
-            <h3>{copy.noProjects}</h3>
-            <p>{copy.noProjectsHint}</p>
-            <button className="button-primary" type="button" onClick={() => setModalOpen(true)}>
-              + {copy.newProject}
-            </button>
+            <h3>{view === "active" ? copy.noProjects : copy.archivedProjects}</h3>
+            <p>
+              {view === "active"
+                ? copy.noProjectsHint
+                : copy.projectArchivedHint}
+            </p>
+            {view === "active" ? (
+              <button
+                className="button-primary"
+                type="button"
+                onClick={() => setModalOpen(true)}
+              >
+                + {copy.newProject}
+              </button>
+            ) : null}
           </article>
         ) : (
-          projects.map((project) => {
+          visibleProjects.map((project) => {
             const displayName = translateProjectName(project.name, locale);
             const displayDescription =
               translateProjectDescription(project.description, locale) ?? copy.noDescription;
 
             return (
-              <Link
-                key={project.id}
-                className="card project-card"
-                href={localizedHref(`/projects/${project.id}`, locale)}
-              >
+              <article key={project.id} className="card project-card">
                 <div className="project-card-header">
                   <div className="project-card-title-group">
                     <span className="project-card-kicker">项目概览</span>
                     <h2>{displayName}</h2>
                   </div>
-                  <span className="project-code">{project.code}</span>
+                  <div className="project-card-actions">
+                    <span className="project-code">{project.code}</span>
+                    <ProjectStatusAction
+                      projectId={project.id}
+                      status={project.status as "active" | "archived"}
+                      onUpdated={(status) => handleStatusUpdated(project.id, status)}
+                    />
+                  </div>
                 </div>
                 <div className="project-card-summary">
                   <p>{displayDescription}</p>
@@ -75,9 +141,14 @@ export function ProjectDirectory({ projects, locale = "zh" }: ProjectDirectoryPr
                 </div>
                 <div className="project-card-footer">
                   <span className="project-card-indicator" aria-hidden="true" />
-                  <span>进入项目工作区</span>
+                  <Link
+                    className="project-card-link"
+                    href={localizedHref(`/projects/${project.id}`, locale)}
+                  >
+                    进入项目工作区
+                  </Link>
                 </div>
-              </Link>
+              </article>
             );
           })
         )}

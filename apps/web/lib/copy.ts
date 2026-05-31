@@ -168,6 +168,15 @@ export const copy = {
   documentTypeTabLabel: "文档类型",
   workspaceModeTabLabel: "创建方式",
   projectListLabel: "项目列表",
+  archiveProject: "归档项目",
+  restoreProject: "恢复项目",
+  activeProjects: "进行中项目",
+  archivedProjects: "已归档项目",
+  projectArchived: "项目已归档",
+  projectArchivedHint: "该项目已归档，可继续查看历史数据。如需继续操作，请先恢复项目。",
+  archiveProjectConfirm: "归档后项目将从默认列表隐藏，但不会删除已有数据。",
+  restoreProjectConfirm: "恢复后项目将重新出现在默认列表，并可继续使用。",
+  archivedProjectActionHint: "项目已归档，请先恢复后再继续操作。",
 } as const;
 
 export const sourceModeLabels: Record<string, string> = {

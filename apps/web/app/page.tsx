@@ -17,61 +17,40 @@ export default async function HomePage({ searchParams }: HomePageProps = {}) {
   const locale = normalizeLocale((await searchParams)?.lang);
 
   let projects: Awaited<ReturnType<typeof listProjectsWithStats>> = [];
+  let archivedProjects: Awaited<ReturnType<typeof listProjectsWithStats>> = [];
 
   let loadError: string | null = null;
-
-
-
   try {
-
-    projects = await listProjectsWithStats();
-
+    [projects, archivedProjects] = await Promise.all([
+      listProjectsWithStats("active"),
+      listProjectsWithStats("archived"),
+    ]);
   } catch (error) {
-
     loadError =
-
       error instanceof ApiError ? error.message : copy.apiUnavailable;
-
   }
 
-
-
   return (
-
     <AppShell currentPath="/" locale={locale} contentWidth="wide">
-
       <section className="page-header">
-
         <span className="eyebrow">{copy.projectDirectoryEyebrow}</span>
-
         <h2>{copy.projectDirectoryTitle}</h2>
-
         <p>{copy.projectDirectoryHint}</p>
-
       </section>
-
-
-
       {loadError ? (
-
         <section className="alert-panel" role="alert">
-
           <h3>{copy.apiUnavailableTitle}</h3>
-
           <p>{loadError}</p>
-
         </section>
-
       ) : (
-
-        <ProjectDirectory projects={projects} locale={locale} />
-
+        <ProjectDirectory
+          projects={projects}
+          archivedProjects={archivedProjects}
+          locale={locale}
+        />
       )}
-
     </AppShell>
-
   );
-
 }
 
 

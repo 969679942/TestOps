@@ -3,6 +3,8 @@ import { revalidatePath } from "next/cache";
 
 import { AppShell } from "../../../../components/app-shell";
 import { GenerationTaskList } from "../../../../components/generation-task-list";
+import { ProjectArchiveBanner } from "../../../../components/project-archive-banner";
+import { copy as uiCopy } from "../../../../lib/copy";
 import {
   createGenerationTask,
   getProject,
@@ -66,6 +68,7 @@ export default async function ProjectGenerationTasksPage({
   }
 
   const projectDisplayName = translateProjectName(project.name, locale);
+  const archived = project.status === "archived";
 
   const taskList = await listProjectGenerationTasks(projectId);
   const tasks = taskList.kind === "http-error" ? [] : taskList.tasks;
@@ -135,6 +138,8 @@ export default async function ProjectGenerationTasksPage({
         </section>
       ) : null}
 
+      {archived ? <ProjectArchiveBanner /> : null}
+
       <section className="data-card generation-create-card">
         <div className="section-heading">
           <div>
@@ -143,15 +148,23 @@ export default async function ProjectGenerationTasksPage({
           </div>
           <p>{t.generationPage.createCopy}</p>
         </div>
+        {archived ? (
+          <div className="archived-action-lock">{uiCopy.archivedProjectActionHint}</div>
+        ) : null}
         <form action={createGenerationAction} className="review-stack generation-create-form">
           <div className="form-grid">
             <label className="form-field">
               <span>{t.generationPage.documentIds}</span>
-              <input className="field-input" name="inputDocumentIds" placeholder="1, 2, 3" />
+              <input
+                className="field-input"
+                name="inputDocumentIds"
+                placeholder="1, 2, 3"
+                disabled={archived}
+              />
             </label>
             <label className="form-field">
               <span>{t.generationPage.provider}</span>
-              <select className="field-input" name="provider" defaultValue="">
+              <select className="field-input" name="provider" defaultValue="" disabled={archived}>
                 <option value="">{t.generationPage.projectDefault}</option>
                 <option value="cursor">Cursor</option>
                 <option value="openai">OpenAI</option>
@@ -159,7 +172,12 @@ export default async function ProjectGenerationTasksPage({
             </label>
             <label className="form-field">
               <span>{t.generationPage.model}</span>
-              <input className="field-input" name="model" placeholder={project.defaultProvider} />
+              <input
+                className="field-input"
+                name="model"
+                placeholder={project.defaultProvider}
+                disabled={archived}
+              />
             </label>
             <label className="form-field">
               <span>{t.generationPage.promptProfile}</span>
@@ -167,10 +185,11 @@ export default async function ProjectGenerationTasksPage({
                 className="field-input"
                 name="promptProfile"
                 placeholder={project.defaultPromptProfile}
+                disabled={archived}
               />
             </label>
           </div>
-          <button className="primary-button" type="submit">
+          <button className="primary-button" type="submit" disabled={archived}>
             {t.generationPage.queueGeneration}
           </button>
         </form>

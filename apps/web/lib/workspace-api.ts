@@ -310,6 +310,9 @@ export type ProjectSummaryRecord = ProjectRecord & {
   publishedCount: number;
 };
 
+export type ProjectStatus = "active" | "archived";
+export type ProjectStatusFilter = ProjectStatus | "all";
+
 function mapProjectSummary(project: ProjectSummaryApiRecord): ProjectSummaryRecord {
   return {
     ...mapProject(project),
@@ -319,8 +322,10 @@ function mapProjectSummary(project: ProjectSummaryApiRecord): ProjectSummaryReco
   };
 }
 
-export async function listProjects(): Promise<ProjectRecord[]> {
-  const projects = await requestJson<ProjectApiRecord[]>("/projects");
+export async function listProjects(
+  status: ProjectStatusFilter = "active",
+): Promise<ProjectRecord[]> {
+  const projects = await requestJson<ProjectApiRecord[]>(`/projects?status=${status}`);
   return projects.map(mapProject);
 }
 
@@ -344,13 +349,17 @@ async function enrichProjectsWithStats(
   );
 }
 
-export async function listProjectsWithStats(): Promise<ProjectSummaryRecord[]> {
+export async function listProjectsWithStats(
+  status: ProjectStatusFilter = "active",
+): Promise<ProjectSummaryRecord[]> {
   try {
-    const projects = await requestJson<ProjectSummaryApiRecord[]>("/project-summaries");
+    const projects = await requestJson<ProjectSummaryApiRecord[]>(
+      `/project-summaries?status=${status}`,
+    );
     return projects.map(mapProjectSummary);
   } catch (error) {
     if (error instanceof ApiError && (error.status === 404 || error.status === 422)) {
-      return enrichProjectsWithStats(await listProjects());
+      return enrichProjectsWithStats(await listProjects(status));
     }
     throw error;
   }
@@ -369,6 +378,17 @@ export async function createProject(input: {
   const project = await requestJson<ProjectApiRecord>("/projects", {
     method: "POST",
     body: JSON.stringify(input),
+  });
+  return mapProject(project);
+}
+
+export async function updateProjectStatus(
+  projectId: string,
+  status: ProjectStatus,
+): Promise<ProjectRecord> {
+  const project = await requestJson<ProjectApiRecord>(`/projects/${projectId}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
   });
   return mapProject(project);
 }

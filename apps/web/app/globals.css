@@ -206,6 +206,17 @@ a {
   gap: 0.35rem;
 }
 
+.page-header-with-actions {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.page-header-copy {
+  display: grid;
+  gap: 0.35rem;
+}
+
 .page-header.compact h2 {
   font-size: 1.5rem;
 }
@@ -286,6 +297,47 @@ a {
 .project-directory-toolbar-copy {
   display: grid;
   gap: 0.3rem;
+}
+
+.project-filter-tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.filter-tab {
+  min-height: 2.1rem;
+  padding: 0.35rem 0.8rem;
+  border: 1px solid rgba(191, 219, 254, 0.9);
+  border-radius: 999px;
+  background: #f8fbff;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+  transition:
+    border-color var(--motion-fast) var(--ease-out),
+    background-color var(--motion-fast) var(--ease-out),
+    color var(--motion-fast) var(--ease-out),
+    box-shadow var(--motion-fast) var(--ease-out);
+}
+
+.filter-tab:hover {
+  border-color: rgba(96, 165, 250, 0.78);
+  background: #eef5ff;
+  color: #1d4ed8;
+}
+
+.filter-tab.is-active {
+  border-color: #3b82f6;
+  background: #eff6ff;
+  color: #1d4ed8;
+  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.15);
+}
+
+.filter-tab:focus-visible {
+  outline: 2px solid rgba(37, 99, 235, 0.35);
+  outline-offset: 2px;
 }
 
 .project-directory-toolbar-kicker {
@@ -632,6 +684,14 @@ a.workspace-link:focus-visible {
   align-items: flex-start;
 }
 
+.project-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  align-items: center;
+}
+
 .project-card-title-group {
   display: grid;
   gap: 0.2rem;
@@ -713,6 +773,55 @@ a.workspace-link:focus-visible {
   border-radius: 999px;
   background: currentColor;
   box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+.project-card-link {
+  color: inherit;
+  font: inherit;
+}
+
+.project-card-link:hover {
+  text-decoration: underline;
+}
+
+.project-card-link:focus-visible {
+  outline: 2px solid rgba(37, 99, 235, 0.35);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+.project-archive-banner {
+  display: grid;
+  gap: 0.35rem;
+  padding: 1rem 1.05rem;
+  border: 1px solid rgba(191, 219, 254, 0.92);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
+}
+
+.project-archive-banner-copy {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.project-archive-banner h3,
+.project-archive-banner p {
+  margin: 0;
+}
+
+.project-archive-banner p {
+  color: var(--muted);
+}
+
+.archived-action-lock {
+  padding: 0.85rem 0.95rem;
+  border: 1px solid rgba(191, 219, 254, 0.92);
+  border-radius: 10px;
+  background: #f8fbff;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.55;
 }
 
 .project-directory-toolbar .button-primary {
@@ -2069,6 +2178,10 @@ a.workflow-step:focus-visible {
   .case-editor-header {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .page-header-with-actions {
+    grid-template-columns: 1fr;
   }
 
   .inline-actions {

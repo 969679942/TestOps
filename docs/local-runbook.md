@@ -31,6 +31,12 @@
 7. Create a debug proposal, approve it manually, then trigger controlled rerun.
 8. Generate the final report and push it to Lark when configured.
 
+## Project Lifecycle
+
+- Active projects appear in the default project list.
+- Archived projects move to the archived view and remain readable.
+- Archived projects reject document, generation, test case, and schedule write operations until restored.
+
 ## Verification Commands
 
 - API: `D:\TestOps\services\api\.venv\Scripts\python.exe -m pytest services/api/tests -q`

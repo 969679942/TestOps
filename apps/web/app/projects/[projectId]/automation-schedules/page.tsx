@@ -1,6 +1,8 @@
 import React from "react";
 
 import { AppShell } from "../../../../components/app-shell";
+import { ProjectArchiveBanner } from "../../../../components/project-archive-banner";
+import { copy as uiCopy } from "../../../../lib/copy";
 import {
   getProject,
   listProjectAutomationSchedules,
@@ -89,6 +91,7 @@ export default async function ProjectAutomationSchedulesPage({
   const schedules = scheduleList.kind === "http-error" ? [] : scheduleList.items;
   const environments =
     environmentList.kind === "http-error" ? [] : environmentList.environments;
+  const archived = project.status === "archived";
 
   return (
     <AppShell
@@ -133,6 +136,8 @@ export default async function ProjectAutomationSchedulesPage({
         </section>
       ) : null}
 
+      {archived ? <ProjectArchiveBanner /> : null}
+
       <section className="data-card automation-schedules-card">
         <div className="section-heading">
           <div>
@@ -141,6 +146,9 @@ export default async function ProjectAutomationSchedulesPage({
           </div>
           <p>{pageText.description}</p>
         </div>
+        {archived ? (
+          <div className="archived-action-lock">{uiCopy.archivedProjectActionHint}</div>
+        ) : null}
         {schedules.length ? (
           <div className="automation-list">
             {schedules.map((schedule) => {

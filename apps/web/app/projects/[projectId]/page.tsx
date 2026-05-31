@@ -1,8 +1,10 @@
 import React from "react";
 import Link from "next/link";
 
+import { ProjectArchiveBanner } from "../../../components/project-archive-banner";
 import { AppShell } from "../../../components/app-shell";
 import { Breadcrumbs } from "../../../components/breadcrumbs";
+import { ProjectStatusAction } from "../../../components/project-status-action";
 import { ProjectWorkspaceClient } from "../../../components/project-workspace-client";
 import { copy } from "../../../lib/copy";
 import { localizedHref, normalizeLocale, type LocaleSearchParams } from "../../../lib/i18n";
@@ -53,11 +55,19 @@ export default async function ProjectWorkspacePage({
         ]}
       />
 
-      <section className="page-header">
-        <span className="eyebrow">{copy.workspaceEyebrow}</span>
-        <h2>{projectDisplayName}</h2>
-        <p>{projectDescription}</p>
+      <section className="page-header page-header-with-actions">
+        <div className="page-header-copy">
+          <span className="eyebrow">{copy.workspaceEyebrow}</span>
+          <h2>{projectDisplayName}</h2>
+          <p>{projectDescription}</p>
+        </div>
+        <ProjectStatusAction
+          projectId={projectId}
+          status={project.status as "active" | "archived"}
+        />
       </section>
+
+      {project.status === "archived" ? <ProjectArchiveBanner /> : null}
 
       <ProjectWorkspaceClient
         projectId={projectId}

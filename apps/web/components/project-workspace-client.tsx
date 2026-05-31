@@ -41,6 +41,7 @@ export function ProjectWorkspaceClient({
         documents={documents}
         defaultProvider={project.defaultProvider}
         onGeneratingChange={setGenerating}
+        projectStatus={project.status as "active" | "archived"}
       />
     </>
   );

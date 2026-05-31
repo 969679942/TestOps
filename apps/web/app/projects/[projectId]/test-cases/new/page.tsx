@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { AppShell } from "../../../../../components/app-shell";
 import { Breadcrumbs } from "../../../../../components/breadcrumbs";
+import { ProjectArchiveBanner } from "../../../../../components/project-archive-banner";
 import { copy } from "../../../../../lib/copy";
 import {
   localizedHref,
@@ -29,6 +30,7 @@ export default async function NewTestCasePage({
   const locale = normalizeLocale((await searchParams)?.lang);
   const project = await loadOrThrow(() => getProject(projectId));
   const projectDisplayName = translateProjectName(project.name, locale);
+  const archived = project.status === "archived";
 
   return (
     <AppShell currentPath={`/projects/${projectId}/test-cases`} locale={locale} project={project}>
@@ -63,7 +65,16 @@ export default async function NewTestCasePage({
         </Link>
       </div>
 
-      <NewTestCasePageClient projectId={projectId} />
+      {archived ? (
+        <>
+          <ProjectArchiveBanner />
+          <section className="data-card">
+            <p className="archived-action-lock">{copy.archivedProjectActionHint}</p>
+          </section>
+        </>
+      ) : (
+        <NewTestCasePageClient projectId={projectId} />
+      )}
     </AppShell>
   );
 }

@@ -105,6 +105,7 @@ import ProjectDocumentsPage from "../../app/projects/[projectId]/documents/page"
 import ProjectGenerationTasksPage from "../../app/projects/[projectId]/generation-tasks/page";
 import ProjectReviewPage from "../../app/projects/[projectId]/review/page";
 import ProjectTestCasesPage from "../../app/projects/[projectId]/test-cases/page";
+import NewTestCasePage from "../../app/projects/[projectId]/test-cases/new/page";
 import ProjectAutomationSchedulesPage from "../../app/projects/[projectId]/automation-schedules/page";
 import SettingsPage from "../../app/settings/page";
 
@@ -204,6 +205,25 @@ describe("workspace pages", () => {
     expect(html).toContain("workspace-client:2:1");
   });
 
+  it("renders an archive banner and restore action for archived projects", async () => {
+    getWorkspaceProjectMock.mockResolvedValue({
+      ...workspaceProject,
+      status: "archived",
+    });
+    listWorkspaceProjectDocumentsMock.mockResolvedValue([]);
+    listWorkspaceProjectTestCasesMock.mockResolvedValue([]);
+
+    const html = renderToStaticMarkup(
+      await ProjectWorkspacePage({
+        params: Promise.resolve({ projectId: "1" }),
+      }),
+    );
+
+    expect(html).toContain("项目已归档");
+    expect(html).toContain("该项目已归档，可继续查看历史数据。如需继续操作，请先恢复项目。");
+    expect(html).toContain("恢复项目");
+  });
+
   it("renders the settings page with runtime configuration", async () => {
     getRuntimeSettingsMock.mockResolvedValue({
       kind: "success",
@@ -273,6 +293,29 @@ describe("workspace pages", () => {
     expect(html).toContain("/projects/1/documents");
   });
 
+  it("shows an archive lock on the generation tasks page", async () => {
+    getProjectMock.mockResolvedValue({
+      kind: "success",
+      project: {
+        ...workspaceProject,
+        status: "archived",
+      },
+    });
+    listProjectGenerationTasksMock.mockResolvedValue({
+      kind: "success",
+      tasks: [],
+    });
+
+    const html = renderToStaticMarkup(
+      await ProjectGenerationTasksPage({
+        params: Promise.resolve({ projectId: "1" }),
+      }),
+    );
+
+    expect(html).toContain("项目已归档");
+    expect(html).toContain("项目已归档，请先恢复后再继续操作。");
+  });
+
   it("renders automation schedules with environment and cron details", async () => {
     getProjectMock.mockResolvedValue({
       kind: "success",
@@ -327,6 +370,33 @@ describe("workspace pages", () => {
     expect(html).toContain("/projects/1/test-cases");
   });
 
+  it("shows an archive reminder on the automation schedules page", async () => {
+    getProjectMock.mockResolvedValue({
+      kind: "success",
+      project: {
+        ...workspaceProject,
+        status: "archived",
+      },
+    });
+    listProjectAutomationSchedulesMock.mockResolvedValue({
+      kind: "success",
+      items: [],
+    });
+    listProjectEnvironmentsMock.mockResolvedValue({
+      kind: "success",
+      environments: [],
+    });
+
+    const html = renderToStaticMarkup(
+      await ProjectAutomationSchedulesPage({
+        params: Promise.resolve({ projectId: "1" }),
+      }),
+    );
+
+    expect(html).toContain("项目已归档");
+    expect(html).toContain("项目已归档，请先恢复后再继续操作。");
+  });
+
   it("renders the test case library and handles generated banner search params", async () => {
     getWorkspaceProjectMock.mockResolvedValue(workspaceProject);
     listWorkspaceProjectDocumentsMock.mockResolvedValue([
@@ -371,6 +441,23 @@ describe("workspace pages", () => {
     expect(html).toContain("Create order with saved card");
     expect(html).toContain("生成完成");
     expect(html).toContain("/projects/1/test-cases/new");
+  });
+
+  it("locks the new test case page for archived projects", async () => {
+    getWorkspaceProjectMock.mockResolvedValue({
+      ...workspaceProject,
+      status: "archived",
+    });
+
+    const html = renderToStaticMarkup(
+      await NewTestCasePage({
+        params: Promise.resolve({ projectId: "1" }),
+      }),
+    );
+
+    expect(html).toContain("项目已归档");
+    expect(html).toContain("项目已归档，请先恢复后再继续操作。");
+    expect(html).not.toContain("创建用例");
   });
 
   it("renders the review workspace for both empty and selected states", async () => {

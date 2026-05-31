@@ -9,7 +9,7 @@ vi.mock("../../components/create-project-modal", () => ({
 }));
 
 describe("ProjectDirectory", () => {
-  it("renders translated project names and the console-style card structure", () => {
+  it("renders translated project names, archive view toggles, and project actions", () => {
     const html = renderToStaticMarkup(
       <ProjectDirectory
         locale="zh"
@@ -28,11 +28,28 @@ describe("ProjectDirectory", () => {
             publishedCount: 0,
           },
         ]}
+        archivedProjects={[
+          {
+            id: "12",
+            name: "Payments Platform",
+            code: "payments",
+            description: "Checkout and settlement flows.",
+            status: "archived",
+            defaultProvider: "cursor",
+            defaultPromptProfile: "default",
+            documentCount: 3,
+            testCaseCount: 8,
+            publishedCount: 5,
+          },
+        ]}
       />,
     );
 
     expect(html).toContain("即时零售演示项目 20260527225325");
     expect(html).toContain("由 PRD 和 Figma 输入创建的演示项目，用于验证 TestOps 流程。");
+    expect(html).toContain("进行中项目");
+    expect(html).toContain("已归档项目");
+    expect(html).toContain("归档项目");
     expect(html).toContain("project-directory-toolbar");
     expect(html).toContain("project-card-header");
     expect(html).toContain("project-card-summary");
