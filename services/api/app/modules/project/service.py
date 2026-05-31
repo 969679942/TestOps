@@ -43,7 +43,11 @@ def _apply_project_status_filter(
 ) -> Select[tuple[Project]]:
     if status_filter == "all":
         return statement
-    return statement.where(Project.status == status_filter)
+    if status_filter == "archived":
+        return statement.where(Project.status == "archived")
+    return statement.where(
+        or_(Project.status.is_(None), Project.status != "archived")
+    )
 
 
 def _normalize_project_status_value(status_value: str | None) -> ProjectStatus:

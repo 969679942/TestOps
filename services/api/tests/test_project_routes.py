@@ -231,6 +231,40 @@ def test_list_projects_all_normalizes_invalid_persisted_status(
     assert response.json()[0]["status"] == "active"
 
 
+def test_list_projects_defaults_include_invalid_persisted_status_as_active(
+    client, test_database_url: str
+):
+    project = client.post(
+        "/projects",
+        json={"name": "Core Banking", "code": "core-banking"},
+    ).json()
+    _force_project_status(test_database_url, project["id"], "paused")
+
+    with TestClient(app, raise_server_exceptions=False) as test_client:
+        response = test_client.get("/projects")
+
+    assert response.status_code == 200
+    assert [item["id"] for item in response.json()] == [project["id"]]
+    assert response.json()[0]["status"] == "active"
+
+
+def test_list_project_summaries_defaults_include_invalid_persisted_status_as_active(
+    client, test_database_url: str
+):
+    project = client.post(
+        "/projects",
+        json={"name": "Core Banking", "code": "core-banking"},
+    ).json()
+    _force_project_status(test_database_url, project["id"], "paused")
+
+    with TestClient(app, raise_server_exceptions=False) as test_client:
+        response = test_client.get("/project-summaries")
+
+    assert response.status_code == 200
+    assert [item["id"] for item in response.json()] == [project["id"]]
+    assert response.json()[0]["status"] == "active"
+
+
 def test_get_project_returns_existing_project(client):
     created_project = client.post(
         "/projects",
