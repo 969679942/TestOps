@@ -29,6 +29,55 @@ def get_test_case_or_404(session: Session, test_case_id: int) -> TestCase:
     return review_service.get_test_case_or_404(session, test_case_id)
 
 
+def _get_directory_or_404(
+    session: Session,
+    project_id: int,
+    directory_id: int,
+) -> TestCaseDirectory:
+    directory = session.scalar(
+        select(TestCaseDirectory).where(
+            TestCaseDirectory.id == directory_id,
+            TestCaseDirectory.project_id == project_id,
+        )
+    )
+    if directory is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Test case directory not found",
+        )
+    return directory
+
+
+def _validate_directory(
+    session: Session,
+    project_id: int,
+    directory_id: int | None,
+) -> TestCaseDirectory | None:
+    if directory_id is None:
+        return None
+    return _get_directory_or_404(session, project_id, directory_id)
+
+
+def _directory_scope_ids(
+    session: Session,
+    project_id: int,
+    directory_id: int,
+) -> list[int]:
+    directory = _get_directory_or_404(session, project_id, directory_id)
+    if directory.parent_id is not None:
+        return [directory.id]
+
+    child_ids = list(
+        session.scalars(
+            select(TestCaseDirectory.id).where(
+                TestCaseDirectory.project_id == project_id,
+                TestCaseDirectory.parent_id == directory.id,
+            )
+        )
+    )
+    return [directory.id, *child_ids]
+
+
 def create_test_case_directory(
     session: Session,
     project_id: int,
@@ -104,9 +153,11 @@ def create_test_case(
     payload: TestCaseCreate,
 ) -> TestCase:
     project_service.ensure_project_is_active(_get_project_or_404(session, project_id))
+    directory = _validate_directory(session, project_id, payload.directory_id)
 
     test_case = TestCase(
         project_id=project_id,
+        directory_id=directory.id if directory else None,
         title=payload.title,
         module=payload.module,
         feature=payload.feature,
@@ -136,8 +187,10 @@ def import_test_cases(
 
     created_cases: list[TestCase] = []
     for payload in cases:
+        directory = _validate_directory(session, project_id, payload.directory_id)
         test_case = TestCase(
             project_id=project_id,
+            directory_id=directory.id if directory else None,
             title=payload.title,
             module=payload.module,
             feature=payload.feature,
@@ -161,13 +214,17 @@ def import_test_cases(
     return created_cases
 
 
-def list_test_cases(session: Session, project_id: int) -> list[TestCase]:
+def list_test_cases(
+    session: Session,
+    project_id: int,
+    directory_id: int | None = None,
+) -> list[TestCase]:
     _get_project_or_404(session, project_id)
-    cases = session.scalars(
-        select(TestCase)
-        .where(TestCase.project_id == project_id)
-        .order_by(TestCase.id)
-    )
+    statement = select(TestCase).where(TestCase.project_id == project_id)
+    if directory_id is not None:
+        scope_ids = _directory_scope_ids(session, project_id, directory_id)
+        statement = statement.where(TestCase.directory_id.in_(scope_ids))
+    cases = session.scalars(statement.order_by(TestCase.id))
     return list(cases)
 
 
@@ -177,6 +234,7 @@ def update_test_case(
     payload: TestCaseUpdate,
 ) -> TestCase:
     test_case = get_test_case_or_404(session, test_case_id)
+    project_service.ensure_project_is_active(_get_project_or_404(session, test_case.project_id))
     if test_case.status == "published":
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -196,6 +254,9 @@ def update_test_case(
         updates["tags"] = list(payload.tags or [])
     if "ui_context" in updates and payload.ui_context is not None:
         updates["ui_context"] = payload.ui_context.model_dump()
+    if "directory_id" in updates:
+        directory = _validate_directory(session, test_case.project_id, payload.directory_id)
+        updates["directory_id"] = directory.id if directory else None
 
     for field, value in updates.items():
         setattr(test_case, field, value)

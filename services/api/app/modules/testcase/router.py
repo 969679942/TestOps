@@ -38,9 +38,10 @@ def create_test_case_directory(
 @router.get("/projects/{project_id}/test-cases", response_model=list[TestCaseRead])
 def list_test_cases(
     project_id: int,
+    directory_id: int | None = None,
     session: Session = Depends(get_session),
 ) -> list[TestCaseRead]:
-    return testcase_service.list_test_cases(session, project_id)
+    return testcase_service.list_test_cases(session, project_id, directory_id=directory_id)
 
 
 @router.get("/test-cases/{test_case_id}", response_model=TestCaseRead)

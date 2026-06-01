@@ -3,6 +3,14 @@ def test_import_test_cases(client):
         "/projects",
         json={"name": "Import UI", "code": "import-ui"},
     ).json()
+    root = client.post(
+        f"/projects/{project['id']}/test-case-directories",
+        json={"name": "测试特性目录", "parent_id": None},
+    ).json()
+    child = client.post(
+        f"/projects/{project['id']}/test-case-directories",
+        json={"name": "登录", "parent_id": root["id"]},
+    ).json()
 
     response = client.post(
         f"/projects/{project['id']}/test-cases/import",
@@ -25,6 +33,7 @@ def test_import_test_cases(client):
                     ],
                     "tags": ["smoke"],
                     "automation_flag": True,
+                    "directory_id": child["id"],
                 },
                 {
                     "title": "Reject invalid password",
@@ -45,5 +54,6 @@ def test_import_test_cases(client):
     assert response.status_code == 201
     assert len(response.json()) == 2
     assert response.json()[0]["title"] == "Login with valid credentials"
+    assert response.json()[0]["directory_id"] == child["id"]
     assert listed.status_code == 200
     assert len(listed.json()) == 2

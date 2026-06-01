@@ -130,6 +130,7 @@ def test_review_publish_and_handoff_flow(client):
             "tags": ["smoke", "checkout"],
             "automation_flag": True,
             "automation_notes": "Stable happy path for downstream automation.",
+            "directory_id": None,
             "ui_context": None,
             "status": "published",
             "created_at": publish.json()["created_at"],
@@ -288,6 +289,124 @@ def test_create_directory_rejects_third_level_nodes(client):
 
     assert response.status_code == 409
     assert response.json() == {"detail": "Only two directory levels are supported."}
+
+
+def test_create_test_case_assigns_directory(client):
+    project = _create_project(client)
+    root = _create_directory(client, project["id"], "测试特性目录")
+    child = _create_directory(client, project["id"], "登录", parent_id=root["id"])
+
+    response = client.post(
+        f"/projects/{project['id']}/test-cases",
+        json={
+            "title": "Login with valid credentials",
+            "module": "Auth",
+            "feature": "Sign in",
+            "case_type": "functional",
+            "priority": "high",
+            "preconditions": ["User account exists"],
+            "steps": [{"text": "Open the login page"}],
+            "expected_results": [{"text": "Login form is displayed"}],
+            "tags": ["smoke"],
+            "automation_flag": False,
+            "directory_id": child["id"],
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["directory_id"] == child["id"]
+
+
+def test_list_test_cases_filters_by_root_directory_including_children(client):
+    project = _create_project(client)
+    root = _create_directory(client, project["id"], "测试特性目录")
+    child = _create_directory(client, project["id"], "登录", parent_id=root["id"])
+
+    first = client.post(
+        f"/projects/{project['id']}/test-cases",
+        json={
+            "title": "Login with valid credentials",
+            "module": "Auth",
+            "feature": "Sign in",
+            "case_type": "functional",
+            "priority": "high",
+            "preconditions": ["User account exists"],
+            "steps": [{"text": "Open the login page"}],
+            "expected_results": [{"text": "Login form is displayed"}],
+            "tags": ["smoke"],
+            "automation_flag": False,
+            "directory_id": child["id"],
+        },
+    )
+    second = client.post(
+        f"/projects/{project['id']}/test-cases",
+        json={
+            "title": "Reject invalid password",
+            "module": "Auth",
+            "feature": "Sign in",
+            "case_type": "functional",
+            "priority": "medium",
+            "preconditions": [],
+            "steps": [{"text": "Submit an invalid password"}],
+            "expected_results": [{"text": "An inline error is shown"}],
+            "tags": ["negative"],
+            "automation_flag": False,
+        },
+    )
+
+    response = client.get(f"/projects/{project['id']}/test-cases?directory_id={root['id']}")
+
+    assert first.status_code == 201
+    assert second.status_code == 201
+    assert response.status_code == 200
+    assert [item["title"] for item in response.json()] == ["Login with valid credentials"]
+
+
+def test_list_test_cases_filters_by_child_directory_only(client):
+    project = _create_project(client)
+    root = _create_directory(client, project["id"], "测试特性目录")
+    login = _create_directory(client, project["id"], "登录", parent_id=root["id"])
+    profile = _create_directory(client, project["id"], "个人资料", parent_id=root["id"])
+
+    login_case = client.post(
+        f"/projects/{project['id']}/test-cases",
+        json={
+            "title": "Login with valid credentials",
+            "module": "Auth",
+            "feature": "Sign in",
+            "case_type": "functional",
+            "priority": "high",
+            "preconditions": ["User account exists"],
+            "steps": [{"text": "Open the login page"}],
+            "expected_results": [{"text": "Login form is displayed"}],
+            "tags": ["smoke"],
+            "automation_flag": False,
+            "directory_id": login["id"],
+        },
+    )
+    profile_case = client.post(
+        f"/projects/{project['id']}/test-cases",
+        json={
+            "title": "Update profile avatar",
+            "module": "Profile",
+            "feature": "Avatar",
+            "case_type": "functional",
+            "priority": "medium",
+            "preconditions": ["User is signed in"],
+            "steps": [{"text": "Open profile settings"}],
+            "expected_results": [{"text": "Avatar can be updated"}],
+            "tags": ["profile"],
+            "automation_flag": False,
+            "directory_id": profile["id"],
+        },
+    )
+
+    response = client.get(f"/projects/{project['id']}/test-cases?directory_id={login['id']}")
+
+    assert login_case.status_code == 201
+    assert profile_case.status_code == 201
+    assert response.status_code == 200
+    assert [item["title"] for item in response.json()] == ["Login with valid credentials"]
 
 
 def test_update_test_case_edits_reviewable_fields(client):

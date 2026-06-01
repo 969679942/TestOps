@@ -79,6 +79,7 @@ class TestCaseCreate(BaseModel):
     tags: list[NonEmptyStr] = Field(default_factory=list)
     automation_flag: bool = False
     automation_notes: str | None = None
+    directory_id: int | None = None
     ui_context: UIContext | None = None
     status: Literal["draft"] = "draft"
 
@@ -113,6 +114,7 @@ class TestCaseRead(BaseModel):
     tags: list[str]
     automation_flag: bool
     automation_notes: str | None
+    directory_id: int | None
     ui_context: UIContext | None
     status: TestCaseStatus
     created_at: datetime
@@ -132,6 +134,7 @@ class TestCaseUpdate(BaseModel):
     tags: list[NonEmptyStr] | None = None
     automation_flag: bool | None = None
     automation_notes: str | None = None
+    directory_id: int | None = None
     ui_context: UIContext | None = None
 
 
