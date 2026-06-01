@@ -614,6 +614,7 @@ describe("api fallbacks", () => {
         {
           id: "21",
           projectId: "1",
+          directoryId: null,
           title: "Create order",
           status: "draft",
           module: "Checkout",

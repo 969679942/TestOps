@@ -120,6 +120,7 @@ type StructuredTextFieldApiRecord = {
 type ProjectTestCaseApiRecord = {
   id: number;
   project_id: number;
+  directory_id: number | null;
   title: string;
   status: string;
   module: string;
@@ -942,6 +943,10 @@ function mapTestCase(item: ProjectTestCaseApiRecord): TestCaseRecord {
     projectId: String(item.project_id),
     title: item.title,
     status: item.status,
+    directoryId:
+      item.directory_id === null || item.directory_id === undefined
+        ? null
+        : String(item.directory_id),
     module: item.module,
     feature: item.feature,
     caseType: item.case_type,

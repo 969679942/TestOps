@@ -49,6 +49,12 @@ export type TestCaseDraft = {
   feature: string;
   caseType: string;
   priority: string;
+  directoryId: string | null;
+  owner: string;
+  releaseVersion: string;
+  iteration: string;
+  attachments: string[];
+  linkedRequirement: string;
   preconditions: string[];
   steps: UIAutomationStep[];
   expectedResults: { text: string }[];
@@ -260,6 +266,12 @@ export function createEmptyTestCaseDraft(): TestCaseDraft {
     feature: "",
     caseType: "ui_automation",
     priority: "high",
+    directoryId: null,
+    owner: "",
+    releaseVersion: "",
+    iteration: "",
+    attachments: [],
+    linkedRequirement: "",
     preconditions: ["测试环境可访问", "测试账号与数据已准备"],
     steps: [
       {
@@ -295,6 +307,7 @@ export function draftFromTestCase(testCase: {
   feature: string;
   caseType: string;
   priority: string;
+  directoryId?: string | null;
   preconditions: string[];
   steps: UIAutomationStep[];
   expectedResults: { text: string }[];
@@ -310,6 +323,12 @@ export function draftFromTestCase(testCase: {
     feature: testCase.feature,
     caseType: testCase.caseType,
     priority: testCase.priority,
+    directoryId: testCase.directoryId ?? null,
+    owner: empty.owner,
+    releaseVersion: empty.releaseVersion,
+    iteration: empty.iteration,
+    attachments: empty.attachments,
+    linkedRequirement: empty.linkedRequirement,
     preconditions: testCase.preconditions.length > 0 ? testCase.preconditions : empty.preconditions,
     steps:
       testCase.steps.length > 0
@@ -348,6 +367,7 @@ export function serializeDraftForApi(draft: TestCaseDraft) {
     feature: draft.feature.trim(),
     caseType: draft.caseType,
     priority: draft.priority,
+    directoryId: draft.directoryId,
     preconditions: draft.preconditions.filter((item) => item.trim()),
     steps: draft.steps.map(serializeStepForApi),
     expectedResults: draft.expectedResults.filter((item) => item.text.trim()),

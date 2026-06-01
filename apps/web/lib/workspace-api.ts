@@ -17,10 +17,19 @@ export type ProjectDocumentRecord = {
   sourceUri: string | null;
 };
 
+export type TestCaseDirectoryRecord = {
+  id: string;
+  projectId: string;
+  name: string;
+  parentId: string | null;
+  children: TestCaseDirectoryRecord[];
+};
+
 export type TestCaseRecord = {
   id: string;
   projectId: string;
   title: string;
+  directoryId: string | null;
   module: string;
   feature: string;
   caseType: string;
@@ -96,9 +105,18 @@ type ProjectDocumentApiRecord = {
   source_uri: string | null;
 };
 
+type TestCaseDirectoryApiRecord = {
+  id: number;
+  project_id: number;
+  name: string;
+  parent_id: number | null;
+  children: TestCaseDirectoryApiRecord[];
+};
+
 type TestCaseApiRecord = {
   id: number;
   project_id: number;
+  directory_id: number | null;
   title: string;
   module: string;
   feature: string;
@@ -253,10 +271,23 @@ function mapUiContext(raw: Record<string, unknown> | null): TestCaseRecord["uiCo
   };
 }
 
+function mapTestCaseDirectory(
+  directory: TestCaseDirectoryApiRecord,
+): TestCaseDirectoryRecord {
+  return {
+    id: String(directory.id),
+    projectId: String(directory.project_id),
+    name: directory.name,
+    parentId: directory.parent_id === null ? null : String(directory.parent_id),
+    children: directory.children.map(mapTestCaseDirectory),
+  };
+}
+
 function mapTestCase(testCase: TestCaseApiRecord): TestCaseRecord {
   return {
     id: String(testCase.id),
     projectId: String(testCase.project_id),
+    directoryId: testCase.directory_id === null ? null : String(testCase.directory_id),
     title: testCase.title,
     module: testCase.module,
     feature: testCase.feature,
@@ -402,6 +433,15 @@ export async function listProjectDocuments(
   return documents.map(mapDocument);
 }
 
+export async function listProjectTestCaseDirectories(
+  projectId: string,
+): Promise<TestCaseDirectoryRecord[]> {
+  const directories = await requestJson<TestCaseDirectoryApiRecord[]>(
+    `/projects/${projectId}/test-case-directories`,
+  );
+  return directories.map(mapTestCaseDirectory);
+}
+
 export async function createProjectDocument(
   projectId: string,
   input: {
@@ -489,12 +529,13 @@ export async function importTestCases(
           priority: testCase.priority,
           preconditions: testCase.preconditions ?? [],
           steps: testCase.steps,
-          expected_results: testCase.expectedResults,
-          tags: testCase.tags ?? [],
-          automation_flag: testCase.automationFlag ?? true,
-          automation_notes: testCase.automationNotes ?? null,
-          ui_context: testCase.uiContext,
-        })),
+        expected_results: testCase.expectedResults,
+        tags: testCase.tags ?? [],
+        automation_flag: testCase.automationFlag ?? true,
+        automation_notes: testCase.automationNotes ?? null,
+        directory_id: testCase.directoryId ? Number(testCase.directoryId) : null,
+        ui_context: testCase.uiContext,
+      })),
       }),
     },
   );
@@ -523,6 +564,7 @@ export async function createTestCase(
       tags: input.tags ?? [],
       automation_flag: input.automationFlag ?? true,
       automation_notes: input.automationNotes ?? null,
+      directory_id: input.directoryId ? Number(input.directoryId) : null,
       ui_context: input.uiContext,
     }),
   });
@@ -550,6 +592,9 @@ export async function updateTestCase(
   if (input.tags !== undefined) payload.tags = input.tags;
   if (input.automationFlag !== undefined) payload.automation_flag = input.automationFlag;
   if (input.automationNotes !== undefined) payload.automation_notes = input.automationNotes;
+  if (input.directoryId !== undefined) {
+    payload.directory_id = input.directoryId ? Number(input.directoryId) : null;
+  }
   if (input.uiContext !== undefined) payload.ui_context = input.uiContext;
 
   const testCase = await requestJson<TestCaseApiRecord>(`/test-cases/${testCaseId}`, {

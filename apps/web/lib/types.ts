@@ -108,6 +108,7 @@ export type TestCaseRecord = {
   projectId: string | number;
   title: string;
   status: string;
+  directoryId?: string | number | null;
   module: string;
   feature: string;
   caseType: string;
@@ -126,6 +127,7 @@ export type TestCaseMutationPayload = {
   feature: string;
   case_type: string;
   priority: string;
+  directory_id?: string | number | null;
   preconditions: string[];
   steps: StructuredTextField[];
   expected_results: StructuredTextField[];
