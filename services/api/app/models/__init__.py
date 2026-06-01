@@ -12,6 +12,7 @@ from app.models.project import Project
 from app.models.report import AutomationFinalReport, AutomationReport
 from app.models.schedule import AutomationSchedule
 from app.models.testcase import TestCase, TestCaseReview
+from app.models.testcase_directory import TestCaseDirectory
 
 __all__ = [
     "AutomationReport",
@@ -30,4 +31,5 @@ __all__ = [
     "Project",
     "TestCase",
     "TestCaseReview",
+    "TestCaseDirectory",
 ]

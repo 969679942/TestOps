@@ -26,6 +26,16 @@ def _archive_project(client, project_id: int) -> None:
     assert response.status_code == 200
 
 
+def _create_directory(client, project_id: int, name: str, parent_id: int | None = None):
+    response = client.post(
+        f"/projects/{project_id}/test-case-directories",
+        json={"name": name, "parent_id": parent_id},
+    )
+
+    assert response.status_code == 201
+    return response.json()
+
+
 def _create_test_case(client, project_id: int):
     response = client.post(
         f"/projects/{project_id}/test-cases",
@@ -236,6 +246,48 @@ def test_list_test_cases_returns_project_drafts(client):
         first_case["title"],
         "Reject invalid promo code",
     ]
+
+
+def test_create_directory_supports_parent_child_tree(client):
+    project = _create_project(client)
+
+    root = _create_directory(client, project["id"], "测试特性目录")
+    child = _create_directory(client, project["id"], "登录", parent_id=root["id"])
+
+    listing = client.get(f"/projects/{project['id']}/test-case-directories")
+
+    assert listing.status_code == 200
+    assert listing.json() == [
+        {
+            "id": root["id"],
+            "project_id": project["id"],
+            "name": "测试特性目录",
+            "parent_id": None,
+            "children": [
+                {
+                    "id": child["id"],
+                    "project_id": project["id"],
+                    "name": "登录",
+                    "parent_id": root["id"],
+                    "children": [],
+                }
+            ],
+        }
+    ]
+
+
+def test_create_directory_rejects_third_level_nodes(client):
+    project = _create_project(client)
+    root = _create_directory(client, project["id"], "一级目录")
+    child = _create_directory(client, project["id"], "二级目录", parent_id=root["id"])
+
+    response = client.post(
+        f"/projects/{project['id']}/test-case-directories",
+        json={"name": "三级目录", "parent_id": child["id"]},
+    )
+
+    assert response.status_code == 409
+    assert response.json() == {"detail": "Only two directory levels are supported."}
 
 
 def test_update_test_case_edits_reviewable_fields(client):

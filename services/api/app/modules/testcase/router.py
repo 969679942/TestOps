@@ -9,8 +9,30 @@ from app.schemas.testcase import (
     TestCaseRead,
     TestCaseUpdate,
 )
+from app.schemas.testcase_directory import TestCaseDirectoryCreate, TestCaseDirectoryRead
 
 router = APIRouter(tags=["testcases"])
+
+
+@router.get("/projects/{project_id}/test-case-directories", response_model=list[TestCaseDirectoryRead])
+def list_test_case_directories(
+    project_id: int,
+    session: Session = Depends(get_session),
+) -> list[TestCaseDirectoryRead]:
+    return testcase_service.list_test_case_directories(session, project_id)
+
+
+@router.post(
+    "/projects/{project_id}/test-case-directories",
+    response_model=TestCaseDirectoryRead,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_test_case_directory(
+    project_id: int,
+    payload: TestCaseDirectoryCreate,
+    session: Session = Depends(get_session),
+) -> TestCaseDirectoryRead:
+    return testcase_service.create_test_case_directory(session, project_id, payload)
 
 
 @router.get("/projects/{project_id}/test-cases", response_model=list[TestCaseRead])

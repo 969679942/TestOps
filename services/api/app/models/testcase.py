@@ -18,6 +18,10 @@ class TestCase(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), nullable=False)
+    directory_id: Mapped[int | None] = mapped_column(
+        ForeignKey("test_case_directories.id"),
+        nullable=True,
+    )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     module: Mapped[str] = mapped_column(String(120), nullable=False)
     feature: Mapped[str] = mapped_column(String(120), nullable=False)
