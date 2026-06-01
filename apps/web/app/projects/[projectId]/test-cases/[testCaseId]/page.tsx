@@ -16,6 +16,7 @@ import {
   getProject,
   getTestCase,
   listProjectDocuments,
+  listProjectTestCaseDirectories,
   listProjectTestCases,
   listTestCaseReviews,
 } from "../../../../../lib/workspace-api";
@@ -35,10 +36,11 @@ export default async function TestCaseDetailPage({
 }: TestCaseDetailPageProps) {
   const { projectId, testCaseId } = await params;
   const locale = normalizeLocale((await searchParams)?.lang);
-  const [project, documents, testCases, testCase, reviews] = await loadOrThrow(() =>
+  const [project, documents, directories, testCases, testCase, reviews] = await loadOrThrow(() =>
     Promise.all([
       getProject(projectId),
       listProjectDocuments(projectId),
+      listProjectTestCaseDirectories(projectId),
       listProjectTestCases(projectId),
       getTestCase(testCaseId),
       listTestCaseReviews(testCaseId),
@@ -83,10 +85,11 @@ export default async function TestCaseDetailPage({
         publishedCount={publishedCount}
       />
 
-      <div className="case-detail-layout">
-        <TestCaseEditor testCase={testCase} />
-        <TestCaseReviewPanel testCase={testCase} reviews={reviews} />
-      </div>
+      <TestCaseEditor
+        testCase={testCase}
+        directories={directories}
+        sidebarFooter={<TestCaseReviewPanel testCase={testCase} reviews={reviews} />}
+      />
     </AppShell>
   );
 }

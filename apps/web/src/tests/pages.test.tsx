@@ -8,6 +8,7 @@ const {
   getWorkspaceProjectMock,
   listWorkspaceProjectDocumentsMock,
   listWorkspaceProjectTestCasesMock,
+  listProjectTestCaseDirectoriesMock,
   getProjectMock,
   getRuntimeSettingsMock,
   createGenerationTaskMock,
@@ -35,6 +36,7 @@ const {
     getWorkspaceProjectMock: vi.fn(),
     listWorkspaceProjectDocumentsMock: vi.fn(),
     listWorkspaceProjectTestCasesMock: vi.fn(),
+    listProjectTestCaseDirectoriesMock: vi.fn(),
     getProjectMock: vi.fn(),
     getRuntimeSettingsMock: vi.fn(),
     createGenerationTaskMock: vi.fn(),
@@ -84,6 +86,7 @@ vi.mock("../../lib/workspace-api", () => ({
   getProject: getWorkspaceProjectMock,
   listProjectDocuments: listWorkspaceProjectDocumentsMock,
   listProjectTestCases: listWorkspaceProjectTestCasesMock,
+  listProjectTestCaseDirectories: listProjectTestCaseDirectoriesMock,
 }));
 
 vi.mock("../../lib/api", () => ({
@@ -413,6 +416,7 @@ describe("workspace pages", () => {
       {
         id: "case-101",
         projectId: "1",
+        directoryId: "11",
         title: "Create order with saved card",
         module: "Checkout",
         feature: "Card payment",
@@ -427,6 +431,23 @@ describe("workspace pages", () => {
         uiContext: null,
         status: "draft",
         publishedAt: null,
+      },
+    ]);
+    listProjectTestCaseDirectoriesMock.mockResolvedValue([
+      {
+        id: "10",
+        projectId: "1",
+        name: "测试特性目录",
+        parentId: null,
+        children: [
+          {
+            id: "11",
+            projectId: "1",
+            name: "登录",
+            parentId: "10",
+            children: [],
+          },
+        ],
       },
     ]);
 

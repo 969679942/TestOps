@@ -2459,6 +2459,170 @@ a.workflow-step:focus-visible {
   color: var(--accent-hover);
 }
 
+.case-workspace {
+  display: grid;
+  grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.case-workspace-sidebar,
+.case-workspace-main {
+  min-width: 0;
+}
+
+.case-workspace-main {
+  display: grid;
+  gap: 1rem;
+}
+
+.case-workspace-toolbar {
+  align-items: center;
+  padding: 1rem 1.05rem;
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #fbfdff 0%, #ffffff 100%);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
+}
+
+.case-workspace-toolbar-left,
+.case-workspace-toolbar-right,
+.case-workspace-flow-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.case-workspace-toolbar-right {
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+.case-workspace-toolbar .field-inline {
+  min-width: 220px;
+}
+
+.case-directory-tree {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1rem 1.05rem;
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #fbfdff 0%, #ffffff 100%);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
+}
+
+.case-directory-tree-header {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.case-directory-tree-header h3 {
+  margin: 0.2rem 0 0;
+  font-size: 1rem;
+}
+
+.case-directory-tree-search input {
+  width: 100%;
+}
+
+.case-directory-tree-list,
+.directory-tree-group,
+.directory-tree-children {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.directory-tree-children {
+  padding-left: 0.9rem;
+}
+
+.directory-tree-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 2.5rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  transition:
+    border-color var(--motion-fast) var(--ease-out),
+    background-color var(--motion-fast) var(--ease-out),
+    box-shadow var(--motion-fast) var(--ease-out),
+    color var(--motion-fast) var(--ease-out);
+}
+
+.directory-tree-item:hover {
+  background: #f8fbff;
+  border-color: rgba(191, 219, 254, 0.88);
+}
+
+.directory-tree-item:focus-visible {
+  outline: 2px solid rgba(37, 99, 235, 0.35);
+  outline-offset: 2px;
+}
+
+.directory-tree-item.is-selected {
+  background: #eef5ff;
+  border-color: rgba(96, 165, 250, 0.78);
+  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.12);
+}
+
+.directory-tree-item.is-child {
+  min-height: 2.35rem;
+}
+
+.directory-tree-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.directory-tree-count {
+  display: inline-flex;
+  min-width: 1.4rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.case-results-panel {
+  gap: 0.85rem;
+}
+
+.case-results-table-scroll {
+  border: 1px solid rgba(226, 232, 240, 0.86);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.case-results-table th,
+.case-results-table td {
+  vertical-align: middle;
+}
+
+.case-results-table .status-badge {
+  width: max-content;
+}
+
+.table-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .empty-cell {
   color: var(--muted);
   text-align: center;
@@ -2486,7 +2650,8 @@ a.workflow-step:focus-visible {
   align-items: flex-start;
 }
 
-.case-editor-header > div:first-child {
+.case-editor-header > div:first-child,
+.case-editor-header-copy {
   display: grid;
   gap: 0.28rem;
 }
@@ -2496,6 +2661,96 @@ a.workflow-step:focus-visible {
   color: var(--muted);
   font-size: 13px;
   line-height: 1.55;
+}
+
+.case-editor-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: auto;
+}
+
+.case-editor-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(300px, 360px);
+  gap: 1rem;
+  align-items: start;
+}
+
+.case-editor-main,
+.case-editor-side-rail {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.case-editor-main-card {
+  gap: 1rem;
+}
+
+.case-editor-sidebar {
+  display: grid;
+  gap: 1rem;
+}
+
+.case-editor-sidebar-card {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1rem 1.05rem;
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #fbfdff 0%, #ffffff 100%);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
+}
+
+.case-editor-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.case-editor-sidebar-header h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.directory-select-stack,
+.case-step-inline-fields {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.case-step-editor {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.case-step-table-scroll {
+  border: 1px solid rgba(226, 232, 240, 0.86);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.case-step-table td {
+  vertical-align: top;
+}
+
+.case-step-cell {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.case-step-cell textarea {
+  min-height: 6.5rem;
+}
+
+.case-step-index {
+  width: 4rem;
+  text-align: center;
+  font-weight: 700;
 }
 
 .string-list-header {

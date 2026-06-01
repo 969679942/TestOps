@@ -20,7 +20,11 @@ type ProjectPageProps = {
   params: Promise<{
     projectId: string;
   }>;
-  searchParams?: Promise<LocaleSearchParams>;
+  searchParams?: Promise<
+    LocaleSearchParams & {
+      mode?: "generate" | "import";
+    }
+  >;
 };
 
 export default async function ProjectWorkspacePage({
@@ -28,7 +32,9 @@ export default async function ProjectWorkspacePage({
   searchParams,
 }: ProjectPageProps) {
   const { projectId } = await params;
-  const locale = normalizeLocale((await searchParams)?.lang);
+  const resolvedSearchParams = (await searchParams) ?? {};
+  const locale = normalizeLocale(resolvedSearchParams.lang);
+  const defaultMode = resolvedSearchParams.mode === "import" ? "import" : "generate";
   const [project, documents, testCases] = await loadOrThrow(() =>
     Promise.all([
       getProject(projectId),
@@ -76,6 +82,7 @@ export default async function ProjectWorkspacePage({
         project={project}
         documents={documents}
         testCases={testCases}
+        defaultMode={defaultMode}
       />
 
       {testCases.length > 0 ? (

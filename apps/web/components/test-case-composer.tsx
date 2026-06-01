@@ -1,197 +1,71 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import {
   ApiError,
   createTestCase,
   updateTestCase,
+  type TestCaseDirectoryRecord,
   type TestCaseRecord,
 } from "../lib/workspace-api";
-import { copy, priorityLabels } from "../lib/copy";
 import {
   createEmptyTestCaseDraft,
   draftFromTestCase,
   serializeDraftForApi,
-  UI_STEP_ACTIONS,
   type TestCaseDraft,
-  type UIAutomationStep,
 } from "../lib/ui-automation-case";
 import { StatusBadge } from "./status-badge";
+import { TestCaseMetadataSidebar } from "./test-case-metadata-sidebar";
+import { TestCaseStepTableEditor } from "./test-case-step-table-editor";
 
 type TestCaseComposerProps = Readonly<{
   mode: "create" | "edit";
   projectId: string;
+  directories: TestCaseDirectoryRecord[];
   testCase?: TestCaseRecord;
+  sidebarFooter?: ReactNode;
 }>;
 
-function StringListEditor({
-  label,
-  items,
-  readOnly,
-  onChange,
-  placeholder,
-}: {
-  label: string;
-  items: string[];
-  readOnly: boolean;
-  onChange: (items: string[]) => void;
-  placeholder?: string;
-}) {
-  return (
-    <section className="string-list-editor">
-      <div className="string-list-header">
-        <span className="eyebrow">{label}</span>
-        {!readOnly ? (
-          <button
-            className="button-ghost"
-            type="button"
-            onClick={() => onChange([...items, ""])}
-          >
-            + 添加
-          </button>
-        ) : null}
-      </div>
-      <div className="string-list-items">
-        {items.length === 0 ? <p className="helper-text">暂无内容</p> : null}
-        {items.map((item, index) => (
-          <div key={`${label}-${index}`} className="string-list-row">
-            <input
-              value={item}
-              readOnly={readOnly}
-              placeholder={placeholder}
-              onChange={(event) =>
-                onChange(items.map((value, itemIndex) => (itemIndex === index ? event.target.value : value)))
-              }
-            />
-            {!readOnly ? (
-              <button
-                className="button-ghost"
-                type="button"
-                aria-label="删除"
-                onClick={() => onChange(items.filter((_, itemIndex) => itemIndex !== index))}
-              >
-                删除
-              </button>
-            ) : null}
-          </div>
-        ))}
-      </div>
-    </section>
-  );
+function hydrateDraft(testCase?: TestCaseRecord): TestCaseDraft {
+  if (!testCase) return createEmptyTestCaseDraft();
+  return draftFromTestCase({
+    ...testCase,
+    steps: testCase.steps.map((step, index) => ({
+      order: step.order ?? index + 1,
+      action: step.action ?? "custom",
+      target: step.target ?? step.text ?? "",
+      locatorHint: step.locatorHint ?? step.locator_hint,
+      value: step.value,
+      assertion: step.assertion,
+      timeoutMs: step.timeoutMs ?? step.timeout_ms,
+      text: step.text,
+    })),
+  });
 }
 
-function TestDataEditor({
-  testData,
-  readOnly,
-  onChange,
-}: {
-  testData: Record<string, string>;
-  readOnly: boolean;
-  onChange: (testData: Record<string, string>) => void;
-}) {
-  const entries = Object.entries(testData);
-
-  function updateEntry(index: number, key: string, value: string) {
-    const next = { ...testData };
-    const oldKey = entries[index]?.[0];
-    if (oldKey && oldKey !== key) {
-      delete next[oldKey];
-    }
-    next[key] = value;
-    onChange(next);
-  }
-
-  function removeEntry(index: number) {
-    const next = { ...testData };
-    const key = entries[index]?.[0];
-    if (key) delete next[key];
-    onChange(next);
-  }
-
-  return (
-    <section className="test-data-editor">
-      <div className="string-list-header">
-        <span className="eyebrow">{copy.testData}</span>
-        {!readOnly ? (
-          <button
-            className="button-ghost"
-            type="button"
-            onClick={() => onChange({ ...testData, [`var_${entries.length + 1}`]: "" })}
-          >
-            + 添加变量
-          </button>
-        ) : null}
-      </div>
-      <div className="test-data-grid">
-        {entries.length === 0 ? <p className="helper-text">可在步骤中用 {`{{test_data.变量名}}`} 引用</p> : null}
-        {entries.map(([key, value], index) => (
-          <div key={`${key}-${index}`} className="test-data-row">
-            <input
-              value={key}
-              readOnly={readOnly}
-              placeholder="变量名"
-              onChange={(event) => updateEntry(index, event.target.value, value)}
-            />
-            <input
-              value={value}
-              readOnly={readOnly}
-              placeholder="值或 {{vault:secret}}"
-              onChange={(event) => updateEntry(index, key, event.target.value)}
-            />
-            {!readOnly ? (
-              <button className="button-ghost" type="button" onClick={() => removeEntry(index)}>
-                删除
-              </button>
-            ) : null}
-          </div>
-        ))}
-      </div>
-    </section>
-  );
+function executionModeOf(draft: TestCaseDraft) {
+  return draft.automationFlag ? "automation" : "manual";
 }
 
-export function TestCaseComposer({ mode, projectId, testCase }: TestCaseComposerProps) {
+export function TestCaseComposer({
+  mode,
+  projectId,
+  directories,
+  testCase,
+  sidebarFooter,
+}: TestCaseComposerProps) {
   const router = useRouter();
-  const [draft, setDraft] = useState<TestCaseDraft>(() =>
-    testCase ? draftFromTestCase({
-      ...testCase,
-      steps: testCase.steps.map((step, index) => ({
-        order: step.order ?? index + 1,
-        action: step.action ?? "custom",
-        target: step.target ?? step.text ?? "",
-        locatorHint: step.locatorHint ?? step.locator_hint,
-        value: step.value,
-        assertion: step.assertion,
-        timeoutMs: step.timeoutMs ?? step.timeout_ms,
-        text: step.text,
-      })),
-    }) : createEmptyTestCaseDraft(),
-  );
+  const [draft, setDraft] = useState<TestCaseDraft>(() => hydrateDraft(testCase));
   const [toast, setToast] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
   const isReadOnly = mode === "edit" && testCase?.status === "published";
 
   useEffect(() => {
-    if (testCase) {
-      setDraft(
-        draftFromTestCase({
-          ...testCase,
-          steps: testCase.steps.map((step, index) => ({
-            order: step.order ?? index + 1,
-            action: step.action ?? "custom",
-            target: step.target ?? step.text ?? "",
-            locatorHint: step.locatorHint ?? step.locator_hint,
-            value: step.value,
-            assertion: step.assertion,
-            timeoutMs: step.timeoutMs ?? step.timeout_ms,
-            text: step.text,
-          })),
-        }),
-      );
-    }
+    setDraft(hydrateDraft(testCase));
   }, [testCase]);
 
   useEffect(() => {
@@ -199,41 +73,6 @@ export function TestCaseComposer({ mode, projectId, testCase }: TestCaseComposer
     const timer = window.setTimeout(() => setToast(null), 3000);
     return () => window.clearTimeout(timer);
   }, [toast]);
-
-  function updateStep(index: number, patch: Partial<UIAutomationStep>) {
-    setDraft((current) => ({
-      ...current,
-      steps: current.steps.map((step, stepIndex) =>
-        stepIndex === index ? { ...step, ...patch, order: index + 1 } : step,
-      ),
-    }));
-  }
-
-  function addStep() {
-    setDraft((current) => ({
-      ...current,
-      steps: [
-        ...current.steps,
-        {
-          order: current.steps.length + 1,
-          action: "click",
-          target: "",
-          locatorHint: "",
-          value: "",
-          assertion: "",
-        },
-      ],
-    }));
-  }
-
-  function removeStep(index: number) {
-    setDraft((current) => ({
-      ...current,
-      steps: current.steps
-        .filter((_, stepIndex) => stepIndex !== index)
-        .map((step, stepIndex) => ({ ...step, order: stepIndex + 1 })),
-    }));
-  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -257,27 +96,13 @@ export function TestCaseComposer({ mode, projectId, testCase }: TestCaseComposer
       }
 
       const saved = await updateTestCase(testCase.id, payload);
-      setDraft(
-        draftFromTestCase({
-          ...saved,
-          steps: saved.steps.map((step, index) => ({
-            order: step.order ?? index + 1,
-            action: step.action ?? "custom",
-            target: step.target ?? step.text ?? "",
-            locatorHint: step.locatorHint ?? step.locator_hint,
-            value: step.value,
-            assertion: step.assertion,
-            timeoutMs: step.timeoutMs ?? step.timeout_ms,
-            text: step.text,
-          })),
-        }),
-      );
-      setToast({ type: "success", text: copy.saved });
+      setDraft(hydrateDraft(saved));
+      setToast({ type: "success", text: "保存成功。" });
       router.refresh();
-    } catch (saveError) {
+    } catch (error) {
       setToast({
         type: "error",
-        text: saveError instanceof ApiError ? saveError.message : "保存失败。",
+        text: error instanceof ApiError ? error.message : "保存失败。",
       });
     } finally {
       setBusy(false);
@@ -289,342 +114,310 @@ export function TestCaseComposer({ mode, projectId, testCase }: TestCaseComposer
       {toast ? <div className={`toast toast-${toast.type}`}>{toast.text}</div> : null}
 
       <div className="case-editor-header">
-        <div>
-          <span className="eyebrow">{mode === "create" ? copy.composeTitle : "用例内容"}</span>
+        <div className="case-editor-header-copy">
+          <span className="eyebrow">{mode === "create" ? "新建测试用例" : "编辑测试用例"}</span>
+          <h2>{mode === "create" ? "在线编写用例" : draft.title || "用例详情"}</h2>
+          <p>统一维护用例内容、目录归属与自动化上下文，完成后进入评审与发布流程。</p>
+        </div>
+        <div className="case-editor-header-actions">
           {testCase ? <StatusBadge status={testCase.status} /> : null}
-        </div>
-        {!isReadOnly ? (
-          <button className="button-primary" type="submit" disabled={busy}>
-            {busy ? copy.saving : mode === "create" ? copy.createTestCase : copy.save}
-          </button>
-        ) : null}
-      </div>
-
-      <label className="field">
-        <span>用例标题</span>
-        <input
-          required
-          value={draft.title}
-          readOnly={isReadOnly}
-          placeholder="使用有效账号登录并进入首页"
-          onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))}
-        />
-      </label>
-
-      <div className="meta-grid">
-        <label className="field">
-          <span>{copy.module}</span>
-          <input
-            required
-            value={draft.module}
-            readOnly={isReadOnly}
-            onChange={(event) => setDraft((current) => ({ ...current, module: event.target.value }))}
-          />
-        </label>
-        <label className="field">
-          <span>{copy.feature}</span>
-          <input
-            required
-            value={draft.feature}
-            readOnly={isReadOnly}
-            onChange={(event) => setDraft((current) => ({ ...current, feature: event.target.value }))}
-          />
-        </label>
-        <label className="field">
-          <span>{copy.priority}</span>
-          <select
-            disabled={isReadOnly}
-            value={draft.priority}
-            onChange={(event) =>
-              setDraft((current) => ({ ...current, priority: event.target.value }))
-            }
-          >
-            {Object.entries(priorityLabels).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      <label className="field">
-        <span>{copy.tags}</span>
-        <input
-          value={draft.tags.join(", ")}
-          readOnly={isReadOnly}
-          placeholder="smoke, login, regression"
-          onChange={(event) =>
-            setDraft((current) => ({
-              ...current,
-              tags: event.target.value
-                .split(",")
-                .map((item) => item.trim())
-                .filter(Boolean),
-            }))
-          }
-        />
-      </label>
-
-      <section className="composer-section">
-        <h4>{copy.environmentSection}</h4>
-        <div className="meta-grid">
-          <label className="field">
-            <span>{copy.framework}</span>
-            <select
-              disabled={isReadOnly}
-              value={draft.uiContext.framework}
-              onChange={(event) =>
-                setDraft((current) => ({
-                  ...current,
-                  uiContext: { ...current.uiContext, framework: event.target.value },
-                }))
-              }
-            >
-              <option value="playwright">Playwright</option>
-              <option value="selenium">Selenium</option>
-              <option value="cypress">Cypress</option>
-            </select>
-          </label>
-          <label className="field">
-            <span>{copy.browser}</span>
-            <select
-              disabled={isReadOnly}
-              value={draft.uiContext.browser}
-              onChange={(event) =>
-                setDraft((current) => ({
-                  ...current,
-                  uiContext: { ...current.uiContext, browser: event.target.value },
-                }))
-              }
-            >
-              <option value="chromium">Chromium</option>
-              <option value="firefox">Firefox</option>
-              <option value="webkit">WebKit</option>
-            </select>
-          </label>
-          <label className="field">
-            <span>{copy.baseUrl}</span>
-            <input
-              value={draft.uiContext.baseUrl}
-              readOnly={isReadOnly}
-              placeholder="https://app.example.com"
-              onChange={(event) =>
-                setDraft((current) => ({
-                  ...current,
-                  uiContext: { ...current.uiContext, baseUrl: event.target.value },
-                }))
-              }
-            />
-          </label>
-        </div>
-        <div className="meta-grid">
-          <label className="field">
-            <span>{copy.entryPath}</span>
-            <input
-              value={draft.uiContext.entryPath}
-              readOnly={isReadOnly}
-              placeholder="/login"
-              onChange={(event) =>
-                setDraft((current) => ({
-                  ...current,
-                  uiContext: { ...current.uiContext, entryPath: event.target.value },
-                }))
-              }
-            />
-          </label>
-          <label className="field">
-            <span>{copy.entryReadySelector}</span>
-            <input
-              value={draft.uiContext.entryReadySelector}
-              readOnly={isReadOnly}
-              placeholder="[data-testid='login-form']"
-              onChange={(event) =>
-                setDraft((current) => ({
-                  ...current,
-                  uiContext: { ...current.uiContext, entryReadySelector: event.target.value },
-                }))
-              }
-            />
-          </label>
-          <label className="field">
-            <span>{copy.viewport}</span>
-            <input
-              value={`${draft.uiContext.viewport.width} x ${draft.uiContext.viewport.height}`}
-              readOnly={isReadOnly}
-              placeholder="1280 x 720"
-              onChange={(event) => {
-                const [widthRaw, heightRaw] = event.target.value.split("x").map((item) => item.trim());
-                const width = Number(widthRaw);
-                const height = Number(heightRaw);
-                if (!Number.isFinite(width) || !Number.isFinite(height)) return;
-                setDraft((current) => ({
-                  ...current,
-                  uiContext: {
-                    ...current.uiContext,
-                    viewport: { width, height },
-                  },
-                }));
-              }}
-            />
-          </label>
-        </div>
-      </section>
-
-      <TestDataEditor
-        testData={draft.uiContext.testData}
-        readOnly={isReadOnly}
-        onChange={(testData) =>
-          setDraft((current) => ({
-            ...current,
-            uiContext: { ...current.uiContext, testData },
-          }))
-        }
-      />
-
-      <StringListEditor
-        label={copy.preconditions}
-        items={draft.preconditions}
-        readOnly={isReadOnly}
-        placeholder="测试账号已开通"
-        onChange={(preconditions) => setDraft((current) => ({ ...current, preconditions }))}
-      />
-
-      <section className="composer-section">
-        <div className="string-list-header">
-          <h4>{copy.uiStepsSection}</h4>
           {!isReadOnly ? (
-            <button className="button-secondary" type="button" onClick={addStep}>
-              + 添加步骤
+            <button className="button-primary" type="submit" disabled={busy}>
+              {busy ? "保存中…" : mode === "create" ? "创建用例" : "保存变更"}
             </button>
           ) : null}
         </div>
-        <div className="ui-steps-table-wrap">
-          <table className="ui-steps-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>{copy.actionColumn}</th>
-                <th>{copy.targetColumn}</th>
-                <th>{copy.locatorColumn}</th>
-                <th>{copy.valueColumn}</th>
-                <th>{copy.assertionColumn}</th>
-                {!isReadOnly ? <th /> : null}
-              </tr>
-            </thead>
-            <tbody>
-              {draft.steps.map((step, index) => (
-                <tr key={`step-${index}`}>
-                  <td className="step-index">{index + 1}</td>
-                  <td>
-                    <select
-                      disabled={isReadOnly}
-                      value={step.action}
-                      onChange={(event) => updateStep(index, { action: event.target.value })}
-                    >
-                      {UI_STEP_ACTIONS.map((item) => (
-                        <option key={item.value} value={item.value}>
-                          {item.label}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td>
-                    <textarea
-                      rows={2}
-                      readOnly={isReadOnly}
-                      value={step.target}
-                      placeholder="用户名输入框"
-                      onChange={(event) => updateStep(index, { target: event.target.value })}
-                    />
-                  </td>
-                  <td>
-                    <textarea
-                      rows={2}
-                      readOnly={isReadOnly}
-                      value={step.locatorHint ?? ""}
-                      placeholder="[data-testid='username']"
-                      onChange={(event) => updateStep(index, { locatorHint: event.target.value })}
-                    />
-                  </td>
-                  <td>
-                    <textarea
-                      rows={2}
-                      readOnly={isReadOnly}
-                      value={step.value ?? ""}
-                      placeholder="/login 或 {{test_data.username}}"
-                      onChange={(event) => updateStep(index, { value: event.target.value })}
-                    />
-                  </td>
-                  <td>
-                    <textarea
-                      rows={2}
-                      readOnly={isReadOnly}
-                      value={step.assertion ?? ""}
-                      placeholder="元素可见 / URL 匹配"
-                      onChange={(event) => updateStep(index, { assertion: event.target.value })}
-                    />
-                  </td>
-                  {!isReadOnly ? (
-                    <td>
-                      <button
-                        className="button-ghost"
-                        type="button"
-                        disabled={draft.steps.length <= 1}
-                        onClick={() => removeStep(index)}
-                      >
-                        删除
-                      </button>
-                    </td>
-                  ) : null}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      </div>
+
+      <div className="case-editor-layout">
+        <div className="case-editor-main">
+          <section className="data-card case-editor-main-card">
+            <label className="field">
+              <span>名称</span>
+              <input
+                required
+                value={draft.title}
+                readOnly={isReadOnly}
+                placeholder="请输入测试用例名称"
+                onChange={(event) =>
+                  setDraft((current) => ({ ...current, title: event.target.value }))
+                }
+              />
+            </label>
+
+            <label className="field">
+              <span>执行方式</span>
+              <select
+                disabled={isReadOnly}
+                value={executionModeOf(draft)}
+                onChange={(event) =>
+                  setDraft((current) => ({
+                    ...current,
+                    automationFlag: event.target.value === "automation",
+                    caseType:
+                      event.target.value === "automation"
+                        ? current.caseType === "functional"
+                          ? "ui_automation"
+                          : current.caseType
+                        : current.caseType === "ui_automation"
+                          ? "functional"
+                          : current.caseType,
+                  }))
+                }
+              >
+                <option value="manual">手工测试</option>
+                <option value="automation">UI 自动化</option>
+              </select>
+            </label>
+
+            <label className="field">
+              <span>描述</span>
+              <textarea
+                rows={4}
+                readOnly={isReadOnly}
+                placeholder="请输入用例目标或功能描述"
+                value={draft.feature}
+                onChange={(event) =>
+                  setDraft((current) => ({ ...current, feature: event.target.value }))
+                }
+              />
+            </label>
+
+            <label className="field">
+              <span>前置条件</span>
+              <textarea
+                rows={4}
+                readOnly={isReadOnly}
+                placeholder="每行填写一条前置条件"
+                value={draft.preconditions.join("\n")}
+                onChange={(event) =>
+                  setDraft((current) => ({
+                    ...current,
+                    preconditions: event.target.value
+                      .split("\n")
+                      .map((item) => item.trim())
+                      .filter(Boolean),
+                  }))
+                }
+              />
+            </label>
+          </section>
+
+          <section className="data-card case-editor-main-card">
+            <TestCaseStepTableEditor
+              steps={draft.steps}
+              expectedResults={draft.expectedResults}
+              readOnly={isReadOnly}
+              onChange={({ steps, expectedResults }) =>
+                setDraft((current) => ({
+                  ...current,
+                  steps,
+                  expectedResults,
+                }))
+              }
+            />
+          </section>
+
+          <section className="data-card case-editor-main-card">
+            <div className="section-heading">
+              <div>
+                <span className="eyebrow">自动化上下文</span>
+                <h3>脚本生成辅助信息</h3>
+              </div>
+              <p>保留当前自动化生成所需的环境、入口与收尾信息，不挤占主编辑区。</p>
+            </div>
+
+            <div className="meta-grid">
+              <label className="field">
+                <span>框架</span>
+                <select
+                  disabled={isReadOnly}
+                  value={draft.uiContext.framework}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      uiContext: { ...current.uiContext, framework: event.target.value },
+                    }))
+                  }
+                >
+                  <option value="playwright">Playwright</option>
+                  <option value="selenium">Selenium</option>
+                  <option value="cypress">Cypress</option>
+                </select>
+              </label>
+
+              <label className="field">
+                <span>浏览器</span>
+                <select
+                  disabled={isReadOnly}
+                  value={draft.uiContext.browser}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      uiContext: { ...current.uiContext, browser: event.target.value },
+                    }))
+                  }
+                >
+                  <option value="chromium">Chromium</option>
+                  <option value="firefox">Firefox</option>
+                  <option value="webkit">WebKit</option>
+                </select>
+              </label>
+
+              <label className="field">
+                <span>基础 URL</span>
+                <input
+                  value={draft.uiContext.baseUrl}
+                  readOnly={isReadOnly}
+                  placeholder="https://app.example.com"
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      uiContext: { ...current.uiContext, baseUrl: event.target.value },
+                    }))
+                  }
+                />
+              </label>
+
+              <label className="field">
+                <span>入口路径</span>
+                <input
+                  value={draft.uiContext.entryPath}
+                  readOnly={isReadOnly}
+                  placeholder="/login"
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      uiContext: { ...current.uiContext, entryPath: event.target.value },
+                    }))
+                  }
+                />
+              </label>
+
+              <label className="field">
+                <span>就绪选择器</span>
+                <input
+                  value={draft.uiContext.entryReadySelector}
+                  readOnly={isReadOnly}
+                  placeholder="[data-testid='login-form']"
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      uiContext: {
+                        ...current.uiContext,
+                        entryReadySelector: event.target.value,
+                      },
+                    }))
+                  }
+                />
+              </label>
+
+              <label className="field">
+                <span>视口</span>
+                <input
+                  value={`${draft.uiContext.viewport.width} x ${draft.uiContext.viewport.height}`}
+                  readOnly={isReadOnly}
+                  placeholder="1280 x 720"
+                  onChange={(event) => {
+                    const [widthRaw, heightRaw] = event.target.value
+                      .split("x")
+                      .map((item) => item.trim());
+                    const width = Number(widthRaw);
+                    const height = Number(heightRaw);
+                    if (!Number.isFinite(width) || !Number.isFinite(height)) return;
+                    setDraft((current) => ({
+                      ...current,
+                      uiContext: {
+                        ...current.uiContext,
+                        viewport: { width, height },
+                      },
+                    }));
+                  }}
+                />
+              </label>
+            </div>
+
+            <label className="field">
+              <span>测试数据</span>
+              <textarea
+                rows={4}
+                readOnly={isReadOnly}
+                placeholder='每行使用 key=value，例如 username=tester'
+                value={Object.entries(draft.uiContext.testData)
+                  .map(([key, value]) => `${key}=${value}`)
+                  .join("\n")}
+                onChange={(event) =>
+                  setDraft((current) => ({
+                    ...current,
+                    uiContext: {
+                      ...current.uiContext,
+                      testData: Object.fromEntries(
+                        event.target.value
+                          .split("\n")
+                          .map((item) => item.trim())
+                          .filter(Boolean)
+                          .map((item) => {
+                            const [key, ...rest] = item.split("=");
+                            return [key.trim(), rest.join("=").trim()];
+                          })
+                          .filter(([key]) => key.length > 0),
+                      ),
+                    },
+                  }))
+                }
+              />
+            </label>
+
+            <label className="field">
+              <span>AI 生成说明</span>
+              <textarea
+                rows={3}
+                readOnly={isReadOnly}
+                placeholder="补充脚本生成偏好、定位约定或收尾要求"
+                value={draft.automationNotes ?? ""}
+                onChange={(event) =>
+                  setDraft((current) => ({
+                    ...current,
+                    automationNotes: event.target.value,
+                  }))
+                }
+              />
+            </label>
+
+            <label className="field">
+              <span>清理 / 收尾</span>
+              <textarea
+                rows={3}
+                readOnly={isReadOnly}
+                placeholder="例如退出登录、清理会话或回收测试数据"
+                value={draft.uiContext.teardown}
+                onChange={(event) =>
+                  setDraft((current) => ({
+                    ...current,
+                    uiContext: { ...current.uiContext, teardown: event.target.value },
+                  }))
+                }
+              />
+            </label>
+          </section>
         </div>
-      </section>
 
-      <StringListEditor
-        label={copy.expectedSummary}
-        items={draft.expectedResults.map((item) => item.text)}
-        readOnly={isReadOnly}
-        placeholder="成功进入系统首页"
-        onChange={(items) =>
-          setDraft((current) => ({
-            ...current,
-            expectedResults: items.filter(Boolean).map((text) => ({ text })),
-          }))
-        }
-      />
-
-      <label className="field">
-        <span>{copy.automationNotes}</span>
-        <textarea
-          rows={3}
-          readOnly={isReadOnly}
-          value={draft.automationNotes ?? ""}
-          placeholder="Playwright Page Object；失败截图+trace"
-          onChange={(event) =>
-            setDraft((current) => ({ ...current, automationNotes: event.target.value }))
-          }
-        />
-      </label>
-
-      <label className="field">
-        <span>{copy.teardown}</span>
-        <textarea
-          rows={2}
-          readOnly={isReadOnly}
-          value={draft.uiContext.teardown}
-          placeholder="退出登录并清理会话"
-          onChange={(event) =>
-            setDraft((current) => ({
-              ...current,
-              uiContext: { ...current.uiContext, teardown: event.target.value },
-            }))
-          }
-        />
-      </label>
+        <div className="case-editor-side-rail">
+          <TestCaseMetadataSidebar
+            caseId={testCase?.id}
+            draft={draft}
+            directories={directories}
+            readOnly={isReadOnly}
+            onChange={(patch) =>
+              setDraft((current) => ({
+                ...current,
+                ...patch,
+              }))
+            }
+          />
+          {sidebarFooter}
+        </div>
+      </div>
     </form>
   );
 }

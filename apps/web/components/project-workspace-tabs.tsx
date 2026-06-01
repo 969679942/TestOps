@@ -14,6 +14,7 @@ type ProjectWorkspaceTabsProps = Readonly<{
   projectId: string;
   documents: ProjectDocumentRecord[];
   defaultProvider?: string;
+  defaultMode?: WorkspaceMode;
   onGeneratingChange?: (generating: boolean) => void;
   projectStatus?: "active" | "archived";
 }>;
@@ -24,10 +25,11 @@ export function ProjectWorkspaceTabs({
   projectId,
   documents,
   defaultProvider,
+  defaultMode = "generate",
   onGeneratingChange,
   projectStatus = "active",
 }: ProjectWorkspaceTabsProps) {
-  const [mode, setMode] = useState<WorkspaceMode>("generate");
+  const [mode, setMode] = useState<WorkspaceMode>(defaultMode);
   const handleModeChange = useCallback((id: string) => {
     setMode(id as WorkspaceMode);
   }, []);

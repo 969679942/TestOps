@@ -13,6 +13,19 @@ vi.mock("../../components/test-case-import-panel", () => ({
 }));
 
 describe("ProjectWorkspaceTabs", () => {
+  it("opens the import panel when the workspace is entered in import mode", () => {
+    const html = renderToStaticMarkup(
+      <ProjectWorkspaceTabs
+        projectId="1"
+        documents={[]}
+        defaultMode="import"
+      />,
+    );
+
+    expect(html).toContain("test-case-import-panel");
+    expect(html).not.toContain("document-upload-panel");
+  });
+
   it("shows an archive lock instead of active workspace actions", () => {
     const html = renderToStaticMarkup(
       <ProjectWorkspaceTabs

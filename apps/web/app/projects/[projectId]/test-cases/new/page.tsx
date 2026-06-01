@@ -11,7 +11,10 @@ import {
   type LocaleSearchParams,
 } from "../../../../../lib/i18n";
 import { translateProjectName } from "../../../../../lib/project-display";
-import { getProject } from "../../../../../lib/workspace-api";
+import {
+  getProject,
+  listProjectTestCaseDirectories,
+} from "../../../../../lib/workspace-api";
 import { loadOrThrow } from "../../../../../lib/server-load";
 import { NewTestCasePageClient } from "./page-client";
 
@@ -31,6 +34,9 @@ export default async function NewTestCasePage({
   const project = await loadOrThrow(() => getProject(projectId));
   const projectDisplayName = translateProjectName(project.name, locale);
   const archived = project.status === "archived";
+  const directories = archived
+    ? []
+    : await loadOrThrow(() => listProjectTestCaseDirectories(projectId));
 
   return (
     <AppShell currentPath={`/projects/${projectId}/test-cases`} locale={locale} project={project}>
@@ -73,7 +79,7 @@ export default async function NewTestCasePage({
           </section>
         </>
       ) : (
-        <NewTestCasePageClient projectId={projectId} />
+        <NewTestCasePageClient projectId={projectId} directories={directories} />
       )}
     </AppShell>
   );

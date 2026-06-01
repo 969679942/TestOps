@@ -11,6 +11,7 @@ type ProjectWorkspaceClientProps = Readonly<{
   project: ProjectRecord;
   documents: ProjectDocumentRecord[];
   testCases: TestCaseRecord[];
+  defaultMode?: "generate" | "import";
 }>;
 
 export function ProjectWorkspaceClient({
@@ -18,6 +19,7 @@ export function ProjectWorkspaceClient({
   project,
   documents,
   testCases,
+  defaultMode,
 }: ProjectWorkspaceClientProps) {
   const [generating, setGenerating] = useState(false);
   const publishedCount = useMemo(
@@ -40,6 +42,7 @@ export function ProjectWorkspaceClient({
         projectId={projectId}
         documents={documents}
         defaultProvider={project.defaultProvider}
+        defaultMode={defaultMode}
         onGeneratingChange={setGenerating}
         projectStatus={project.status as "active" | "archived"}
       />

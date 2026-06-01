@@ -221,6 +221,24 @@ export function mapRawCase(raw: unknown, index: number): TestCaseDraft {
     feature,
     caseType: String(record.case_type ?? record.caseType ?? "ui_automation").trim(),
     priority: String(record.priority ?? "medium").trim(),
+    directoryId:
+      record.directory_id === null || record.directoryId === null
+        ? null
+        : typeof (record.directory_id ?? record.directoryId) === "number" ||
+            typeof (record.directory_id ?? record.directoryId) === "string"
+          ? String(record.directory_id ?? record.directoryId)
+          : null,
+    owner: typeof record.owner === "string" ? record.owner : "",
+    releaseVersion:
+      typeof (record.release_version ?? record.releaseVersion) === "string"
+        ? String(record.release_version ?? record.releaseVersion)
+        : "",
+    iteration: typeof record.iteration === "string" ? record.iteration : "",
+    attachments: asStringList(record.attachments),
+    linkedRequirement:
+      typeof (record.linked_requirement ?? record.linkedRequirement) === "string"
+        ? String(record.linked_requirement ?? record.linkedRequirement)
+        : "",
     preconditions: asStringList(record.preconditions),
     steps: parseSteps(record.steps, `cases[${index}].steps`),
     expectedResults: parseExpected(
