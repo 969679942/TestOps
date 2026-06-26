@@ -10,6 +10,9 @@ describe("CreateProjectForm", () => {
 
     expect(html).toContain("创建项目");
     expect(html).toContain("项目名称");
+    expect(html).toContain("field-label-required-mark");
+    expect(html).toContain("noValidate");
+    expect(html).not.toContain("required=\"\"");
     expect(html).not.toContain("项目代号");
     expect(html).not.toContain("payments-platform");
     expect(html).not.toContain("支付平台");

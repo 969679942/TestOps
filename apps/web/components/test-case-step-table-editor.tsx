@@ -4,11 +4,14 @@ import {
   UI_STEP_ACTIONS,
   type UIAutomationStep,
 } from "../lib/ui-automation-case";
+import { FieldLabel } from "./field-label";
 
 type TestCaseStepTableEditorProps = Readonly<{
   steps: UIAutomationStep[];
   expectedResults: { text: string }[];
   readOnly: boolean;
+  stepErrorIndexes?: number[];
+  expectedResultErrorIndexes?: number[];
   onChange: (next: {
     steps: UIAutomationStep[];
     expectedResults: { text: string }[];
@@ -23,6 +26,8 @@ export function TestCaseStepTableEditor({
   steps,
   expectedResults,
   readOnly,
+  stepErrorIndexes = [],
+  expectedResultErrorIndexes = [],
   onChange,
 }: TestCaseStepTableEditorProps) {
   function updateStep(index: number, patch: Partial<UIAutomationStep>) {
@@ -72,7 +77,9 @@ export function TestCaseStepTableEditor({
   return (
     <section className="case-step-editor">
       <div className="string-list-header">
-        <h3>测试步骤</h3>
+        <h3>
+          <FieldLabel required>测试步骤</FieldLabel>
+        </h3>
         {!readOnly ? (
           <button className="button-secondary" type="button" onClick={addStep}>
             + 添加步骤
@@ -85,8 +92,12 @@ export function TestCaseStepTableEditor({
           <thead>
             <tr>
               <th>序号</th>
-              <th>步骤描述</th>
-              <th>预期结果</th>
+              <th>
+                <FieldLabel required>步骤描述</FieldLabel>
+              </th>
+              <th>
+                <FieldLabel required>预期结果</FieldLabel>
+              </th>
               {!readOnly ? <th>操作</th> : null}
             </tr>
           </thead>
@@ -111,6 +122,8 @@ export function TestCaseStepTableEditor({
                       </select>
                     </label>
                     <textarea
+                      aria-invalid={stepErrorIndexes.includes(index) ? "true" : "false"}
+                      className={stepErrorIndexes.includes(index) ? "is-invalid" : ""}
                       rows={3}
                       readOnly={readOnly}
                       placeholder="请输入步骤描述"
@@ -138,6 +151,8 @@ export function TestCaseStepTableEditor({
                 </td>
                 <td>
                   <textarea
+                    aria-invalid={expectedResultErrorIndexes.includes(index) ? "true" : "false"}
+                    className={expectedResultErrorIndexes.includes(index) ? "is-invalid" : ""}
                     rows={6}
                     readOnly={readOnly}
                     placeholder="请输入预期结果"

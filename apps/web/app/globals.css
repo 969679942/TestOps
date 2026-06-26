@@ -882,6 +882,26 @@ a.workspace-link:focus-visible {
   color: var(--text);
 }
 
+.field-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  width: fit-content;
+}
+
+.field .field-label-required-mark {
+  color: #dc2626;
+  font-size: 0.95em;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.field-error {
+  color: #dc2626;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .field input,
 .field textarea,
 .field select {
@@ -910,6 +930,23 @@ a.workspace-link:focus-visible {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+}
+
+.field input.is-invalid,
+.field textarea.is-invalid,
+.field select.is-invalid,
+.case-step-cell textarea.is-invalid {
+  border-color: #ef4444;
+  background: #fff7f7;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+}
+
+.field input.is-invalid:focus,
+.field textarea.is-invalid:focus,
+.field select.is-invalid:focus,
+.case-step-cell textarea.is-invalid:focus {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18);
 }
 
 .field input:disabled,
@@ -1645,6 +1682,87 @@ a.workflow-step:focus-visible {
 .loading-page {
   gap: 0.75rem;
   color: var(--muted);
+}
+
+.error-page {
+  background: rgba(15, 23, 42, 0.18);
+  backdrop-filter: blur(2px);
+}
+
+.error-page-dialog {
+  display: grid;
+  gap: 1.6rem;
+  width: min(100%, 560px);
+  padding: 2rem 2.25rem;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 24px;
+  background: #ffffff;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.16);
+}
+
+.error-page-dialog-header {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.error-page-dialog-header h1 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.error-page-dialog-icon {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.error-page-dialog-copy {
+  margin: 0;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.error-page-dialog-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.error-page-dialog-cancel,
+.error-page-dialog-primary {
+  min-width: 7.25rem;
+  min-height: 4.25rem;
+  border-radius: 18px;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.error-page-dialog-cancel {
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
+}
+
+.error-page-dialog-primary {
+  background: #ff4d4f;
+  border-color: #ff4d4f;
+}
+
+.error-page-dialog-primary:hover:not(:disabled) {
+  background: #f43f5e;
+  border-color: #f43f5e;
+}
+
+.error-page-dialog-primary:active:not(:disabled) {
+  background: #e11d48;
+  border-color: #e11d48;
 }
 
 .case-list-item {

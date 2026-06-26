@@ -17,6 +17,8 @@ import {
   serializeDraftForApi,
   type TestCaseDraft,
 } from "../lib/ui-automation-case";
+import { hasFieldErrors, validateTestCaseDraft, type TestCaseFieldErrors } from "../lib/form-validation";
+import { FieldLabel } from "./field-label";
 import { StatusBadge } from "./status-badge";
 import { TestCaseMetadataSidebar } from "./test-case-metadata-sidebar";
 import { TestCaseStepTableEditor } from "./test-case-step-table-editor";
@@ -60,12 +62,14 @@ export function TestCaseComposer({
   const router = useRouter();
   const [draft, setDraft] = useState<TestCaseDraft>(() => hydrateDraft(testCase));
   const [toast, setToast] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<TestCaseFieldErrors>({});
   const [busy, setBusy] = useState(false);
 
   const isReadOnly = mode === "edit" && testCase?.status === "published";
 
   useEffect(() => {
     setDraft(hydrateDraft(testCase));
+    setFieldErrors({});
   }, [testCase]);
 
   useEffect(() => {
@@ -74,12 +78,27 @@ export function TestCaseComposer({
     return () => window.clearTimeout(timer);
   }, [toast]);
 
+  function clearFieldErrors(keys: Array<keyof TestCaseFieldErrors>) {
+    setFieldErrors((current) => {
+      const next = { ...current };
+      for (const key of keys) {
+        delete next[key];
+      }
+      return next;
+    });
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (isReadOnly) return;
-
-    setBusy(true);
     setToast(null);
+    const nextFieldErrors = validateTestCaseDraft(draft);
+    setFieldErrors(nextFieldErrors);
+    if (hasFieldErrors(nextFieldErrors)) {
+      setToast({ type: "error", text: "请完善必填项后再保存。" });
+      return;
+    }
+    setBusy(true);
 
     try {
       const payload = serializeDraftForApi(draft);
@@ -110,7 +129,7 @@ export function TestCaseComposer({
   }
 
   return (
-    <form className="case-editor" onSubmit={handleSubmit}>
+    <form className="case-editor" onSubmit={handleSubmit} noValidate>
       {toast ? <div className={`toast toast-${toast.type}`}>{toast.text}</div> : null}
 
       <div className="case-editor-header">
@@ -133,20 +152,23 @@ export function TestCaseComposer({
         <div className="case-editor-main">
           <section className="data-card case-editor-main-card">
             <label className="field">
-              <span>名称</span>
+              <FieldLabel required>名称</FieldLabel>
               <input
-                required
                 value={draft.title}
                 readOnly={isReadOnly}
+                aria-invalid={fieldErrors.title ? "true" : "false"}
+                className={fieldErrors.title ? "is-invalid" : ""}
                 placeholder="请输入测试用例名称"
-                onChange={(event) =>
-                  setDraft((current) => ({ ...current, title: event.target.value }))
-                }
+                onChange={(event) => {
+                  clearFieldErrors(["title"]);
+                  setDraft((current) => ({ ...current, title: event.target.value }));
+                }}
               />
+              {fieldErrors.title ? <span className="field-error">{fieldErrors.title}</span> : null}
             </label>
 
             <label className="field">
-              <span>执行方式</span>
+              <FieldLabel>执行方式</FieldLabel>
               <select
                 disabled={isReadOnly}
                 value={executionModeOf(draft)}
@@ -171,20 +193,24 @@ export function TestCaseComposer({
             </label>
 
             <label className="field">
-              <span>描述</span>
+              <FieldLabel required>描述</FieldLabel>
               <textarea
                 rows={4}
                 readOnly={isReadOnly}
+                aria-invalid={fieldErrors.feature ? "true" : "false"}
+                className={fieldErrors.feature ? "is-invalid" : ""}
                 placeholder="请输入用例目标或功能描述"
                 value={draft.feature}
-                onChange={(event) =>
-                  setDraft((current) => ({ ...current, feature: event.target.value }))
-                }
+                onChange={(event) => {
+                  clearFieldErrors(["feature"]);
+                  setDraft((current) => ({ ...current, feature: event.target.value }));
+                }}
               />
+              {fieldErrors.feature ? <span className="field-error">{fieldErrors.feature}</span> : null}
             </label>
 
             <label className="field">
-              <span>前置条件</span>
+              <FieldLabel>前置条件</FieldLabel>
               <textarea
                 rows={4}
                 readOnly={isReadOnly}
@@ -208,12 +234,17 @@ export function TestCaseComposer({
               steps={draft.steps}
               expectedResults={draft.expectedResults}
               readOnly={isReadOnly}
+              stepErrorIndexes={fieldErrors.stepTargetIndexes}
+              expectedResultErrorIndexes={fieldErrors.expectedResultIndexes}
               onChange={({ steps, expectedResults }) =>
-                setDraft((current) => ({
-                  ...current,
-                  steps,
-                  expectedResults,
-                }))
+                {
+                  clearFieldErrors(["steps", "expectedResults", "stepTargetIndexes", "expectedResultIndexes"]);
+                  setDraft((current) => ({
+                    ...current,
+                    steps,
+                    expectedResults,
+                  }));
+                }
               }
             />
           </section>
@@ -408,12 +439,24 @@ export function TestCaseComposer({
             draft={draft}
             directories={directories}
             readOnly={isReadOnly}
-            onChange={(patch) =>
+            invalidFields={{
+              caseType: Boolean(fieldErrors.caseType),
+              priority: Boolean(fieldErrors.priority),
+              module: Boolean(fieldErrors.module),
+            }}
+            onChange={(patch) => {
+              const clearKeys: Array<keyof TestCaseFieldErrors> = [];
+              if (patch.caseType !== undefined) clearKeys.push("caseType");
+              if (patch.priority !== undefined) clearKeys.push("priority");
+              if (patch.module !== undefined) clearKeys.push("module");
+              if (clearKeys.length > 0) {
+                clearFieldErrors(clearKeys);
+              }
               setDraft((current) => ({
                 ...current,
                 ...patch,
-              }))
-            }
+              }));
+            }}
           />
           {sidebarFooter}
         </div>

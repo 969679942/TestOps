@@ -3,7 +3,9 @@ import { useState } from "react";
 
 import { ApiError, createProject, type ProjectRecord } from "../lib/workspace-api";
 import { copy } from "../lib/copy";
+import { validateCreateProjectForm, type CreateProjectFieldErrors } from "../lib/form-validation";
 import { slugifyProjectCode } from "../lib/slug";
+import { FieldLabel } from "./field-label";
 
 type CreateProjectFormProps = Readonly<{
   onSuccess?: (project: ProjectRecord) => void;
@@ -14,15 +16,24 @@ export function CreateProjectForm({ onSuccess, onSubmittingChange }: CreateProje
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<CreateProjectFieldErrors>({});
   const [submitting, setSubmitting] = useState(false);
 
   function handleNameChange(value: string) {
+    if (fieldErrors.name) {
+      setFieldErrors((current) => ({ ...current, name: undefined }));
+    }
     setName(value);
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    const nextFieldErrors = validateCreateProjectForm(name);
+    setFieldErrors(nextFieldErrors);
+    if (nextFieldErrors.name) {
+      return;
+    }
     setSubmitting(true);
     onSubmittingChange?.(true);
 
@@ -46,7 +57,7 @@ export function CreateProjectForm({ onSuccess, onSubmittingChange }: CreateProje
   }
 
   return (
-    <form className="form-panel" onSubmit={handleSubmit} aria-label="创建项目">
+    <form className="form-panel" onSubmit={handleSubmit} aria-label="创建项目" noValidate>
       <div className="form-header">
         <span className="eyebrow">{copy.newProject}</span>
         <h3 id="create-project-title">{copy.createProject}</h3>
@@ -54,10 +65,11 @@ export function CreateProjectForm({ onSuccess, onSubmittingChange }: CreateProje
       </div>
 
       <label className="field">
-        <span>{copy.projectName}</span>
+        <FieldLabel required>{copy.projectName}</FieldLabel>
         <input
-          required
           value={name}
+          aria-invalid={fieldErrors.name ? "true" : "false"}
+          className={fieldErrors.name ? "is-invalid" : ""}
           onChange={(event) => handleNameChange(event.target.value)}
           placeholder=""
         />

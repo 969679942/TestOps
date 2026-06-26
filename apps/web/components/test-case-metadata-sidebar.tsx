@@ -1,5 +1,6 @@
 "use client";
 
+import { FieldLabel } from "./field-label";
 import type { TestCaseDraft } from "../lib/ui-automation-case";
 import type { TestCaseDirectoryRecord } from "../lib/workspace-api";
 
@@ -8,6 +9,11 @@ type TestCaseMetadataSidebarProps = Readonly<{
   draft: TestCaseDraft;
   directories: TestCaseDirectoryRecord[];
   readOnly: boolean;
+  invalidFields?: {
+    caseType?: boolean;
+    priority?: boolean;
+    module?: boolean;
+  };
   onChange: (patch: Partial<TestCaseDraft>) => void;
 }>;
 
@@ -46,6 +52,7 @@ export function TestCaseMetadataSidebar({
   draft,
   directories,
   readOnly,
+  invalidFields,
   onChange,
 }: TestCaseMetadataSidebarProps) {
   const rootId = resolveRootId(directories, draft.directoryId);
@@ -68,8 +75,10 @@ export function TestCaseMetadataSidebar({
         </label>
 
         <label className="field">
-          <span>类型</span>
+          <FieldLabel required>类型</FieldLabel>
           <select
+            aria-invalid={invalidFields?.caseType ? "true" : "false"}
+            className={invalidFields?.caseType ? "is-invalid" : ""}
             disabled={readOnly}
             value={draft.caseType}
             onChange={(event) => onChange({ caseType: event.target.value })}
@@ -83,8 +92,10 @@ export function TestCaseMetadataSidebar({
         </label>
 
         <label className="field">
-          <span>用例等级</span>
+          <FieldLabel required>用例等级</FieldLabel>
           <select
+            aria-invalid={invalidFields?.priority ? "true" : "false"}
+            className={invalidFields?.priority ? "is-invalid" : ""}
             disabled={readOnly}
             value={draft.priority}
             onChange={(event) => onChange({ priority: event.target.value })}
@@ -115,8 +126,10 @@ export function TestCaseMetadataSidebar({
         </label>
 
         <label className="field">
-          <span>模块</span>
+          <FieldLabel required>模块</FieldLabel>
           <input
+            aria-invalid={invalidFields?.module ? "true" : "false"}
+            className={invalidFields?.module ? "is-invalid" : ""}
             value={draft.module}
             readOnly={readOnly}
             placeholder="请输入模块"
@@ -155,7 +168,7 @@ export function TestCaseMetadataSidebar({
         </label>
 
         <div className="field">
-          <span>归属目录</span>
+          <FieldLabel>归属目录</FieldLabel>
           <div className="directory-select-stack">
             <select
               disabled={readOnly}

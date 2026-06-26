@@ -2,7 +2,6 @@ import React from "react";
 
 import { AppShell } from "../../../../components/app-shell";
 import { Breadcrumbs } from "../../../../components/breadcrumbs";
-import { buildDirectoryTree } from "../../../../components/test-case-directory-tree";
 import { TestCaseListWorkspace } from "../../../../components/test-case-list-workspace";
 import { WorkflowSteps } from "../../../../components/workflow-steps";
 import { copy } from "../../../../lib/copy";
@@ -12,6 +11,7 @@ import {
   type LocaleSearchParams,
 } from "../../../../lib/i18n";
 import { translateProjectName } from "../../../../lib/project-display";
+import { buildDirectoryTree } from "../../../../lib/test-case-directory-utils";
 import {
   getProject,
   listProjectDocuments,

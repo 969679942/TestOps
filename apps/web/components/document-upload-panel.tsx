@@ -21,6 +21,7 @@ import {
 
 import { copy, documentTypeLabels, labelSourceMode } from "../lib/copy";
 
+import { FieldLabel } from "./field-label";
 import { FileUploadField } from "./file-upload-field";
 
 
@@ -579,7 +580,7 @@ export function DocumentUploadPanel({
 
             <label className="field">
 
-              <span>{copy.documentNameLabel}</span>
+              <FieldLabel>{copy.documentNameLabel}</FieldLabel>
 
               <input
 
@@ -599,7 +600,7 @@ export function DocumentUploadPanel({
 
               <label className="field">
 
-                <span>{copy.sourceUrlLabel}</span>
+                <FieldLabel required>{copy.sourceUrlLabel}</FieldLabel>
 
                 <input
 
@@ -625,7 +626,7 @@ export function DocumentUploadPanel({
 
               <div className="field">
 
-                <span>{copy.chooseFileLabel}</span>
+                <FieldLabel required>{copy.chooseFileLabel}</FieldLabel>
 
                 <FileUploadField
 

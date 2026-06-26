@@ -4,11 +4,9 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { copy, statusLabels } from "../lib/copy";
+import type { TestCaseDirectoryTreeNode } from "../lib/test-case-directory-utils";
 import type { TestCaseRecord } from "../lib/workspace-api";
-import {
-  TestCaseDirectoryTree,
-  type TestCaseDirectoryTreeNode,
-} from "./test-case-directory-tree";
+import { TestCaseDirectoryTree } from "./test-case-directory-tree";
 import { TestCaseResultsTable } from "./test-case-results-table";
 
 type TestCaseListWorkspaceProps = Readonly<{

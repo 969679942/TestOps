@@ -42,6 +42,8 @@ describe("TestCaseComposer layout", () => {
     expect(html).toContain("执行方式");
     expect(html).toContain("前置条件");
     expect(html).toContain("测试步骤");
+    expect(html).toContain("field-label-required-mark");
+    expect(html).toContain("noValidate");
     expect(html).toContain("基本信息");
     expect(html).toContain("编号");
     expect(html).toContain("用例等级");
