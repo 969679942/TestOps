@@ -22,3 +22,8 @@ tsconfig.tsbuildinfo
 *.egg-info/
 data/documents/
 services/api/var/
+.worktrees/
+.agents/
+.cursor/
+.pytest-tmp/
+*.backup-*.xmind

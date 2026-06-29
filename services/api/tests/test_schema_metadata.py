@@ -30,6 +30,7 @@ def test_registered_model_metadata_matches_schema() -> None:
         "environments",
         "generation_tasks",
         "projects",
+        "test_case_directories",
         "test_case_reviews",
         "test_cases",
     ]
