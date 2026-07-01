@@ -53,7 +53,17 @@ def test_cursor_provider_invokes_cursor_agent_and_parses_cases(monkeypatch, tmp_
         ProviderGenerationRequest(
             project_id=42,
             prompt_version="smoke",
-            input_refs={"document_ids": [1, 2]},
+            input_refs={"document_version_ids": [11, 12], "skill_version_id": 7},
+            context_bundle={
+                "document_versions": [11, 12],
+                "ambiguities": [{"text": "Clarify refund timeout"}],
+                "skill_package": {
+                    "id": 7,
+                    "summary": "Checkout v1",
+                    "scenario_taxonomy": ["happy_path", "boundary"],
+                    "coverage_dimensions": ["core_user_journey"],
+                },
+            },
         )
     )
 
@@ -67,6 +77,9 @@ def test_cursor_provider_invokes_cursor_agent_and_parses_cases(monkeypatch, tmp_
         "json",
     ]
     assert "Project ID: 42" in calls[0]["args"][-1]
+    assert '"scenario_taxonomy": ["happy_path", "boundary"]' in calls[0]["args"][-1]
+    assert '"coverage_dimensions": ["core_user_journey"]' in calls[0]["args"][-1]
+    assert 'Known ambiguities: [{"text": "Clarify refund timeout"}]' in calls[0]["args"][-1]
     assert calls[0]["kwargs"]["cwd"] == str(tmp_path)
     assert calls[0]["kwargs"]["timeout"] == 7
 

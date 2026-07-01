@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   createTestCase,
+  deleteProject,
   listProjectTestCaseDirectories,
   listProjectsWithStats,
   updateProjectStatus,
@@ -79,6 +80,19 @@ describe("workspace-api project archive helpers", () => {
       expect.objectContaining({
         method: "PATCH",
         body: JSON.stringify({ status: "archived" }),
+      }),
+    );
+  });
+
+  it("deletes an archived project through the workspace API", async () => {
+    fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+
+    await expect(deleteProject("12")).resolves.toBeUndefined();
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/projects/12",
+      expect.objectContaining({
+        method: "DELETE",
       }),
     );
   });

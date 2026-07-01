@@ -40,5 +40,7 @@ describe("ReviewEditor", () => {
     expect(html).toContain('name="step-1"');
     expect(html).toContain(">Open order page</textarea>");
     expect(html).toContain('type="checkbox"');
+    expect(html).toContain("退回修改");
+    expect(html).toContain("驳回");
   });
 });

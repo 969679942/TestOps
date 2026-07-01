@@ -1,12 +1,29 @@
 from fastapi import HTTPException, status
-from sqlalchemy import func, or_, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import Select
 
+from app.models.automation import (
+    AutomationDebugProposal,
+    AutomationFailureAnalysis,
+    AutomationGeneration,
+    AutomationRun,
+)
+from app.models.data_setup import DataSetupExecution, DataSetupHint
 from app.models.document import DocumentAsset
+from app.models.document import DocumentVersion
+from app.models.environment import Environment
+from app.models.generation import GenerationTask
 from app.models.project import Project
+from app.models.project_skill_binding import ProjectSkillBinding
+from app.models.report import AutomationFinalReport, AutomationReport
+from app.models.schedule import AutomationSchedule
+from app.models.skill_package import SkillPackage
+from app.models.skill_package_version import SkillPackageVersion
 from app.models.testcase import TestCase
+from app.models.testcase import TestCaseReview
+from app.models.testcase_directory import TestCaseDirectory
 from app.schemas.project import (
     ProjectCreate,
     ProjectRead,
@@ -17,6 +34,7 @@ from app.schemas.project import (
 
 _VALID_PROJECT_STATUSES = {"active", "archived"}
 _ARCHIVED_PROJECT_MESSAGE = "Project is archived. Restore it before making changes."
+_DELETE_ACTIVE_PROJECT_MESSAGE = "Archive the project before deleting it"
 
 
 class ProjectConflictError(Exception):
@@ -159,6 +177,155 @@ def update_project_status(
     session.commit()
     session.refresh(project)
     return project
+
+
+def delete_archived_project(session: Session, project_id: int) -> None:
+    project = _get_project_model(session, project_id)
+    if project.status != "archived":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=_DELETE_ACTIVE_PROJECT_MESSAGE,
+        )
+
+    test_case_ids = list(
+        session.scalars(select(TestCase.id).where(TestCase.project_id == project_id))
+    )
+    document_ids = list(
+        session.scalars(select(DocumentAsset.id).where(DocumentAsset.project_id == project_id))
+    )
+    document_version_ids = (
+        list(
+            session.scalars(
+                select(DocumentVersion.id).where(DocumentVersion.document_asset_id.in_(document_ids))
+            )
+        )
+        if document_ids
+        else []
+    )
+    skill_package_ids = list(
+        session.scalars(select(SkillPackage.id).where(SkillPackage.project_id == project_id))
+    )
+    session.execute(
+        delete(ProjectSkillBinding).where(ProjectSkillBinding.project_id == project_id)
+    )
+    environment_ids = list(
+        session.scalars(select(Environment.id).where(Environment.project_id == project_id))
+    )
+    automation_generation_ids = (
+        list(
+            session.scalars(
+                select(AutomationGeneration.id).where(
+                    AutomationGeneration.test_case_id.in_(test_case_ids)
+                )
+            )
+        )
+        if test_case_ids
+        else []
+    )
+    automation_run_ids = (
+        list(
+            session.scalars(
+                select(AutomationRun.id).where(
+                    AutomationRun.automation_generation_id.in_(automation_generation_ids)
+                )
+            )
+        )
+        if automation_generation_ids
+        else []
+    )
+    failure_analysis_ids = (
+        list(
+            session.scalars(
+                select(AutomationFailureAnalysis.id).where(
+                    AutomationFailureAnalysis.automation_run_id.in_(automation_run_ids)
+                )
+            )
+        )
+        if automation_run_ids
+        else []
+    )
+    data_setup_hint_ids = (
+        list(
+            session.scalars(
+                select(DataSetupHint.id).where(
+                    or_(
+                        DataSetupHint.test_case_id.in_(test_case_ids),
+                        DataSetupHint.document_version_id.in_(document_version_ids),
+                        DataSetupHint.environment_id.in_(environment_ids),
+                    )
+                )
+            )
+        )
+        if test_case_ids or document_version_ids or environment_ids
+        else []
+    )
+
+    if failure_analysis_ids:
+        session.execute(
+            delete(AutomationDebugProposal).where(
+                AutomationDebugProposal.automation_failure_analysis_id.in_(failure_analysis_ids)
+            )
+        )
+    if automation_run_ids:
+        session.execute(
+            delete(AutomationFinalReport).where(
+                AutomationFinalReport.automation_run_id.in_(automation_run_ids)
+            )
+        )
+        session.execute(
+            delete(AutomationReport).where(
+                AutomationReport.automation_run_id.in_(automation_run_ids)
+            )
+        )
+        session.execute(
+            delete(AutomationFailureAnalysis).where(
+                AutomationFailureAnalysis.automation_run_id.in_(automation_run_ids)
+            )
+        )
+    if data_setup_hint_ids:
+        session.execute(
+            delete(DataSetupExecution).where(
+                DataSetupExecution.data_setup_hint_id.in_(data_setup_hint_ids)
+            )
+        )
+    if automation_run_ids:
+        session.execute(
+            delete(DataSetupExecution).where(
+                DataSetupExecution.automation_run_id.in_(automation_run_ids)
+            )
+        )
+        session.execute(
+            delete(AutomationRun).where(
+                AutomationRun.automation_generation_id.in_(automation_generation_ids)
+            )
+        )
+    if automation_generation_ids:
+        session.execute(
+            delete(AutomationGeneration).where(AutomationGeneration.id.in_(automation_generation_ids))
+        )
+    if data_setup_hint_ids:
+        session.execute(delete(DataSetupHint).where(DataSetupHint.id.in_(data_setup_hint_ids)))
+    if test_case_ids:
+        session.execute(delete(TestCaseReview).where(TestCaseReview.test_case_id.in_(test_case_ids)))
+        session.execute(delete(TestCase).where(TestCase.id.in_(test_case_ids)))
+    session.execute(delete(AutomationSchedule).where(AutomationSchedule.project_id == project_id))
+    session.execute(delete(TestCaseDirectory).where(TestCaseDirectory.project_id == project_id))
+    session.execute(delete(GenerationTask).where(GenerationTask.project_id == project_id))
+    if document_ids:
+        session.execute(
+            delete(DocumentVersion).where(DocumentVersion.document_asset_id.in_(document_ids))
+        )
+        session.execute(delete(DocumentAsset).where(DocumentAsset.id.in_(document_ids)))
+    if skill_package_ids:
+        session.execute(
+            delete(SkillPackageVersion).where(
+                SkillPackageVersion.skill_package_id.in_(skill_package_ids)
+            )
+        )
+        session.execute(delete(SkillPackage).where(SkillPackage.id.in_(skill_package_ids)))
+    session.execute(delete(Environment).where(Environment.project_id == project_id))
+    session.delete(project)
+    session.commit()
 
 
 def create_project(session: Session, payload: ProjectCreate) -> Project:

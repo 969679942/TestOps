@@ -28,7 +28,13 @@ export type RuntimeSettingsRecord = {
     pattern: string;
     reporter: string;
   };
+  storage: {
+    artifactRoot: string;
+    documentRoot: string;
+  };
 };
+
+export type RuntimeSettingsUpdateRecord = Omit<RuntimeSettingsRecord, "notifications">;
 
 export type RuntimeSettingsResult =
   | {
@@ -44,7 +50,9 @@ export type RuntimeSettingsResult =
       status: number;
     };
 
-export type DocumentType = LooseString<"prd" | "figma" | "swagger">;
+export type DocumentType = LooseString<
+  "prd" | "figma" | "swagger" | "business_rule" | "supplement"
+>;
 
 export type EnvironmentRecord = {
   id: string | number;
@@ -69,6 +77,14 @@ export type DocumentAsset = {
   parseStatus?: string;
 };
 
+export type TestCaseDirectoryRecord = {
+  id: string | number;
+  projectId: string | number;
+  name: string;
+  parentId: string | number | null;
+  children: TestCaseDirectoryRecord[];
+};
+
 export type DocumentVersionRecord = {
   id: string | number;
   documentAssetId: string | number;
@@ -79,6 +95,113 @@ export type DocumentVersionRecord = {
   parseStatus: string;
   parseSummary: string | null;
   structuredMetadata: Record<string, unknown>;
+};
+
+export type SkillPackageRecord = {
+  id: string | number;
+  projectId: string | number;
+  systemKey: string;
+  name: string;
+  status: string;
+  activeVersionId: string | number | null;
+  activeVersionSummary: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type SkillPackageVersionRecord = {
+  id: string | number;
+  skillPackageId: string | number;
+  versionNo: number;
+  storageUri: string | null;
+  structuredMetadata: Record<string, unknown>;
+  summary: string | null;
+  createdAt: string;
+};
+
+export type GlobalSkillDefinitionRecord = {
+  id: string | number;
+  skillKey: string;
+  name: string;
+  description: string;
+  category: string;
+  domain: string;
+  inputTypes: string[];
+  status: string;
+  owner: string;
+  currentProductionVersionId: string | number | null;
+  currentProductionVersionLabel: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type GlobalSkillDefinitionCreateRecord = {
+  skill_key: string;
+  name: string;
+  description: string;
+  category: string;
+  domain: string;
+  input_types: string[];
+  owner?: string;
+};
+
+export type GlobalSkillDefinitionUpdateRecord = Partial<GlobalSkillDefinitionCreateRecord> & {
+  status?: string;
+};
+
+export type GlobalSkillVersionRecord = {
+  id: string | number;
+  globalSkillId: string | number;
+  versionNo: number;
+  versionLabel: string;
+  status: string;
+  promptTemplate: string;
+  scenarioTaxonomy: string[];
+  reviewChecklist: string[];
+  coverageDimensions: string[];
+  evidencePolicy: string;
+  storageUri: string | null;
+  changeLog: string | null;
+  releaseNotes: string | null;
+  createdBy: string;
+  createdAt: string;
+  publishedAt: string | null;
+};
+
+export type GlobalSkillVersionCreateRecord = {
+  version_label: string;
+  prompt_template: string;
+  scenario_taxonomy: string[];
+  review_checklist: string[];
+  coverage_dimensions: string[];
+  evidence_policy: string;
+  storage_uri?: string | null;
+  change_log?: string | null;
+  release_notes?: string | null;
+  created_by?: string;
+  status?: string;
+};
+
+export type GlobalSkillVersionUpdateRecord = Partial<GlobalSkillVersionCreateRecord>;
+
+export type ProjectSkillBindingRecord = {
+  id: string | number;
+  projectId: string | number;
+  globalSkillId: string | number;
+  globalSkillVersionId: string | number;
+  bindingType: string;
+  status: string;
+  isDefault: boolean;
+  overridePayload: Record<string, unknown>;
+  skillKey: string;
+  skillName: string;
+  versionLabel: string;
+  versionStatus: string;
+  skillCategory: string;
+  skillDomain: string;
+  inputTypes: string[];
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type GenerationTaskStatus = LooseString<
@@ -103,6 +226,18 @@ export type StructuredTextField = {
   text: string;
 };
 
+export type TestCaseUiContext = {
+  schemaVersion: string;
+  framework: string;
+  baseUrl: string;
+  browser: string;
+  viewport: { width: number; height: number };
+  entryPath: string;
+  entryReadySelector: string;
+  testData: Record<string, string>;
+  teardown: string;
+};
+
 export type TestCaseRecord = {
   id: string | number;
   projectId: string | number;
@@ -114,11 +249,28 @@ export type TestCaseRecord = {
   caseType: string;
   priority: string;
   preconditions: string[];
-  steps: StructuredTextField[];
+  steps: Array<
+    StructuredTextField & {
+      action?: string;
+      target?: string;
+      locator_hint?: string;
+      locatorHint?: string;
+      value?: string;
+      assertion?: string;
+      timeout_ms?: number;
+      timeoutMs?: number;
+      order?: number;
+    }
+  >;
   expectedResults: StructuredTextField[];
   tags: string[];
   automationFlag: boolean;
   automationNotes: string | null;
+  uiContext?: TestCaseUiContext | null;
+  linkedRequirement?: string | null;
+  sourceRefs?: Record<string, unknown>[];
+  generationTaskId?: string | number | null;
+  publishedAt?: string | null;
 };
 
 export type TestCaseMutationPayload = {
@@ -129,11 +281,15 @@ export type TestCaseMutationPayload = {
   priority: string;
   directory_id?: string | number | null;
   preconditions: string[];
-  steps: StructuredTextField[];
+  steps: TestCaseRecord["steps"];
   expected_results: StructuredTextField[];
   tags: string[];
   automation_flag: boolean;
   automation_notes: string | null;
+  ui_context?: Record<string, unknown> | null;
+  linked_requirement?: string | null;
+  source_refs?: Record<string, unknown>[];
+  generation_task_id?: string | number | null;
 };
 
 export type AutomationGenerationRecord = {

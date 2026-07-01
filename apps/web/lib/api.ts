@@ -24,11 +24,22 @@ import type {
   EnvironmentRecord,
   GenerationTaskListResult,
   GenerationTaskRecord,
+  GlobalSkillDefinitionRecord,
+  GlobalSkillDefinitionCreateRecord,
+  GlobalSkillDefinitionUpdateRecord,
+  GlobalSkillVersionRecord,
+  GlobalSkillVersionCreateRecord,
+  GlobalSkillVersionUpdateRecord,
+  ProjectSkillBindingRecord,
   ProjectLookupResult,
   ProjectListResult,
   ProjectRecord,
   RuntimeSettingsRecord,
   RuntimeSettingsResult,
+  RuntimeSettingsUpdateRecord,
+  SkillPackageRecord,
+  SkillPackageVersionRecord,
+  TestCaseDirectoryRecord,
   TestCaseListResult,
   TestCaseMutationPayload,
   TestCaseRecord,
@@ -45,22 +56,26 @@ type ProjectApiRecord = {
 };
 
 type RuntimeSettingsApiRecord = {
-  cursor: {
+  cursor?: {
     command: string;
     timeout_seconds: number;
     cwd: string | null;
   };
-  codex: {
+  codex?: {
     failure_analysis_model: string;
   };
-  notifications: {
+  notifications?: {
     lark_webhook_configured: boolean;
   };
-  runner: {
+  runner?: {
     framework: string;
     language: string;
     pattern: string;
     reporter: string;
+  };
+  storage?: {
+    artifact_root: string;
+    document_root: string;
   };
 };
 
@@ -72,6 +87,14 @@ type ProjectDocumentApiRecord = {
   source_mode: string;
   source_uri: string | null;
   parse_status: string;
+};
+
+type TestCaseDirectoryApiRecord = {
+  id: number;
+  project_id: number;
+  name: string;
+  parent_id: number | null;
+  children: TestCaseDirectoryApiRecord[];
 };
 
 type EnvironmentApiRecord = {
@@ -113,6 +136,83 @@ type GenerationTaskApiRecord = {
   created_at: string;
 };
 
+type SkillPackageApiRecord = {
+  id: number;
+  project_id: number;
+  system_key: string;
+  name: string;
+  status: string;
+  active_version_id: number | null;
+  active_version_summary: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type SkillPackageVersionApiRecord = {
+  id: number;
+  skill_package_id: number;
+  version_no: number;
+  storage_uri: string | null;
+  structured_metadata: Record<string, unknown>;
+  summary: string | null;
+  created_at: string;
+};
+
+type GlobalSkillDefinitionApiRecord = {
+  id: number;
+  skill_key: string;
+  name: string;
+  description: string;
+  category: string;
+  domain: string;
+  input_types: string[];
+  status: string;
+  owner: string;
+  current_production_version_id: number | null;
+  current_production_version_label: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type GlobalSkillVersionApiRecord = {
+  id: number;
+  global_skill_id: number;
+  version_no: number;
+  version_label: string;
+  status: string;
+  prompt_template: string;
+  scenario_taxonomy: string[];
+  review_checklist: string[];
+  coverage_dimensions: string[];
+  evidence_policy: string;
+  storage_uri: string | null;
+  change_log: string | null;
+  release_notes: string | null;
+  created_by: string;
+  created_at: string;
+  published_at: string | null;
+};
+
+type ProjectSkillBindingApiRecord = {
+  id: number;
+  project_id: number;
+  global_skill_id: number;
+  global_skill_version_id: number;
+  binding_type: string;
+  status: string;
+  is_default: boolean;
+  override_payload: Record<string, unknown>;
+  skill_key: string;
+  skill_name: string;
+  version_label: string;
+  version_status: string;
+  skill_category: string;
+  skill_domain: string;
+  input_types: string[];
+  created_at: string;
+  updated_at: string;
+};
+
 type StructuredTextFieldApiRecord = {
   text: string;
 };
@@ -133,6 +233,11 @@ type ProjectTestCaseApiRecord = {
   tags: string[];
   automation_flag: boolean;
   automation_notes: string | null;
+  ui_context: Record<string, unknown> | null;
+  linked_requirement?: string | null;
+  source_refs?: Array<Record<string, unknown>>;
+  generation_task_id?: number | null;
+  published_at: string | null;
 };
 
 type AutomationGenerationApiRecord = {
@@ -265,6 +370,12 @@ type ReviewApiRecord = {
   created_at: string;
 };
 
+type ProjectSummaryApiRecord = ProjectApiRecord & {
+  document_count: number;
+  test_case_count: number;
+  published_count: number;
+};
+
 type RequestResult<T> =
   | {
       kind: "success";
@@ -308,10 +419,60 @@ export type CreateDocumentVersionPayload = {
 };
 
 export type CreateGenerationTaskPayload = {
-  input_document_ids: number[];
+  input_document_version_ids: number[];
+  input_skill_version_id?: number | null;
+  input_skill_binding_id?: number | null;
+  seed_test_case_ids?: number[];
+  coverage_gap_note?: string | null;
   provider?: string | null;
   model?: string | null;
   prompt_profile?: string | null;
+};
+
+export type CreateSkillPackagePayload = {
+  system_key: string;
+  name: string;
+};
+
+export type CreateSkillPackageVersionPayload = {
+  summary?: string | null;
+  storage_uri?: string | null;
+  template_key?: string | null;
+  content: Record<string, unknown>;
+};
+
+export type CreateProjectSkillBindingPayload = {
+  global_skill_id: number;
+  global_skill_version_id?: number | null;
+  binding_type?: string;
+  is_default?: boolean;
+  override_payload?: Record<string, unknown>;
+};
+
+export type UpdateProjectSkillBindingPayload = {
+  global_skill_version_id?: number | null;
+  binding_type?: string;
+  is_default?: boolean;
+  status?: string;
+  override_payload?: Record<string, unknown>;
+};
+
+export type ProjectStatus = "active" | "archived";
+export type ProjectStatusFilter = ProjectStatus | "all";
+
+export type ProjectSummaryRecord = ProjectRecord & {
+  documentCount: number;
+  testCaseCount: number;
+  publishedCount: number;
+};
+
+export type ReviewRecord = {
+  id: string;
+  testCaseId: string;
+  reviewerId: string;
+  action: string;
+  comment: string | null;
+  createdAt: string;
 };
 
 export type CreateReviewPayload = {
@@ -334,6 +495,10 @@ export type ReviewAutomationDebugProposalPayload = {
 };
 
 const API_BASE_URL = process.env.TESTOPS_API_BASE_URL ?? "http://127.0.0.1:8000";
+const demoProjectApiIdAliases: Record<string, string> = {
+  payments: "1",
+  "account-center": "2",
+};
 
 const demoProjects: ProjectRecord[] = [
   {
@@ -373,6 +538,10 @@ const demoRuntimeSettings: RuntimeSettingsRecord = {
     language: "typescript",
     pattern: "pom",
     reporter: "allure-playwright",
+  },
+  storage: {
+    artifactRoot: "var/artifacts",
+    documentRoot: "data/documents",
   },
 };
 
@@ -809,6 +978,13 @@ async function requestJson<T>(
       };
     }
 
+    if (response.status === 204) {
+      return {
+        kind: "success",
+        data: undefined as T,
+      };
+    }
+
     return {
       kind: "success",
       data: (await response.json()) as T,
@@ -846,6 +1022,19 @@ async function patchJson<T>(
   });
 }
 
+async function putJson<T>(
+  path: string,
+  body: Record<string, unknown>,
+): Promise<RequestResult<T>> {
+  return requestJson<T>(path, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+}
+
 function mapProject(project: ProjectApiRecord): ProjectRecord {
   return {
     id: String(project.id),
@@ -858,24 +1047,59 @@ function mapProject(project: ProjectApiRecord): ProjectRecord {
   };
 }
 
+function mapProjectSummary(project: ProjectSummaryApiRecord): ProjectSummaryRecord {
+  return {
+    ...mapProject(project),
+    documentCount: project.document_count,
+    testCaseCount: project.test_case_count,
+    publishedCount: project.published_count,
+  };
+}
+
 function mapRuntimeSettings(settings: RuntimeSettingsApiRecord): RuntimeSettingsRecord {
+  const cursor = settings.cursor ?? {
+    command: demoRuntimeSettings.cursor.command,
+    timeout_seconds: demoRuntimeSettings.cursor.timeoutSeconds,
+    cwd: demoRuntimeSettings.cursor.cwd,
+  };
+  const codex = settings.codex ?? {
+    failure_analysis_model: demoRuntimeSettings.codex.failureAnalysisModel,
+  };
+  const notifications = settings.notifications ?? {
+    lark_webhook_configured: demoRuntimeSettings.notifications.larkWebhookConfigured,
+  };
+  const runner = settings.runner ?? {
+    framework: demoRuntimeSettings.runner.framework,
+    language: demoRuntimeSettings.runner.language,
+    pattern: demoRuntimeSettings.runner.pattern,
+    reporter: demoRuntimeSettings.runner.reporter,
+  };
+  const storage = settings.storage ?? {
+    artifact_root: demoRuntimeSettings.storage.artifactRoot,
+    document_root: demoRuntimeSettings.storage.documentRoot,
+  };
+
   return {
     cursor: {
-      command: settings.cursor.command,
-      timeoutSeconds: settings.cursor.timeout_seconds,
-      cwd: settings.cursor.cwd,
+      command: cursor.command,
+      timeoutSeconds: cursor.timeout_seconds,
+      cwd: cursor.cwd,
     },
     codex: {
-      failureAnalysisModel: settings.codex.failure_analysis_model,
+      failureAnalysisModel: codex.failure_analysis_model,
     },
     notifications: {
-      larkWebhookConfigured: settings.notifications.lark_webhook_configured,
+      larkWebhookConfigured: notifications.lark_webhook_configured,
     },
     runner: {
-      framework: settings.runner.framework,
-      language: settings.runner.language,
-      pattern: settings.runner.pattern,
-      reporter: settings.runner.reporter,
+      framework: runner.framework,
+      language: runner.language,
+      pattern: runner.pattern,
+      reporter: runner.reporter,
+    },
+    storage: {
+      artifactRoot: storage.artifact_root,
+      documentRoot: storage.document_root,
     },
   };
 }
@@ -889,6 +1113,54 @@ function mapDocument(document: ProjectDocumentApiRecord): DocumentAsset {
     sourceMode: document.source_mode,
     sourceUri: document.source_uri,
     parseStatus: document.parse_status,
+  };
+}
+
+function mapTestCaseDirectory(directory: TestCaseDirectoryApiRecord): TestCaseDirectoryRecord {
+  return {
+    id: String(directory.id),
+    projectId: String(directory.project_id),
+    name: directory.name,
+    parentId:
+      directory.parent_id === null || directory.parent_id === undefined
+        ? null
+        : String(directory.parent_id),
+    children: directory.children.map(mapTestCaseDirectory),
+  };
+}
+
+function mapUiContext(raw: Record<string, unknown> | null): TestCaseRecord["uiContext"] {
+  if (!raw) {
+    return null;
+  }
+
+  const viewportRaw = raw.viewport;
+  const viewport =
+    viewportRaw && typeof viewportRaw === "object" && !Array.isArray(viewportRaw)
+      ? {
+          width: Number((viewportRaw as Record<string, unknown>).width ?? 1280),
+          height: Number((viewportRaw as Record<string, unknown>).height ?? 720),
+        }
+      : { width: 1280, height: 720 };
+
+  const testDataRaw = raw.test_data ?? raw.testData;
+  const testData: Record<string, string> = {};
+  if (testDataRaw && typeof testDataRaw === "object" && !Array.isArray(testDataRaw)) {
+    for (const [key, value] of Object.entries(testDataRaw)) {
+      testData[key] = String(value);
+    }
+  }
+
+  return {
+    schemaVersion: String(raw.schema_version ?? raw.schemaVersion ?? "ui-automation-v1"),
+    framework: String(raw.framework ?? "playwright"),
+    baseUrl: String(raw.base_url ?? raw.baseUrl ?? ""),
+    browser: String(raw.browser ?? "chromium"),
+    viewport,
+    entryPath: String(raw.entry_path ?? raw.entryPath ?? ""),
+    entryReadySelector: String(raw.entry_ready_selector ?? raw.entryReadySelector ?? ""),
+    testData,
+    teardown: String(raw.teardown ?? ""),
   };
 }
 
@@ -918,6 +1190,108 @@ function mapDocumentVersion(version: DocumentVersionApiRecord): DocumentVersionR
     parseStatus: version.parse_status,
     parseSummary: version.parse_summary,
     structuredMetadata: version.structured_metadata,
+  };
+}
+
+function mapSkillPackage(item: SkillPackageApiRecord): SkillPackageRecord {
+  return {
+    id: String(item.id),
+    projectId: String(item.project_id),
+    systemKey: item.system_key,
+    name: item.name,
+    status: item.status,
+    activeVersionId:
+      item.active_version_id === null || item.active_version_id === undefined
+        ? null
+        : String(item.active_version_id),
+    activeVersionSummary: item.active_version_summary,
+    createdAt: item.created_at,
+    updatedAt: item.updated_at,
+  };
+}
+
+function mapSkillPackageVersion(
+  item: SkillPackageVersionApiRecord,
+): SkillPackageVersionRecord {
+  return {
+    id: String(item.id),
+    skillPackageId: String(item.skill_package_id),
+    versionNo: item.version_no,
+    storageUri: item.storage_uri,
+    structuredMetadata: item.structured_metadata,
+    summary: item.summary,
+    createdAt: item.created_at,
+  };
+}
+
+function mapGlobalSkillDefinition(
+  item: GlobalSkillDefinitionApiRecord,
+): GlobalSkillDefinitionRecord {
+  return {
+    id: String(item.id),
+    skillKey: item.skill_key,
+    name: item.name,
+    description: item.description,
+    category: item.category,
+    domain: item.domain,
+    inputTypes: item.input_types,
+    status: item.status,
+    owner: item.owner,
+    currentProductionVersionId:
+      item.current_production_version_id === null ||
+      item.current_production_version_id === undefined
+        ? null
+        : String(item.current_production_version_id),
+    currentProductionVersionLabel: item.current_production_version_label,
+    createdAt: item.created_at,
+    updatedAt: item.updated_at,
+  };
+}
+
+function mapGlobalSkillVersion(
+  item: GlobalSkillVersionApiRecord,
+): GlobalSkillVersionRecord {
+  return {
+    id: String(item.id),
+    globalSkillId: String(item.global_skill_id),
+    versionNo: item.version_no,
+    versionLabel: item.version_label,
+    status: item.status,
+    promptTemplate: item.prompt_template,
+    scenarioTaxonomy: item.scenario_taxonomy,
+    reviewChecklist: item.review_checklist,
+    coverageDimensions: item.coverage_dimensions,
+    evidencePolicy: item.evidence_policy,
+    storageUri: item.storage_uri,
+    changeLog: item.change_log,
+    releaseNotes: item.release_notes,
+    createdBy: item.created_by,
+    createdAt: item.created_at,
+    publishedAt: item.published_at,
+  };
+}
+
+function mapProjectSkillBinding(
+  item: ProjectSkillBindingApiRecord,
+): ProjectSkillBindingRecord {
+  return {
+    id: String(item.id),
+    projectId: String(item.project_id),
+    globalSkillId: String(item.global_skill_id),
+    globalSkillVersionId: String(item.global_skill_version_id),
+    bindingType: item.binding_type,
+    status: item.status,
+    isDefault: item.is_default,
+    overridePayload: item.override_payload,
+    skillKey: item.skill_key,
+    skillName: item.skill_name,
+    versionLabel: item.version_label,
+    versionStatus: item.version_status,
+    skillCategory: item.skill_category,
+    skillDomain: item.skill_domain,
+    inputTypes: item.input_types,
+    createdAt: item.created_at,
+    updatedAt: item.updated_at,
   };
 }
 
@@ -957,6 +1331,25 @@ function mapTestCase(item: ProjectTestCaseApiRecord): TestCaseRecord {
     tags: item.tags,
     automationFlag: item.automation_flag,
     automationNotes: item.automation_notes,
+    uiContext: mapUiContext(item.ui_context),
+    linkedRequirement: item.linked_requirement ?? null,
+    sourceRefs: item.source_refs ?? [],
+    generationTaskId:
+      item.generation_task_id === null || item.generation_task_id === undefined
+        ? null
+        : String(item.generation_task_id),
+    publishedAt: item.published_at ?? null,
+  };
+}
+
+function mapReview(item: ReviewApiRecord): ReviewRecord {
+  return {
+    id: String(item.id),
+    testCaseId: String(item.test_case_id),
+    reviewerId: item.reviewer_id,
+    action: item.action,
+    comment: item.comment,
+    createdAt: item.created_at,
   };
 }
 
@@ -1110,10 +1503,25 @@ function mapDataSetupExecution(
 }
 
 function getDemoProject(projectId: string): ProjectRecord | null {
+  const aliasProjectId = demoProjectApiIdAliases[projectId];
   return (
-    demoProjects.find((project) => project.id === projectId || project.code === projectId) ??
+    demoProjects.find(
+      (project) =>
+        project.id === projectId ||
+        project.code === projectId ||
+        project.id === aliasProjectId ||
+        demoProjectApiIdAliases[project.id] === projectId,
+    ) ??
     null
   );
+}
+
+function resolveProjectApiId(projectId: string): string {
+  return demoProjectApiIdAliases[projectId] ?? projectId;
+}
+
+function projectPath(projectId: string, suffix = ""): string {
+  return `/projects/${resolveProjectApiId(projectId)}${suffix}`;
 }
 
 export async function listProjects(): Promise<ProjectListResult> {
@@ -1136,8 +1544,124 @@ export async function listProjects(): Promise<ProjectListResult> {
   };
 }
 
+async function enrichProjectsWithStats(
+  projects: ProjectRecord[],
+): Promise<ProjectSummaryRecord[]> {
+  return Promise.all(
+    projects.map(async (project) => {
+      const [documentResult, testCaseResult] = await Promise.all([
+        listProjectDocuments(project.id),
+        listProjectTestCases(project.id),
+      ]);
+      const documents =
+        documentResult.kind === "success" || documentResult.kind === "unavailable"
+          ? documentResult.documents
+          : [];
+      const testCases =
+        testCaseResult.kind === "success" || testCaseResult.kind === "unavailable"
+          ? testCaseResult.items
+          : [];
+
+      return {
+        ...project,
+        documentCount: documents.length,
+        testCaseCount: testCases.length,
+        publishedCount: testCases.filter((item) => item.status === "published").length,
+      };
+    }),
+  );
+}
+
+export async function listProjectsWithStats(
+  status: ProjectStatusFilter = "active",
+): Promise<RequestResult<ProjectSummaryRecord[]>> {
+  const result = await requestJson<ProjectSummaryApiRecord[]>(
+    `/project-summaries?status=${status}`,
+  );
+
+  if (result.kind === "success") {
+    return {
+      kind: "success",
+      data: result.data.map(mapProjectSummary),
+    };
+  }
+
+  if (result.kind === "unavailable") {
+    return {
+      kind: "success",
+      data: await enrichProjectsWithStats(demoProjects),
+    };
+  }
+
+  if (result.status === 404 || result.status === 422) {
+    const projectResult = await listProjects();
+    if (projectResult.kind === "http-error") {
+      return projectResult;
+    }
+
+    return {
+      kind: projectResult.kind,
+      data: await enrichProjectsWithStats(projectResult.projects),
+    };
+  }
+
+  return result;
+}
+
+export async function createProject(
+  payload: Pick<ProjectRecord, "name" | "code" | "description">,
+): Promise<RequestResult<ProjectRecord>> {
+  const result = await postJson<ProjectApiRecord>("/projects", {
+    name: payload.name,
+    code: payload.code,
+    description: payload.description ?? null,
+  });
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: mapProject(result.data),
+  };
+}
+
+export async function updateProjectStatus(
+  projectId: string,
+  status: ProjectStatus,
+): Promise<RequestResult<ProjectRecord>> {
+  const result = await patchJson<ProjectApiRecord>(projectPath(projectId, "/status"), {
+    status,
+  });
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: mapProject(result.data),
+  };
+}
+
+export async function deleteProject(projectId: string): Promise<RequestResult<null>> {
+  const result = await requestJson<null>(projectPath(projectId), {
+    method: "DELETE",
+  });
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: null,
+  };
+}
+
 export async function getProject(projectId: string): Promise<ProjectLookupResult> {
-  const result = await requestJson<ProjectApiRecord>(`/projects/${projectId}`);
+  const result = await requestJson<ProjectApiRecord>(projectPath(projectId));
 
   if (result.kind === "unavailable") {
     return {
@@ -1182,12 +1706,51 @@ export async function getRuntimeSettings(): Promise<RuntimeSettingsResult> {
   };
 }
 
+export async function updateRuntimeSettings(
+  payload: RuntimeSettingsUpdateRecord,
+): Promise<RuntimeSettingsResult> {
+  const result = await putJson<RuntimeSettingsApiRecord>("/settings/runtime", {
+    cursor: {
+      command: payload.cursor.command,
+      timeout_seconds: payload.cursor.timeoutSeconds,
+      cwd: payload.cursor.cwd,
+    },
+    codex: {
+      failure_analysis_model: payload.codex.failureAnalysisModel,
+    },
+    runner: {
+      framework: payload.runner.framework,
+      language: payload.runner.language,
+      pattern: payload.runner.pattern,
+      reporter: payload.runner.reporter,
+    },
+    storage: {
+      artifact_root: payload.storage.artifactRoot,
+      document_root: payload.storage.documentRoot,
+    },
+  });
+
+  if (result.kind === "unavailable") {
+    return {
+      kind: "unavailable",
+      settings: demoRuntimeSettings,
+    };
+  }
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    settings: mapRuntimeSettings(result.data),
+  };
+}
+
 export async function listProjectEnvironments(
   projectId: string,
 ): Promise<EnvironmentListResult> {
-  const result = await requestJson<EnvironmentApiRecord[]>(
-    `/projects/${projectId}/environments`,
-  );
+  const result = await requestJson<EnvironmentApiRecord[]>(projectPath(projectId, "/environments"));
 
   if (result.kind === "unavailable") {
     return {
@@ -1210,10 +1773,7 @@ export async function createProjectEnvironment(
   projectId: string,
   payload: CreateProjectEnvironmentPayload,
 ): Promise<RequestResult<EnvironmentRecord>> {
-  const result = await postJson<EnvironmentApiRecord>(
-    `/projects/${projectId}/environments`,
-    payload,
-  );
+  const result = await postJson<EnvironmentApiRecord>(projectPath(projectId, "/environments"), payload);
 
   if (result.kind !== "success") {
     return result;
@@ -1245,9 +1805,7 @@ export async function updateProjectEnvironment(
 }
 
 export async function listProjectDocuments(projectId: string): Promise<DocumentAssetListResult> {
-  const result = await requestJson<ProjectDocumentApiRecord[]>(
-    `/projects/${projectId}/documents`,
-  );
+  const result = await requestJson<ProjectDocumentApiRecord[]>(projectPath(projectId, "/documents"));
 
   if (result.kind === "unavailable") {
     return {
@@ -1270,10 +1828,7 @@ export async function createProjectDocument(
   projectId: string,
   payload: CreateProjectDocumentPayload,
 ): Promise<RequestResult<DocumentAsset>> {
-  const result = await postJson<ProjectDocumentApiRecord>(
-    `/projects/${projectId}/documents`,
-    payload,
-  );
+  const result = await postJson<ProjectDocumentApiRecord>(projectPath(projectId, "/documents"), payload);
 
   if (result.kind !== "success") {
     return result;
@@ -1282,6 +1837,67 @@ export async function createProjectDocument(
   return {
     kind: "success",
     data: mapDocument(result.data),
+  };
+}
+
+export async function uploadProjectDocument(
+  projectId: string,
+  payload: {
+    file: File;
+    type: string;
+    name: string;
+    sourceMode?: string;
+  },
+): Promise<RequestResult<DocumentAsset>> {
+  try {
+    const formData = new FormData();
+    formData.append("file", payload.file);
+    formData.append("type", payload.type);
+    formData.append("name", payload.name);
+    formData.append("source_mode", payload.sourceMode ?? "upload");
+
+    const response = await fetch(`${API_BASE_URL}${projectPath(projectId, "/documents/upload")}`, {
+      method: "POST",
+      body: formData,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      return {
+        kind: "http-error",
+        status: response.status,
+      };
+    }
+
+    return {
+      kind: "success",
+      data: mapDocument((await response.json()) as ProjectDocumentApiRecord),
+    };
+  } catch {
+    return {
+      kind: "unavailable",
+    };
+  }
+}
+
+export async function deleteProjectDocument(
+  projectId: string,
+  documentId: string,
+): Promise<RequestResult<null>> {
+  const result = await requestJson<null>(projectPath(projectId, `/documents/${documentId}`), {
+    method: "DELETE",
+  });
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: null,
   };
 }
 
@@ -1304,6 +1920,23 @@ export async function createDocumentVersion(
   };
 }
 
+export async function listDocumentVersions(
+  documentId: string,
+): Promise<RequestResult<DocumentVersionRecord[]>> {
+  const result = await requestJson<DocumentVersionApiRecord[]>(
+    `/documents/${documentId}/versions`,
+  );
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: result.data.map(mapDocumentVersion),
+  };
+}
+
 export async function parseDocumentVersion(
   versionId: string,
 ): Promise<RequestResult<DocumentVersionRecord>> {
@@ -1321,12 +1954,321 @@ export async function parseDocumentVersion(
   };
 }
 
+export async function listProjectSkillPackages(
+  projectId: string,
+): Promise<RequestResult<SkillPackageRecord[]>> {
+  const result = await requestJson<SkillPackageApiRecord[]>(projectPath(projectId, "/skill-packages"));
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: result.data.map(mapSkillPackage),
+  };
+}
+
+export async function createSkillPackage(
+  projectId: string,
+  payload: CreateSkillPackagePayload,
+): Promise<RequestResult<SkillPackageRecord>> {
+  const result = await postJson<SkillPackageApiRecord>(projectPath(projectId, "/skill-packages"), payload);
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: mapSkillPackage(result.data),
+  };
+}
+
+export async function listGlobalSkillLibrary(): Promise<RequestResult<GlobalSkillDefinitionRecord[]>> {
+  const result = await requestJson<GlobalSkillDefinitionApiRecord[]>("/skills/library");
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: result.data.map(mapGlobalSkillDefinition),
+  };
+}
+
+export async function getGlobalSkillLibraryItem(
+  skillId: string,
+): Promise<RequestResult<GlobalSkillDefinitionRecord>> {
+  const result = await requestJson<GlobalSkillDefinitionApiRecord>(`/skills/library/${skillId}`);
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: mapGlobalSkillDefinition(result.data),
+  };
+}
+
+export async function createGlobalSkillLibraryItem(
+  payload: GlobalSkillDefinitionCreateRecord,
+): Promise<RequestResult<GlobalSkillDefinitionRecord>> {
+  const result = await postJson<GlobalSkillDefinitionApiRecord>("/skills/library", payload);
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: mapGlobalSkillDefinition(result.data),
+  };
+}
+
+export async function updateGlobalSkillLibraryItem(
+  skillId: string,
+  payload: GlobalSkillDefinitionUpdateRecord,
+): Promise<RequestResult<GlobalSkillDefinitionRecord>> {
+  const result = await patchJson<GlobalSkillDefinitionApiRecord>(`/skills/library/${skillId}`, payload);
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: mapGlobalSkillDefinition(result.data),
+  };
+}
+
+export async function listProjectSkillBindings(
+  projectId: string,
+): Promise<RequestResult<ProjectSkillBindingRecord[]>> {
+  const result = await requestJson<ProjectSkillBindingApiRecord[]>(
+    projectPath(projectId, "/skill-bindings"),
+  );
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: result.data.map(mapProjectSkillBinding),
+  };
+}
+
+export async function createProjectSkillBinding(
+  projectId: string,
+  payload: CreateProjectSkillBindingPayload,
+): Promise<RequestResult<ProjectSkillBindingRecord>> {
+  const result = await postJson<ProjectSkillBindingApiRecord>(
+    projectPath(projectId, "/skill-bindings"),
+    payload,
+  );
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: mapProjectSkillBinding(result.data),
+  };
+}
+
+export async function setProjectSkillBindingDefault(
+  projectId: string,
+  bindingId: string,
+): Promise<RequestResult<ProjectSkillBindingRecord>> {
+  const result = await postJson<ProjectSkillBindingApiRecord>(
+    projectPath(projectId, `/skill-bindings/${bindingId}/set-default`),
+  );
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: mapProjectSkillBinding(result.data),
+  };
+}
+
+export async function updateProjectSkillBinding(
+  projectId: string,
+  bindingId: string,
+  payload: UpdateProjectSkillBindingPayload,
+): Promise<RequestResult<ProjectSkillBindingRecord>> {
+  const result = await patchJson<ProjectSkillBindingApiRecord>(
+    projectPath(projectId, `/skill-bindings/${bindingId}`),
+    payload,
+  );
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: mapProjectSkillBinding(result.data),
+  };
+}
+
+export async function listGlobalSkillVersions(
+  skillId: string,
+): Promise<RequestResult<GlobalSkillVersionRecord[]>> {
+  const result = await requestJson<GlobalSkillVersionApiRecord[]>(
+    `/skills/library/${skillId}/versions`,
+  );
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: result.data.map(mapGlobalSkillVersion),
+  };
+}
+
+export async function createGlobalSkillVersion(
+  skillId: string,
+  payload: GlobalSkillVersionCreateRecord,
+): Promise<RequestResult<GlobalSkillVersionRecord>> {
+  const result = await postJson<GlobalSkillVersionApiRecord>(
+    `/skills/library/${skillId}/versions`,
+    payload,
+  );
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: mapGlobalSkillVersion(result.data),
+  };
+}
+
+export async function updateGlobalSkillVersion(
+  skillId: string,
+  versionId: string,
+  payload: GlobalSkillVersionUpdateRecord,
+): Promise<RequestResult<GlobalSkillVersionRecord>> {
+  const result = await patchJson<GlobalSkillVersionApiRecord>(
+    `/skills/library/${skillId}/versions/${versionId}`,
+    payload,
+  );
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: mapGlobalSkillVersion(result.data),
+  };
+}
+
+export async function publishGlobalSkillVersion(
+  skillId: string,
+  versionId: string,
+): Promise<RequestResult<GlobalSkillVersionRecord>> {
+  const result = await postJson<GlobalSkillVersionApiRecord>(
+    `/skills/library/${skillId}/versions/${versionId}/publish`,
+  );
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: mapGlobalSkillVersion(result.data),
+  };
+}
+
+export async function rollbackGlobalSkillVersion(
+  skillId: string,
+  versionId: string,
+): Promise<RequestResult<GlobalSkillVersionRecord>> {
+  const result = await postJson<GlobalSkillVersionApiRecord>(
+    `/skills/library/${skillId}/versions/${versionId}/rollback`,
+  );
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: mapGlobalSkillVersion(result.data),
+  };
+}
+
+export async function listSkillPackageVersions(
+  skillPackageId: string,
+): Promise<RequestResult<SkillPackageVersionRecord[]>> {
+  const result = await requestJson<SkillPackageVersionApiRecord[]>(
+    `/skill-packages/${skillPackageId}/versions`,
+  );
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: result.data.map(mapSkillPackageVersion),
+  };
+}
+
+export async function createSkillPackageVersion(
+  skillPackageId: string,
+  payload: CreateSkillPackageVersionPayload,
+): Promise<RequestResult<SkillPackageVersionRecord>> {
+  const result = await postJson<SkillPackageVersionApiRecord>(
+    `/skill-packages/${skillPackageId}/versions`,
+    payload,
+  );
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: mapSkillPackageVersion(result.data),
+  };
+}
+
+export async function activateSkillPackageVersion(
+  projectId: string,
+  skillPackageId: string,
+  versionId: string,
+): Promise<RequestResult<SkillPackageRecord>> {
+  const result = await postJson<SkillPackageApiRecord>(
+    projectPath(projectId, `/skill-packages/${skillPackageId}/activate/${versionId}`),
+  );
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: mapSkillPackage(result.data),
+  };
+}
+
 export async function listProjectGenerationTasks(
   projectId: string,
 ): Promise<GenerationTaskListResult> {
-  const result = await requestJson<GenerationTaskApiRecord[]>(
-    `/projects/${projectId}/generation-tasks`,
-  );
+  const result = await requestJson<GenerationTaskApiRecord[]>(projectPath(projectId, "/generation-tasks"));
 
   if (result.kind === "unavailable") {
     return {
@@ -1349,10 +2291,7 @@ export async function createGenerationTask(
   projectId: string,
   payload: CreateGenerationTaskPayload,
 ): Promise<RequestResult<GenerationTaskRecord>> {
-  const result = await postJson<GenerationTaskApiRecord>(
-    `/projects/${projectId}/generation-tasks`,
-    payload,
-  );
+  const result = await postJson<GenerationTaskApiRecord>(projectPath(projectId, "/generation-tasks"), payload);
 
   if (result.kind !== "success") {
     return result;
@@ -1364,8 +2303,23 @@ export async function createGenerationTask(
   };
 }
 
+export async function listProjectTestCaseDirectories(
+  projectId: string,
+): Promise<RequestResult<TestCaseDirectoryRecord[]>> {
+  const result = await requestJson<TestCaseDirectoryApiRecord[]>(projectPath(projectId, "/test-case-directories"));
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: result.data.map(mapTestCaseDirectory),
+  };
+}
+
 export async function listProjectTestCases(projectId: string): Promise<TestCaseListResult> {
-  const result = await requestJson<ProjectTestCaseApiRecord[]>(`/projects/${projectId}/test-cases`);
+  const result = await requestJson<ProjectTestCaseApiRecord[]>(projectPath(projectId, "/test-cases"));
 
   if (result.kind === "unavailable") {
     return {
@@ -1384,12 +2338,73 @@ export async function listProjectTestCases(projectId: string): Promise<TestCaseL
   };
 }
 
+export async function createTestCase(
+  projectId: string,
+  payload: TestCaseMutationPayload,
+): Promise<RequestResult<TestCaseRecord>> {
+  const result = await postJson<ProjectTestCaseApiRecord>(projectPath(projectId, "/test-cases"), payload);
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: mapTestCase(result.data),
+  };
+}
+
+export async function importTestCases(
+  projectId: string,
+  payload: { cases: TestCaseMutationPayload[] },
+): Promise<RequestResult<TestCaseRecord[]>> {
+  const result = await postJson<ProjectTestCaseApiRecord[]>(
+    projectPath(projectId, "/test-cases/import"),
+    payload,
+  );
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: result.data.map(mapTestCase),
+  };
+}
+
+export async function getTestCase(testCaseId: string): Promise<RequestResult<TestCaseRecord>> {
+  const result = await requestJson<ProjectTestCaseApiRecord>(`/test-cases/${testCaseId}`);
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: mapTestCase(result.data),
+  };
+}
+
+export async function listTestCaseReviews(
+  testCaseId: string,
+): Promise<RequestResult<ReviewRecord[]>> {
+  const result = await requestJson<ReviewApiRecord[]>(`/test-cases/${testCaseId}/reviews`);
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: result.data.map(mapReview),
+  };
+}
+
 export async function listProjectPublishedTestCases(
   projectId: string,
 ): Promise<TestCaseListResult> {
-  const result = await requestJson<ProjectTestCaseApiRecord[]>(
-    `/projects/${projectId}/published-test-cases`,
-  );
+  const result = await requestJson<ProjectTestCaseApiRecord[]>(projectPath(projectId, "/published-test-cases"));
 
   if (result.kind === "unavailable") {
     return {
@@ -1411,9 +2426,7 @@ export async function listProjectPublishedTestCases(
 export async function listProjectAutomationGenerations(
   projectId: string,
 ): Promise<AutomationGenerationListResult> {
-  const result = await requestJson<AutomationGenerationApiRecord[]>(
-    `/projects/${projectId}/automation-generations`,
-  );
+  const result = await requestJson<AutomationGenerationApiRecord[]>(projectPath(projectId, "/automation-generations"));
 
   if (result.kind === "unavailable") {
     return {
@@ -1435,9 +2448,7 @@ export async function listProjectAutomationGenerations(
 export async function listProjectAutomationRuns(
   projectId: string,
 ): Promise<AutomationRunListResult> {
-  const result = await requestJson<AutomationRunApiRecord[]>(
-    `/projects/${projectId}/automation-runs`,
-  );
+  const result = await requestJson<AutomationRunApiRecord[]>(projectPath(projectId, "/automation-runs"));
 
   if (result.kind === "unavailable") {
     return {
@@ -1459,9 +2470,7 @@ export async function listProjectAutomationRuns(
 export async function listProjectAutomationSchedules(
   projectId: string,
 ): Promise<AutomationScheduleListResult> {
-  const result = await requestJson<AutomationScheduleApiRecord[]>(
-    `/projects/${projectId}/automation-schedules`,
-  );
+  const result = await requestJson<AutomationScheduleApiRecord[]>(projectPath(projectId, "/automation-schedules"));
 
   if (result.kind === "unavailable") {
     return {
@@ -1483,9 +2492,7 @@ export async function listProjectAutomationSchedules(
 export async function listProjectAutomationReports(
   projectId: string,
 ): Promise<AutomationReportListResult> {
-  const result = await requestJson<AutomationReportApiRecord[]>(
-    `/projects/${projectId}/automation-reports`,
-  );
+  const result = await requestJson<AutomationReportApiRecord[]>(projectPath(projectId, "/automation-reports"));
 
   if (result.kind === "unavailable") {
     return {
@@ -1507,9 +2514,7 @@ export async function listProjectAutomationReports(
 export async function listProjectAutomationFinalReports(
   projectId: string,
 ): Promise<AutomationFinalReportListResult> {
-  const result = await requestJson<AutomationFinalReportApiRecord[]>(
-    `/projects/${projectId}/automation-final-reports`,
-  );
+  const result = await requestJson<AutomationFinalReportApiRecord[]>(projectPath(projectId, "/automation-final-reports"));
 
   if (result.kind === "unavailable") {
     return {
@@ -1531,9 +2536,7 @@ export async function listProjectAutomationFinalReports(
 export async function listProjectAutomationFailureAnalyses(
   projectId: string,
 ): Promise<AutomationFailureAnalysisListResult> {
-  const result = await requestJson<AutomationFailureAnalysisApiRecord[]>(
-    `/projects/${projectId}/automation-failure-analyses`,
-  );
+  const result = await requestJson<AutomationFailureAnalysisApiRecord[]>(projectPath(projectId, "/automation-failure-analyses"));
 
   if (result.kind === "unavailable") {
     return {
@@ -1555,9 +2558,7 @@ export async function listProjectAutomationFailureAnalyses(
 export async function listProjectAutomationDebugProposals(
   projectId: string,
 ): Promise<AutomationDebugProposalListResult> {
-  const result = await requestJson<AutomationDebugProposalApiRecord[]>(
-    `/projects/${projectId}/automation-debug-proposals`,
-  );
+  const result = await requestJson<AutomationDebugProposalApiRecord[]>(projectPath(projectId, "/automation-debug-proposals"));
 
   if (result.kind === "unavailable") {
     return {
@@ -1579,9 +2580,7 @@ export async function listProjectAutomationDebugProposals(
 export async function listProjectDataSetupHints(
   projectId: string,
 ): Promise<DataSetupHintListResult> {
-  const result = await requestJson<DataSetupHintApiRecord[]>(
-    `/projects/${projectId}/data-setup-hints`,
-  );
+  const result = await requestJson<DataSetupHintApiRecord[]>(projectPath(projectId, "/data-setup-hints"));
 
   if (result.kind === "unavailable") {
     return {
@@ -1603,9 +2602,7 @@ export async function listProjectDataSetupHints(
 export async function listProjectDataSetupExecutions(
   projectId: string,
 ): Promise<DataSetupExecutionListResult> {
-  const result = await requestJson<DataSetupExecutionApiRecord[]>(
-    `/projects/${projectId}/data-setup-executions`,
-  );
+  const result = await requestJson<DataSetupExecutionApiRecord[]>(projectPath(projectId, "/data-setup-executions"));
 
   if (result.kind === "unavailable") {
     return {
@@ -1800,7 +2797,7 @@ export async function updateAutomationRun(
 
 export async function updateTestCase(
   testCaseId: string,
-  payload: TestCaseMutationPayload,
+  payload: Partial<TestCaseMutationPayload>,
 ): Promise<RequestResult<TestCaseRecord>> {
   const result = await patchJson<ProjectTestCaseApiRecord>(
     `/test-cases/${testCaseId}`,

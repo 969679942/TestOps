@@ -9,6 +9,7 @@ class ProviderGenerationRequest:
     project_id: int
     prompt_version: str
     input_refs: Mapping[str, Any] = field(default_factory=dict)
+    context_bundle: Mapping[str, Any] = field(default_factory=dict)
 
 
 @dataclass(slots=True, frozen=True)

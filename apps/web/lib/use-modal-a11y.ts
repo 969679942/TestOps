@@ -5,8 +5,8 @@ import { useEffect, useRef } from "react";
 const FOCUSABLE =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-export function useModalA11y(open: boolean, onClose: () => void) {
-  const panelRef = useRef<HTMLDivElement>(null);
+export function useModalA11y<T extends HTMLElement = HTMLElement>(open: boolean, onClose: () => void) {
+  const panelRef = useRef<T>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {

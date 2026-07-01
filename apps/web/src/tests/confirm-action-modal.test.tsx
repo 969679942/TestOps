@@ -11,7 +11,6 @@ describe("ConfirmActionModal", () => {
         open
         title="归档项目"
         description="归档后项目将从默认列表隐藏。"
-        detail="不会删除历史文档、用例和计划。"
         confirmLabel="确认归档"
         cancelLabel="取消"
         tone="danger"

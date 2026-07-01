@@ -213,6 +213,38 @@ export function TestCaseMetadataSidebar({
           />
         </label>
 
+        <div className="field">
+          <span>来源依据</span>
+          {draft.sourceRefs.length > 0 ? (
+            <div className="review-stack">
+              {draft.sourceRefs.map((sourceRef, index) => (
+                <article className="review-meta-card" key={`trace-ref-${index + 1}`}>
+                  <strong>
+                    {String(
+                      sourceRef.document_name ??
+                        sourceRef.skill_name ??
+                        sourceRef.note ??
+                        `来源 ${index + 1}`,
+                    )}
+                  </strong>
+                  <p>
+                    {Object.entries(sourceRef)
+                      .map(([key, value]) => `${key}: ${String(value)}`)
+                      .join(" | ")}
+                  </p>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <textarea rows={3} readOnly value="生成后会自动沉淀来源文档、规则和技能包引用。" />
+          )}
+        </div>
+
+        <label className="field">
+          <span>生成任务</span>
+          <input value={draft.generationTaskId ?? "手工创建"} readOnly />
+        </label>
+
         <label className="field">
           <span>附件</span>
           <textarea

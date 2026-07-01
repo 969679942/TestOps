@@ -73,8 +73,8 @@ export default async function TestCaseListPage({
 
       <section className="page-header">
         <span className="eyebrow">{copy.testCasePreviewEyebrow}</span>
-        <h2>{projectDisplayName}</h2>
-        <p>{copy.testCasePreviewHint}</p>
+        <h2>测试用例库</h2>
+        <p>当前项目：{projectDisplayName}。{copy.testCasePreviewHint}</p>
       </section>
 
       <WorkflowSteps

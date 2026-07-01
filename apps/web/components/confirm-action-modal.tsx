@@ -38,7 +38,7 @@ export function ConfirmActionModal({
   const [closing, setClosing] = useState(false);
   const titleId = useId();
   const descriptionId = useId();
-  const panelRef = useModalA11y(open && visible && !closing, onClose);
+  const panelRef = useModalA11y<HTMLDialogElement>(open && visible && !closing, onClose);
 
   useEffect(() => {
     setMounted(true);
@@ -91,16 +91,16 @@ export function ConfirmActionModal({
     <div
       className={`modal-backdrop ${closing ? "is-closing" : ""}`}
       role="presentation"
-      onClick={handleClose}
+      onMouseDown={handleClose}
     >
-      <div
+      <dialog
+        open
         ref={panelRef}
         className={`modal-panel project-status-modal ${closing ? "is-closing" : ""}`}
-        role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
-        onClick={(event) => event.stopPropagation()}
+        onMouseDown={(event) => event.stopPropagation()}
       >
         <div className="project-status-modal-copy">
           <div className="project-status-modal-title-row">
@@ -123,7 +123,7 @@ export function ConfirmActionModal({
             {submitting ? `${confirmLabel}...` : confirmLabel}
           </button>
         </div>
-      </div>
+      </dialog>
     </div>,
     document.body,
   );

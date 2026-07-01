@@ -38,6 +38,16 @@ class TestCase(Base):
     automation_flag: Mapped[bool] = mapped_column(default=False, nullable=False)
     automation_notes: Mapped[str | None] = mapped_column(Text(), nullable=True)
     ui_context: Mapped[dict[str, Any] | None] = mapped_column(JSON(), nullable=True)
+    linked_requirement: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    source_refs: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSON(),
+        default=list,
+        nullable=False,
+    )
+    generation_task_id: Mapped[int | None] = mapped_column(
+        ForeignKey("generation_tasks.id"),
+        nullable=True,
+    )
     status: Mapped[str] = mapped_column(String(32), default="draft", nullable=False)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(), default=_utcnow, nullable=False)

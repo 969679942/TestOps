@@ -30,8 +30,11 @@ export function ProjectStatusAction({
   const nextStatus: ProjectStatus = status === "archived" ? "active" : "archived";
   const confirmationTitle = nextStatus === "archived" ? copy.archiveProject : copy.restoreProject;
   const confirmationDescription =
-    nextStatus === "archived" ? copy.archiveProjectConfirm : copy.restoreProjectConfirm;
-  const confirmationButtonLabel = confirmationTitle;
+    nextStatus === "archived"
+      ? `${copy.archiveProjectConfirm}${copy.archiveProjectImpact}`
+      : `${copy.restoreProjectConfirm}${copy.restoreProjectImpact}`;
+  const confirmationButtonLabel =
+    nextStatus === "archived" ? copy.confirmArchiveProject : copy.confirmRestoreProject;
 
   async function handleClick() {
     setError(null);

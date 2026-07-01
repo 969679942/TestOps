@@ -18,15 +18,20 @@ type NavItem = {
   href: string;
   label: string;
   badge?: number;
+  exact?: boolean;
 };
 
-function isCurrentPath(currentPath: string | undefined, href: string) {
+function isCurrentPath(currentPath: string | undefined, href: string, exact = false) {
   if (!currentPath) {
     return false;
   }
 
   if (href === "/") {
     return currentPath === "/";
+  }
+
+  if (exact) {
+    return currentPath === href;
   }
 
   return currentPath === href || currentPath.startsWith(`${href}/`);
@@ -46,12 +51,14 @@ export function AppShell({
   const projectDisplayName = project ? translateProjectName(project.name, locale) : null;
   const globalNav: NavItem[] = [
     { href: "/", label: t.projects },
+    { href: "/skills", label: t.skillsCenter },
     { href: "/settings", label: t.settings },
   ];
   const projectNav: NavItem[] = project
     ? [
-        { href: `/projects/${project.id}`, label: t.overview },
+        { href: `/projects/${project.id}`, label: t.overview, exact: true },
         { href: `/projects/${project.id}/documents`, label: t.documents },
+        { href: `/projects/${project.id}/skills`, label: t.projectSkills },
         { href: `/projects/${project.id}/generation-tasks`, label: t.generationTasks },
         {
           href: `/projects/${project.id}/automation-schedules`,
@@ -82,7 +89,7 @@ export function AppShell({
               key={item.label}
               className="shell-nav-link"
               href={localizedHref(item.href, locale)}
-              aria-current={isCurrentPath(currentPath, item.href) ? "page" : undefined}
+              aria-current={isCurrentPath(currentPath, item.href, item.exact) ? "page" : undefined}
             >
               {item.label}
             </Link>
@@ -91,15 +98,29 @@ export function AppShell({
 
         {project ? (
           <nav className="shell-nav-group" aria-label={t.projectWorkspace}>
-            <span className="shell-nav-label shell-project-name" title={projectDisplayName ?? undefined}>
-              {projectDisplayName}
-            </span>
+            <div className="project-context-card">
+              <span className="shell-nav-label">当前项目</span>
+              <strong className="shell-project-name" title={projectDisplayName ?? undefined}>
+                {projectDisplayName}
+              </strong>
+              <div className="project-context-actions">
+                <Link
+                  className="project-context-link"
+                  href={localizedHref(`/projects/${project.id}`, locale)}
+                >
+                  打开工作台
+                </Link>
+                <Link className="project-context-link" href={localizedHref("/", locale)}>
+                  项目切换
+                </Link>
+              </div>
+            </div>
             {projectNav.map((item) => (
               <Link
                 key={item.href}
                 className="shell-nav-link"
                 href={localizedHref(item.href, locale)}
-                aria-current={isCurrentPath(currentPath, item.href) ? "page" : undefined}
+                aria-current={isCurrentPath(currentPath, item.href, item.exact) ? "page" : undefined}
               >
                 <span>{item.label}</span>
                 {item.badge && item.badge > 0 ? (

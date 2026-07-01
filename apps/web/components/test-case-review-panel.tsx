@@ -11,6 +11,7 @@ import {
   type ReviewRecord,
   type TestCaseRecord,
 } from "../lib/workspace-api";
+import { ConfirmActionModal } from "./confirm-action-modal";
 import { StatusBadge } from "./status-badge";
 
 type TestCaseReviewPanelProps = Readonly<{
@@ -26,6 +27,28 @@ const reviewActionLabels: Record<string, string> = {
   comment: "评论",
 };
 
+type ReviewAction = "approve" | "request_change" | "reject" | "publish";
+
+const confirmationCopy: Record<
+  Extract<ReviewAction, "reject" | "publish">,
+  {
+    title: string;
+    description: string;
+    confirmLabel: string;
+  }
+> = {
+  reject: {
+    title: "确认驳回用例？",
+    description: "驳回后该用例将标记为已驳回，不会进入发布流程。",
+    confirmLabel: "确认驳回",
+  },
+  publish: {
+    title: "确认发布用例？",
+    description: "发布后内容将锁定，并提供给下游自动化流程使用。",
+    confirmLabel: "确认发布",
+  },
+};
+
 export function TestCaseReviewPanel({
   testCase: initialTestCase,
   reviews: initialReviews,
@@ -36,16 +59,21 @@ export function TestCaseReviewPanel({
   const [comment, setComment] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [pendingConfirmation, setPendingConfirmation] = useState<
+    Extract<ReviewAction, "reject" | "publish"> | null
+  >(null);
 
-  async function runAction(action: "approve" | "request_change" | "reject" | "publish") {
-    if (action === "reject" && !window.confirm("确认驳回该用例？")) {
+  async function runAction(action: ReviewAction) {
+    if (action === "reject" || action === "publish") {
+      setError(null);
+      setPendingConfirmation(action);
       return;
     }
 
-    if (action === "publish" && !window.confirm("确认发布该用例？发布后将锁定内容。")) {
-      return;
-    }
+    await commitAction(action);
+  }
 
+  async function commitAction(action: ReviewAction) {
     setBusy(true);
     setError(null);
 
@@ -72,6 +100,7 @@ export function TestCaseReviewPanel({
       }
 
       setComment("");
+      setPendingConfirmation(null);
       router.refresh();
     } catch (actionError) {
       setError(actionError instanceof ApiError ? actionError.message : "评审操作失败。");
@@ -82,8 +111,12 @@ export function TestCaseReviewPanel({
 
   const canPublish = testCase.status === "approved";
   const isPublished = testCase.status === "published";
+  const activeConfirmation = pendingConfirmation
+    ? confirmationCopy[pendingConfirmation]
+    : null;
 
   return (
+    <>
     <section className="review-panel" aria-label="评审操作">
       <div className="review-panel-header">
         <div className="review-panel-header-copy">
@@ -188,5 +221,30 @@ export function TestCaseReviewPanel({
         )}
       </div>
     </section>
+    <ConfirmActionModal
+      open={pendingConfirmation !== null}
+      title={activeConfirmation?.title ?? ""}
+      description={activeConfirmation?.description ?? ""}
+      confirmLabel={activeConfirmation?.confirmLabel ?? ""}
+      tone="danger"
+      submitting={busy}
+      error={error}
+      onClose={() => {
+        if (busy) {
+          return;
+        }
+
+        setPendingConfirmation(null);
+        setError(null);
+      }}
+      onConfirm={() => {
+        if (!pendingConfirmation) {
+          return;
+        }
+
+        void commitAction(pendingConfirmation);
+      }}
+    />
+    </>
   );
 }

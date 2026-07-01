@@ -1,156 +1,135 @@
-export type ProjectRecord = {
+import {
+  addTestCaseReview as addTestCaseReviewApi,
+  createProject as createProjectApi,
+  createProjectDocument as createProjectDocumentApi,
+  createTestCase as createTestCaseApi,
+  deleteProject as deleteProjectApi,
+  deleteProjectDocument as deleteProjectDocumentApi,
+  getProject as getProjectApi,
+  getTestCase as getTestCaseApi,
+  importTestCases as importTestCasesApi,
+  listProjectDocuments as listProjectDocumentsApi,
+  listProjects as listProjectsApi,
+  listProjectsWithStats as listProjectsWithStatsApi,
+  listProjectTestCaseDirectories as listProjectTestCaseDirectoriesApi,
+  listProjectTestCases as listProjectTestCasesApi,
+  listTestCaseReviews as listTestCaseReviewsApi,
+  publishTestCase as publishTestCaseApi,
+  updateProjectStatus as updateProjectStatusApi,
+  updateTestCase as updateTestCaseApi,
+  uploadProjectDocument as uploadProjectDocumentApi,
+} from "./api";
+import type {
+  CreateReviewPayload,
+  ProjectStatus as ApiProjectStatus,
+  ProjectStatusFilter as ApiProjectStatusFilter,
+  ProjectSummaryRecord as ApiProjectSummaryRecord,
+  ReviewRecord as ApiReviewRecord,
+} from "./api";
+import type {
+  DocumentAsset,
+  ProjectRecord as ApiProjectRecord,
+  TestCaseDirectoryRecord as ApiTestCaseDirectoryRecord,
+  TestCaseMutationPayload,
+  TestCaseRecord as ApiTestCaseRecord,
+} from "./types";
+
+export type ProjectRecord = Omit<ApiProjectRecord, "id"> & {
   id: string;
-  name: string;
-  code: string;
-  description: string | null;
-  status: string;
-  defaultProvider: string;
-  defaultPromptProfile: string;
 };
 
-export type ProjectDocumentRecord = {
+export type ProjectDocumentRecord = Omit<DocumentAsset, "id" | "projectId"> & {
   id: string;
   projectId: string;
-  type: string;
-  name: string;
-  sourceMode: string;
-  sourceUri: string | null;
 };
 
-export type TestCaseDirectoryRecord = {
+export type TestCaseDirectoryRecord = Omit<
+  ApiTestCaseDirectoryRecord,
+  "id" | "projectId" | "parentId" | "children"
+> & {
   id: string;
   projectId: string;
-  name: string;
   parentId: string | null;
   children: TestCaseDirectoryRecord[];
 };
 
-export type TestCaseRecord = {
+export type TestCaseRecord = Omit<ApiTestCaseRecord, "id" | "projectId" | "directoryId"> & {
   id: string;
   projectId: string;
-  title: string;
   directoryId: string | null;
-  module: string;
-  feature: string;
-  caseType: string;
-  priority: string;
-  preconditions: string[];
-  steps: Array<{
-    text?: string;
-    action?: string;
-    target?: string;
-    locator_hint?: string;
-    locatorHint?: string;
-    value?: string;
-    assertion?: string;
-    timeout_ms?: number;
-    timeoutMs?: number;
-    order?: number;
-  }>;
-  expectedResults: { text: string }[];
-  tags: string[];
-  automationFlag: boolean;
-  automationNotes: string | null;
-  uiContext: {
-    schemaVersion: string;
-    framework: string;
-    baseUrl: string;
-    browser: string;
-    viewport: { width: number; height: number };
-    entryPath: string;
-    entryReadySelector: string;
-    testData: Record<string, string>;
-    teardown: string;
-  } | null;
-  status: string;
-  publishedAt: string | null;
+  uiContext: Exclude<ApiTestCaseRecord["uiContext"], undefined>;
+  publishedAt: Exclude<ApiTestCaseRecord["publishedAt"], undefined>;
 };
 
-export type GenerationTaskRecord = {
+export type ProjectSummaryRecord = Omit<ApiProjectSummaryRecord, "id"> & {
   id: string;
-  projectId: string;
-  status: string;
-  provider: string;
-  model: string;
-  promptVersion: string;
-  inputDocumentIds: number[];
-  errorMessage: string | null;
 };
 
-export type ReviewRecord = {
-  id: string;
-  testCaseId: string;
+export type ReviewRecord = ApiReviewRecord;
+export type ProjectStatus = ApiProjectStatus;
+export type ProjectStatusFilter = ApiProjectStatusFilter;
+export type CreateTestCaseInput = ReturnType<
+  typeof import("./ui-automation-case").serializeDraftForApi
+>;
+
+type RequestResult<T> =
+  | {
+      kind: "success";
+      data: T;
+    }
+  | {
+      kind: "unavailable";
+    }
+  | {
+      kind: "http-error";
+      status: number;
+    };
+
+type ProjectListResult = {
+  kind: "success" | "unavailable";
+  projects: ApiProjectRecord[];
+} | {
+  kind: "http-error";
+  status: number;
+};
+
+type ProjectLookupResult =
+  | {
+      kind: "success";
+      project: ApiProjectRecord;
+    }
+  | {
+      kind: "unavailable";
+      project: ApiProjectRecord | null;
+    }
+  | {
+      kind: "not-found";
+    }
+  | {
+      kind: "http-error";
+      status: number;
+    };
+
+type DocumentListResult = {
+  kind: "success" | "unavailable";
+  documents: DocumentAsset[];
+} | {
+  kind: "http-error";
+  status: number;
+};
+
+type TestCaseListResult = {
+  kind: "success" | "unavailable";
+  items: ApiTestCaseRecord[];
+} | {
+  kind: "http-error";
+  status: number;
+};
+
+type AddReviewInput = {
   reviewerId: string;
-  action: string;
-  comment: string | null;
-  createdAt: string;
-};
-
-type ProjectApiRecord = {
-  id: number;
-  name: string;
-  code: string;
-  description: string | null;
-  status: string;
-  default_provider: string;
-  default_prompt_profile: string;
-};
-
-type ProjectDocumentApiRecord = {
-  id: number;
-  project_id: number;
-  type: string;
-  name: string;
-  source_mode: string;
-  source_uri: string | null;
-};
-
-type TestCaseDirectoryApiRecord = {
-  id: number;
-  project_id: number;
-  name: string;
-  parent_id: number | null;
-  children: TestCaseDirectoryApiRecord[];
-};
-
-type TestCaseApiRecord = {
-  id: number;
-  project_id: number;
-  directory_id: number | null;
-  title: string;
-  module: string;
-  feature: string;
-  case_type: string;
-  priority: string;
-  preconditions: string[];
-  steps: Array<Record<string, unknown>>;
-  expected_results: { text: string }[];
-  tags: string[];
-  automation_flag: boolean;
-  automation_notes: string | null;
-  ui_context: Record<string, unknown> | null;
-  status: string;
-  published_at: string | null;
-};
-
-type GenerationTaskApiRecord = {
-  id: number;
-  project_id: number;
-  status: string;
-  provider: string;
-  model: string;
-  prompt_version: string;
-  input_refs: { document_ids?: number[] };
-  error_message: string | null;
-};
-
-type ReviewApiRecord = {
-  id: number;
-  test_case_id: number;
-  reviewer_id: string;
-  action: string;
-  comment: string | null;
-  created_at: string;
+  action: "comment" | "request_change" | "approve" | "reject";
+  comment?: string | null;
 };
 
 export class ApiError extends Error {
@@ -163,242 +142,136 @@ export class ApiError extends Error {
   }
 }
 
-export function getApiBaseUrl(): string {
-  if (typeof window !== "undefined") {
-    return process.env.NEXT_PUBLIC_TESTOPS_API_BASE_URL ?? "http://127.0.0.1:8000";
+function throwFromResult<T>(result: RequestResult<T>, fallbackMessage: string): never {
+  if (result.kind === "http-error") {
+    throw new ApiError(fallbackMessage, result.status);
   }
 
-  return (
-    process.env.TESTOPS_API_BASE_URL ??
-    process.env.NEXT_PUBLIC_TESTOPS_API_BASE_URL ??
-    "http://127.0.0.1:8000"
-  );
+  throw new ApiError(fallbackMessage, 503);
 }
 
-async function parseError(response: Response): Promise<string> {
-  try {
-    const payload = (await response.json()) as { detail?: unknown };
-    if (typeof payload.detail === "string") {
-      return payload.detail;
-    }
-    if (Array.isArray(payload.detail)) {
-      return payload.detail.map((item) => JSON.stringify(item)).join("; ");
-    }
-  } catch {
-    // ignore parse failures
+function unwrapData<T>(result: RequestResult<T>, fallbackMessage: string): T {
+  if (result.kind === "success") {
+    return result.data;
   }
 
-  return `Request failed with status ${response.status}`;
+  return throwFromResult(result, fallbackMessage);
 }
 
-async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${getApiBaseUrl()}${path}`, {
-    ...init,
-    cache: "no-store",
-    headers: {
-      Accept: "application/json",
-      ...(init?.body ? { "Content-Type": "application/json" } : {}),
-      ...init?.headers,
-    },
-  });
-
-  if (!response.ok) {
-    throw new ApiError(await parseError(response), response.status);
-  }
-
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
-  return (await response.json()) as T;
-}
-
-function mapProject(project: ProjectApiRecord): ProjectRecord {
+function mapProject(project: ApiProjectRecord): ProjectRecord {
   return {
+    ...project,
     id: String(project.id),
-    name: project.name,
-    code: project.code,
-    description: project.description,
-    status: project.status,
-    defaultProvider: project.default_provider,
-    defaultPromptProfile: project.default_prompt_profile,
   };
 }
 
-function mapDocument(document: ProjectDocumentApiRecord): ProjectDocumentRecord {
+function mapProjectSummary(project: ApiProjectSummaryRecord): ProjectSummaryRecord {
   return {
+    ...project,
+    id: String(project.id),
+  };
+}
+
+function mapDocument(document: DocumentAsset): ProjectDocumentRecord {
+  return {
+    ...document,
     id: String(document.id),
-    projectId: String(document.project_id),
-    type: document.type,
-    name: document.name,
-    sourceMode: document.source_mode,
-    sourceUri: document.source_uri,
+    projectId: String(document.projectId),
   };
 }
 
-function mapUiContext(raw: Record<string, unknown> | null): TestCaseRecord["uiContext"] {
-  if (!raw) {
-    return null;
-  }
-
-  const viewportRaw = raw.viewport;
-  const viewport =
-    viewportRaw && typeof viewportRaw === "object" && !Array.isArray(viewportRaw)
-      ? {
-          width: Number((viewportRaw as Record<string, unknown>).width ?? 1280),
-          height: Number((viewportRaw as Record<string, unknown>).height ?? 720),
-        }
-      : { width: 1280, height: 720 };
-
-  const testDataRaw = raw.test_data ?? raw.testData;
-  const testData: Record<string, string> = {};
-  if (testDataRaw && typeof testDataRaw === "object" && !Array.isArray(testDataRaw)) {
-    for (const [key, value] of Object.entries(testDataRaw)) {
-      testData[key] = String(value);
-    }
-  }
-
+function mapTestCaseDirectory(directory: ApiTestCaseDirectoryRecord): TestCaseDirectoryRecord {
   return {
-    schemaVersion: String(raw.schema_version ?? raw.schemaVersion ?? "ui-automation-v1"),
-    framework: String(raw.framework ?? "playwright"),
-    baseUrl: String(raw.base_url ?? raw.baseUrl ?? ""),
-    browser: String(raw.browser ?? "chromium"),
-    viewport,
-    entryPath: String(raw.entry_path ?? raw.entryPath ?? ""),
-    entryReadySelector: String(raw.entry_ready_selector ?? raw.entryReadySelector ?? ""),
-    testData,
-    teardown: String(raw.teardown ?? ""),
-  };
-}
-
-function mapTestCaseDirectory(
-  directory: TestCaseDirectoryApiRecord,
-): TestCaseDirectoryRecord {
-  return {
+    ...directory,
     id: String(directory.id),
-    projectId: String(directory.project_id),
-    name: directory.name,
-    parentId: directory.parent_id === null ? null : String(directory.parent_id),
+    projectId: String(directory.projectId),
+    parentId: directory.parentId === null ? null : String(directory.parentId),
     children: directory.children.map(mapTestCaseDirectory),
   };
 }
 
-function mapTestCase(testCase: TestCaseApiRecord): TestCaseRecord {
+function mapTestCase(testCase: ApiTestCaseRecord): TestCaseRecord {
   return {
+    ...testCase,
     id: String(testCase.id),
-    projectId: String(testCase.project_id),
-    directoryId: testCase.directory_id === null ? null : String(testCase.directory_id),
-    title: testCase.title,
-    module: testCase.module,
-    feature: testCase.feature,
-    caseType: testCase.case_type,
-    priority: testCase.priority,
-    preconditions: testCase.preconditions,
-    steps: testCase.steps,
-    expectedResults: testCase.expected_results,
-    tags: testCase.tags,
-    automationFlag: testCase.automation_flag,
-    automationNotes: testCase.automation_notes,
-    uiContext: mapUiContext(testCase.ui_context),
-    status: testCase.status,
-    publishedAt: testCase.published_at,
+    projectId: String(testCase.projectId),
+    directoryId: testCase.directoryId === null ? null : String(testCase.directoryId),
+    uiContext: testCase.uiContext ?? null,
+    publishedAt: testCase.publishedAt ?? null,
   };
 }
 
-function mapGenerationTask(task: GenerationTaskApiRecord): GenerationTaskRecord {
-  return {
-    id: String(task.id),
-    projectId: String(task.project_id),
-    status: task.status,
-    provider: task.provider,
-    model: task.model,
-    promptVersion: task.prompt_version,
-    inputDocumentIds: task.input_refs.document_ids ?? [],
-    errorMessage: task.error_message,
-  };
+function toTestCaseMutationPayload(
+  input: Partial<CreateTestCaseInput>,
+): Partial<TestCaseMutationPayload> {
+  const payload: Partial<TestCaseMutationPayload> = {};
+
+  if (input.title !== undefined) payload.title = input.title;
+  if (input.module !== undefined) payload.module = input.module;
+  if (input.feature !== undefined) payload.feature = input.feature;
+  if (input.caseType !== undefined) payload.case_type = input.caseType;
+  if (input.priority !== undefined) payload.priority = input.priority;
+  if (input.preconditions !== undefined) payload.preconditions = input.preconditions;
+  if (input.steps !== undefined) {
+    payload.steps = input.steps as TestCaseMutationPayload["steps"];
+  }
+  if (input.expectedResults !== undefined) payload.expected_results = input.expectedResults;
+  if (input.tags !== undefined) payload.tags = input.tags;
+  if (input.automationFlag !== undefined) payload.automation_flag = input.automationFlag;
+  if (input.automationNotes !== undefined) payload.automation_notes = input.automationNotes;
+  if (input.linkedRequirement !== undefined) {
+    payload.linked_requirement = input.linkedRequirement?.trim() || null;
+  }
+  if (input.sourceRefs !== undefined) payload.source_refs = input.sourceRefs;
+  if (input.generationTaskId !== undefined) {
+    payload.generation_task_id = input.generationTaskId ? Number(input.generationTaskId) : null;
+  }
+  if (input.directoryId !== undefined) {
+    payload.directory_id = input.directoryId ? Number(input.directoryId) : null;
+  }
+  if (input.uiContext !== undefined) payload.ui_context = input.uiContext;
+
+  return payload;
 }
 
-function mapReview(review: ReviewApiRecord): ReviewRecord {
-  return {
-    id: String(review.id),
-    testCaseId: String(review.test_case_id),
-    reviewerId: review.reviewer_id,
-    action: review.action,
-    comment: review.comment,
-    createdAt: review.created_at,
-  };
-}
+export async function listProjects(status: ProjectStatusFilter = "active"): Promise<ProjectRecord[]> {
+  const result = (await listProjectsApi()) as ProjectListResult;
 
-type ProjectSummaryApiRecord = ProjectApiRecord & {
-  document_count: number;
-  test_case_count: number;
-  published_count: number;
-};
+  if (result.kind === "http-error") {
+    throw new ApiError("加载项目列表失败。", result.status);
+  }
 
-export type ProjectSummaryRecord = ProjectRecord & {
-  documentCount: number;
-  testCaseCount: number;
-  publishedCount: number;
-};
-
-export type ProjectStatus = "active" | "archived";
-export type ProjectStatusFilter = ProjectStatus | "all";
-
-function mapProjectSummary(project: ProjectSummaryApiRecord): ProjectSummaryRecord {
-  return {
-    ...mapProject(project),
-    documentCount: project.document_count,
-    testCaseCount: project.test_case_count,
-    publishedCount: project.published_count,
-  };
-}
-
-export async function listProjects(
-  status: ProjectStatusFilter = "active",
-): Promise<ProjectRecord[]> {
-  const projects = await requestJson<ProjectApiRecord[]>(`/projects?status=${status}`);
-  return projects.map(mapProject);
-}
-
-async function enrichProjectsWithStats(
-  projects: ProjectRecord[],
-): Promise<ProjectSummaryRecord[]> {
-  return Promise.all(
-    projects.map(async (project) => {
-      const [documents, testCases] = await Promise.all([
-        listProjectDocuments(project.id),
-        listProjectTestCases(project.id),
-      ]);
-
-      return {
-        ...project,
-        documentCount: documents.length,
-        testCaseCount: testCases.length,
-        publishedCount: testCases.filter((item) => item.status === "published").length,
-      };
-    }),
-  );
+  const projects = result.projects.map(mapProject);
+  return status === "all" ? projects : projects.filter((project) => project.status === status);
 }
 
 export async function listProjectsWithStats(
   status: ProjectStatusFilter = "active",
 ): Promise<ProjectSummaryRecord[]> {
-  try {
-    const projects = await requestJson<ProjectSummaryApiRecord[]>(
-      `/project-summaries?status=${status}`,
-    );
-    return projects.map(mapProjectSummary);
-  } catch (error) {
-    if (error instanceof ApiError && (error.status === 404 || error.status === 422)) {
-      return enrichProjectsWithStats(await listProjects(status));
-    }
-    throw error;
-  }
+  const result = await listProjectsWithStatsApi(status);
+  return unwrapData(result, "加载项目统计失败。").map(mapProjectSummary);
 }
 
 export async function getProject(projectId: string): Promise<ProjectRecord> {
-  const project = await requestJson<ProjectApiRecord>(`/projects/${projectId}`);
-  return mapProject(project);
+  const result = (await getProjectApi(projectId)) as ProjectLookupResult;
+
+  if (result.kind === "success") {
+    return mapProject(result.project);
+  }
+
+  if (result.kind === "unavailable" && result.project) {
+    return mapProject(result.project);
+  }
+
+  if (result.kind === "not-found") {
+    throw new ApiError("项目不存在。", 404);
+  }
+
+  if (result.kind === "http-error") {
+    throw new ApiError("加载项目信息失败。", result.status);
+  }
+
+  throw new ApiError("加载项目信息失败。", 503);
 }
 
 export async function createProject(input: {
@@ -406,40 +279,48 @@ export async function createProject(input: {
   code: string;
   description?: string;
 }): Promise<ProjectRecord> {
-  const project = await requestJson<ProjectApiRecord>("/projects", {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
-  return mapProject(project);
+  return mapProject(
+    unwrapData(
+      await createProjectApi({
+        name: input.name,
+        code: input.code,
+        description: input.description ?? null,
+      }),
+      "创建项目失败。",
+    ),
+  );
 }
 
 export async function updateProjectStatus(
   projectId: string,
   status: ProjectStatus,
 ): Promise<ProjectRecord> {
-  const project = await requestJson<ProjectApiRecord>(`/projects/${projectId}/status`, {
-    method: "PATCH",
-    body: JSON.stringify({ status }),
-  });
-  return mapProject(project);
+  return mapProject(
+    unwrapData(await updateProjectStatusApi(projectId, status), "更新项目状态失败。"),
+  );
 }
 
-export async function listProjectDocuments(
-  projectId: string,
-): Promise<ProjectDocumentRecord[]> {
-  const documents = await requestJson<ProjectDocumentApiRecord[]>(
-    `/projects/${projectId}/documents`,
-  );
-  return documents.map(mapDocument);
+export async function deleteProject(projectId: string): Promise<void> {
+  unwrapData(await deleteProjectApi(projectId), "删除项目失败。");
+}
+
+export async function listProjectDocuments(projectId: string): Promise<ProjectDocumentRecord[]> {
+  const result = (await listProjectDocumentsApi(projectId)) as DocumentListResult;
+
+  if (result.kind === "http-error") {
+    throw new ApiError("加载项目文档失败。", result.status);
+  }
+
+  return result.documents.map(mapDocument);
 }
 
 export async function listProjectTestCaseDirectories(
   projectId: string,
 ): Promise<TestCaseDirectoryRecord[]> {
-  const directories = await requestJson<TestCaseDirectoryApiRecord[]>(
-    `/projects/${projectId}/test-case-directories`,
-  );
-  return directories.map(mapTestCaseDirectory);
+  return unwrapData(
+    await listProjectTestCaseDirectoriesApi(projectId),
+    "加载用例目录失败。",
+  ).map(mapTestCaseDirectory);
 }
 
 export async function createProjectDocument(
@@ -451,19 +332,17 @@ export async function createProjectDocument(
     sourceUri?: string | null;
   },
 ): Promise<ProjectDocumentRecord> {
-  const document = await requestJson<ProjectDocumentApiRecord>(
-    `/projects/${projectId}/documents`,
-    {
-      method: "POST",
-      body: JSON.stringify({
+  return mapDocument(
+    unwrapData(
+      await createProjectDocumentApi(projectId, {
         type: input.type,
         name: input.name,
         source_mode: input.sourceMode,
         source_uri: input.sourceUri ?? null,
       }),
-    },
+      "创建项目文档失败。",
+    ),
   );
-  return mapDocument(document);
 }
 
 export async function uploadProjectDocument(
@@ -475,210 +354,96 @@ export async function uploadProjectDocument(
     sourceMode?: string;
   },
 ): Promise<ProjectDocumentRecord> {
-  const formData = new FormData();
-  formData.append("file", input.file);
-  formData.append("type", input.type);
-  formData.append("name", input.name);
-  formData.append("source_mode", input.sourceMode ?? "upload");
-
-  const response = await fetch(`${getApiBaseUrl()}/projects/${projectId}/documents/upload`, {
-    method: "POST",
-    body: formData,
-    cache: "no-store",
-    headers: { Accept: "application/json" },
-  });
-
-  if (!response.ok) {
-    throw new ApiError(await parseError(response), response.status);
-  }
-
-  const document = (await response.json()) as ProjectDocumentApiRecord;
-  return mapDocument(document);
+  return mapDocument(
+    unwrapData(await uploadProjectDocumentApi(projectId, input), "上传项目文档失败。"),
+  );
 }
 
 export async function deleteProjectDocument(
   projectId: string,
   documentId: string,
 ): Promise<void> {
-  await requestJson<void>(`/projects/${projectId}/documents/${documentId}`, {
-    method: "DELETE",
-  });
+  unwrapData(await deleteProjectDocumentApi(projectId, documentId), "删除项目文档失败。");
 }
 
 export async function listProjectTestCases(projectId: string): Promise<TestCaseRecord[]> {
-  const testCases = await requestJson<TestCaseApiRecord[]>(
-    `/projects/${projectId}/test-cases`,
-  );
-  return testCases.map(mapTestCase);
+  const result = (await listProjectTestCasesApi(projectId)) as TestCaseListResult;
+
+  if (result.kind === "http-error") {
+    throw new ApiError("加载测试用例失败。", result.status);
+  }
+
+  return result.items.map(mapTestCase);
 }
 
 export async function importTestCases(
   projectId: string,
-  cases: Array<ReturnType<typeof import("./ui-automation-case").serializeDraftForApi>>,
+  cases: CreateTestCaseInput[],
 ): Promise<TestCaseRecord[]> {
-  const imported = await requestJson<TestCaseApiRecord[]>(
-    `/projects/${projectId}/test-cases/import`,
-    {
-      method: "POST",
-      body: JSON.stringify({
-        cases: cases.map((testCase) => ({
-          title: testCase.title,
-          module: testCase.module,
-          feature: testCase.feature,
-          case_type: testCase.caseType,
-          priority: testCase.priority,
-          preconditions: testCase.preconditions ?? [],
-          steps: testCase.steps,
-        expected_results: testCase.expectedResults,
-        tags: testCase.tags ?? [],
-        automation_flag: testCase.automationFlag ?? true,
-        automation_notes: testCase.automationNotes ?? null,
-        directory_id: testCase.directoryId ? Number(testCase.directoryId) : null,
-        ui_context: testCase.uiContext,
-      })),
-      }),
-    },
-  );
-  return imported.map(mapTestCase);
+  return unwrapData(
+    await importTestCasesApi(projectId, {
+      cases: cases.map((testCase) => toTestCaseMutationPayload(testCase) as TestCaseMutationPayload),
+    }),
+    "导入测试用例失败。",
+  ).map(mapTestCase);
 }
-
-export type CreateTestCaseInput = ReturnType<
-  typeof import("./ui-automation-case").serializeDraftForApi
->;
 
 export async function createTestCase(
   projectId: string,
   input: CreateTestCaseInput,
 ): Promise<TestCaseRecord> {
-  const testCase = await requestJson<TestCaseApiRecord>(`/projects/${projectId}/test-cases`, {
-    method: "POST",
-    body: JSON.stringify({
-      title: input.title,
-      module: input.module,
-      feature: input.feature,
-      case_type: input.caseType,
-      priority: input.priority,
-      preconditions: input.preconditions ?? [],
-      steps: input.steps,
-      expected_results: input.expectedResults,
-      tags: input.tags ?? [],
-      automation_flag: input.automationFlag ?? true,
-      automation_notes: input.automationNotes ?? null,
-      directory_id: input.directoryId ? Number(input.directoryId) : null,
-      ui_context: input.uiContext,
-    }),
-  });
-  return mapTestCase(testCase);
+  return mapTestCase(
+    unwrapData(
+      await createTestCaseApi(projectId, toTestCaseMutationPayload(input) as TestCaseMutationPayload),
+      "创建测试用例失败。",
+    ),
+  );
 }
 
 export async function getTestCase(testCaseId: string): Promise<TestCaseRecord> {
-  const testCase = await requestJson<TestCaseApiRecord>(`/test-cases/${testCaseId}`);
-  return mapTestCase(testCase);
+  return mapTestCase(unwrapData(await getTestCaseApi(testCaseId), "加载测试用例失败。"));
 }
 
 export async function updateTestCase(
   testCaseId: string,
   input: Partial<CreateTestCaseInput>,
 ): Promise<TestCaseRecord> {
-  const payload: Record<string, unknown> = {};
-  if (input.title !== undefined) payload.title = input.title;
-  if (input.module !== undefined) payload.module = input.module;
-  if (input.feature !== undefined) payload.feature = input.feature;
-  if (input.caseType !== undefined) payload.case_type = input.caseType;
-  if (input.priority !== undefined) payload.priority = input.priority;
-  if (input.preconditions !== undefined) payload.preconditions = input.preconditions;
-  if (input.steps !== undefined) payload.steps = input.steps;
-  if (input.expectedResults !== undefined) payload.expected_results = input.expectedResults;
-  if (input.tags !== undefined) payload.tags = input.tags;
-  if (input.automationFlag !== undefined) payload.automation_flag = input.automationFlag;
-  if (input.automationNotes !== undefined) payload.automation_notes = input.automationNotes;
-  if (input.directoryId !== undefined) {
-    payload.directory_id = input.directoryId ? Number(input.directoryId) : null;
-  }
-  if (input.uiContext !== undefined) payload.ui_context = input.uiContext;
-
-  const testCase = await requestJson<TestCaseApiRecord>(`/test-cases/${testCaseId}`, {
-    method: "PATCH",
-    body: JSON.stringify(payload),
-  });
-  return mapTestCase(testCase);
-}
-
-export async function listGenerationTasks(
-  projectId: string,
-): Promise<GenerationTaskRecord[]> {
-  const tasks = await requestJson<GenerationTaskApiRecord[]>(
-    `/projects/${projectId}/generation-tasks`,
+  return mapTestCase(
+    unwrapData(
+      await updateTestCaseApi(testCaseId, toTestCaseMutationPayload(input)),
+      "更新测试用例失败。",
+    ),
   );
-  return tasks.map(mapGenerationTask);
-}
-
-export async function createGenerationTask(
-  projectId: string,
-  input: { documentIds: number[]; provider?: string },
-): Promise<GenerationTaskRecord> {
-  const task = await requestJson<GenerationTaskApiRecord>(
-    `/projects/${projectId}/generation-tasks`,
-    {
-      method: "POST",
-      body: JSON.stringify({
-        provider: input.provider ?? "mock",
-        input_document_ids: input.documentIds,
-      }),
-    },
-  );
-  return mapGenerationTask(task);
-}
-
-export async function getGenerationTask(taskId: string): Promise<GenerationTaskRecord> {
-  const task = await requestJson<GenerationTaskApiRecord>(`/generation-tasks/${taskId}`);
-  return mapGenerationTask(task);
-}
-
-export async function waitForGenerationTask(
-  taskId: string,
-  options?: { intervalMs?: number; timeoutMs?: number },
-): Promise<GenerationTaskRecord> {
-  const intervalMs = options?.intervalMs ?? 1500;
-  const timeoutMs = options?.timeoutMs ?? 120_000;
-  const started = Date.now();
-
-  while (Date.now() - started < timeoutMs) {
-    const task = await getGenerationTask(taskId);
-    if (task.status === "completed" || task.status === "failed") {
-      return task;
-    }
-    await new Promise((resolve) => {
-      window.setTimeout(resolve, intervalMs);
-    });
-  }
-
-  throw new Error("生成任务超时，请稍后在用例列表查看进度。");
 }
 
 export async function listTestCaseReviews(testCaseId: string): Promise<ReviewRecord[]> {
-  const reviews = await requestJson<ReviewApiRecord[]>(`/test-cases/${testCaseId}/reviews`);
-  return reviews.map(mapReview);
+  return unwrapData(await listTestCaseReviewsApi(testCaseId), "加载评审记录失败。");
 }
 
 export async function addTestCaseReview(
   testCaseId: string,
-  input: { reviewerId: string; action: string; comment?: string },
+  payload: AddReviewInput,
 ): Promise<ReviewRecord> {
-  const review = await requestJson<ReviewApiRecord>(`/test-cases/${testCaseId}/reviews`, {
-    method: "POST",
-    body: JSON.stringify({
-      reviewer_id: input.reviewerId,
-      action: input.action,
-      comment: input.comment ?? null,
-    }),
-  });
-  return mapReview(review);
+  const result = await addTestCaseReviewApi(testCaseId, {
+    reviewer_id: payload.reviewerId,
+    action: payload.action,
+    comment: payload.comment ?? null,
+  } satisfies CreateReviewPayload);
+
+  if (result.kind !== "success") {
+    return throwFromResult(result, "提交评审记录失败。");
+  }
+
+  return {
+    id: String(result.data.id),
+    testCaseId: String(result.data.test_case_id),
+    reviewerId: result.data.reviewer_id,
+    action: result.data.action,
+    comment: result.data.comment,
+    createdAt: result.data.created_at,
+  };
 }
 
 export async function publishTestCase(testCaseId: string): Promise<TestCaseRecord> {
-  const testCase = await requestJson<TestCaseApiRecord>(`/test-cases/${testCaseId}/publish`, {
-    method: "POST",
-  });
-  return mapTestCase(testCase);
+  return mapTestCase(unwrapData(await publishTestCaseApi(testCaseId), "发布测试用例失败。"));
 }

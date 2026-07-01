@@ -61,6 +61,8 @@ export function TestCaseListWorkspace({
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<(typeof statusFilters)[number]>("all");
   const [selectedDirectoryId, setSelectedDirectoryId] = useState<string | null>(null);
+  const hasActiveFilters =
+    query.trim().length > 0 || status !== "all" || selectedDirectoryId !== null;
 
   const unclassifiedCount = testCases.filter((item) => item.directoryId === null).length;
   const selectedScopeIds = useMemo(
@@ -87,6 +89,12 @@ export function TestCaseListWorkspace({
       return matchesStatus && matchesQuery && matchesDirectory;
     });
   }, [query, selectedDirectoryId, selectedScopeIds, status, testCases]);
+
+  function resetFilters() {
+    setQuery("");
+    setStatus("all");
+    setSelectedDirectoryId(null);
+  }
 
   return (
     <section className="case-workspace">
@@ -137,7 +145,7 @@ export function TestCaseListWorkspace({
 
           <div className="case-workspace-toolbar-right">
             <label className="field field-inline">
-              <span className="sr-only">{copy.statusFilterLabel}</span>
+              <span>{copy.statusFilterLabel}</span>
               <select
                 value={status}
                 onChange={(event) => setStatus(event.target.value as typeof status)}
@@ -154,13 +162,22 @@ export function TestCaseListWorkspace({
             </label>
 
             <label className="field field-inline">
-              <span className="sr-only">{copy.searchLabel}</span>
+              <span>{copy.searchLabel}</span>
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="请输入名称、模块或功能点"
               />
             </label>
+
+            <button
+              className="button-ghost"
+              disabled={!hasActiveFilters}
+              type="button"
+              onClick={resetFilters}
+            >
+              重置
+            </button>
           </div>
         </section>
 

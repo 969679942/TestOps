@@ -71,6 +71,7 @@ function parseTestCaseMutation(
       .filter(Boolean),
     automation_flag: parseAutomationFlag(readFormText(formData, "automationFlag")),
     automation_notes: readFormText(formData, "automationNotes") || null,
+    linked_requirement: readFormText(formData, "linkedRequirement") || null,
   };
 }
 
@@ -125,38 +126,98 @@ export default async function ProjectReviewPage({
   const projectDisplayName = translateProjectName(project.name, locale);
 
   const testCaseList = await listProjectTestCases(projectId);
+  const reviewCandidates =
+    testCaseList.kind === "http-error"
+      ? []
+      : testCaseList.items.filter((item) => item.status !== "published");
+  const fallbackReviewItem = reviewCandidates[0] ?? null;
   const selectedItem =
-    resolvedSearchParams.caseId && testCaseList.kind !== "http-error"
-      ? testCaseList.items.find((item) => String(item.id) === resolvedSearchParams.caseId) ?? null
-      : null;
+    testCaseList.kind === "http-error"
+      ? null
+      : resolvedSearchParams.caseId
+        ? testCaseList.items.find((item) => String(item.id) === resolvedSearchParams.caseId) ?? null
+        : fallbackReviewItem;
+  const effectiveCaseId = selectedItem ? String(selectedItem.id) : null;
   const canRenderEditor = testCaseList.kind !== "http-error";
 
   async function saveReviewDraft(formData: FormData) {
     "use server";
 
-    if (!resolvedSearchParams.caseId) {
+    if (!effectiveCaseId) {
       return;
     }
 
     await updateTestCase(
-      resolvedSearchParams.caseId,
+      effectiveCaseId,
       parseTestCaseMutation(formData, locale),
     );
     revalidatePath(`/projects/${projectId}/review`);
     revalidatePath(`/projects/${projectId}/test-cases`);
   }
 
-  async function approveReviewDraft() {
+  function readReviewComment(
+    formData: FormData,
+    fallbackZh: string,
+    fallbackEn: string,
+  ) {
+    return readFormText(formData, "reviewComment") || (locale === "zh" ? fallbackZh : fallbackEn);
+  }
+
+  async function approveReviewDraft(formData: FormData) {
     "use server";
 
-    if (!resolvedSearchParams.caseId) {
+    if (!effectiveCaseId) {
       return;
     }
 
-    await addTestCaseReview(resolvedSearchParams.caseId, {
+    await addTestCaseReview(effectiveCaseId, {
       reviewer_id: "web.reviewer",
       action: "approve",
-      comment: locale === "zh" ? "已从评审工作台批准。" : "Approved from review workspace.",
+      comment: readReviewComment(
+        formData,
+        "已从评审工作台批准。",
+        "Approved from review workspace.",
+      ),
+    });
+    revalidatePath(`/projects/${projectId}/review`);
+    revalidatePath(`/projects/${projectId}/test-cases`);
+  }
+
+  async function requestChangeReviewDraft(formData: FormData) {
+    "use server";
+
+    if (!effectiveCaseId) {
+      return;
+    }
+
+    await addTestCaseReview(effectiveCaseId, {
+      reviewer_id: "web.reviewer",
+      action: "request_change",
+      comment: readReviewComment(
+        formData,
+        "已从评审工作台退回修改。",
+        "Requested changes from review workspace.",
+      ),
+    });
+    revalidatePath(`/projects/${projectId}/review`);
+    revalidatePath(`/projects/${projectId}/test-cases`);
+  }
+
+  async function rejectReviewDraft(formData: FormData) {
+    "use server";
+
+    if (!effectiveCaseId) {
+      return;
+    }
+
+    await addTestCaseReview(effectiveCaseId, {
+      reviewer_id: "web.reviewer",
+      action: "reject",
+      comment: readReviewComment(
+        formData,
+        "已从评审工作台驳回。",
+        "Rejected from review workspace.",
+      ),
     });
     revalidatePath(`/projects/${projectId}/review`);
     revalidatePath(`/projects/${projectId}/test-cases`);
@@ -165,11 +226,11 @@ export default async function ProjectReviewPage({
   async function publishReviewDraft() {
     "use server";
 
-    if (!resolvedSearchParams.caseId) {
+    if (!effectiveCaseId) {
       return;
     }
 
-    await publishTestCase(resolvedSearchParams.caseId);
+    await publishTestCase(effectiveCaseId);
     revalidatePath(`/projects/${projectId}/review`);
     revalidatePath(`/projects/${projectId}/test-cases`);
   }
@@ -178,8 +239,8 @@ export default async function ProjectReviewPage({
     <AppShell currentPath={`/projects/${projectId}/review`} locale={locale} project={project}>
       <section className="page-header">
         <span className="eyebrow">{t.reviewPage.eyebrow}</span>
-        <h2>{projectDisplayName}</h2>
-        <p>{t.reviewPage.description}</p>
+        <h2>{t.reviewPage.eyebrow}</h2>
+        <p>当前项目：{projectDisplayName}。{t.reviewPage.description}</p>
       </section>
 
       {testCaseList.kind === "unavailable" ? (
@@ -195,13 +256,52 @@ export default async function ProjectReviewPage({
       ) : null}
 
       {canRenderEditor ? (
-        <ReviewEditor
-          item={selectedItem}
-          locale={locale}
-          approveAction={approveReviewDraft}
-          publishAction={publishReviewDraft}
-          saveAction={saveReviewDraft}
-        />
+        <div className="review-stack">
+          {reviewCandidates.length > 0 ? (
+            <section className="data-card">
+              <div className="section-heading">
+                <div>
+                  <span className="eyebrow">{t.reviewPage.queue}</span>
+                  <h3>{t.reviewPage.testCases}</h3>
+                </div>
+                <p>{t.reviewPage.queueCopy}</p>
+              </div>
+              <div className="review-stack">
+                {reviewCandidates.map((item) => {
+                  const isSelected = selectedItem ? String(selectedItem.id) === String(item.id) : false;
+                  return (
+                    <a
+                      key={item.id}
+                      className="review-meta-card"
+                      href={localizedHref(`/projects/${projectId}/review?caseId=${item.id}`, locale)}
+                    >
+                      <span className="eyebrow">{item.module || t.reviewPage.general}</span>
+                      <p className="summary-value">{item.title || t.reviewPage.untitled}</p>
+                      <p>
+                        <span className="status-pill">
+                          {item.status}
+                        </span>
+                        {" · "}
+                        {item.feature || t.reviewPage.general}
+                        {isSelected ? " · 当前评审中" : ""}
+                      </p>
+                    </a>
+                  );
+                })}
+              </div>
+            </section>
+          ) : null}
+
+          <ReviewEditor
+            item={selectedItem}
+            locale={locale}
+            approveAction={approveReviewDraft}
+            requestChangeAction={requestChangeReviewDraft}
+            rejectAction={rejectReviewDraft}
+            publishAction={publishReviewDraft}
+            saveAction={saveReviewDraft}
+          />
+        </div>
       ) : null}
 
       <section className="workspace-links" aria-label={t.reviewPage.followUp}>

@@ -195,6 +195,94 @@ def test_patch_project_status_restores_archived_project_to_active(client):
     ]
 
 
+def test_delete_project_rejects_active_projects(client):
+    project = client.post(
+        "/projects",
+        json={"name": "Core Banking", "code": "core-banking"},
+    ).json()
+
+    response = client.delete(f"/projects/{project['id']}")
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Archive the project before deleting it"
+
+
+def test_delete_project_removes_archived_project(client):
+    project = client.post(
+        "/projects",
+        json={"name": "Legacy Banking", "code": "legacy-banking"},
+    ).json()
+    client.patch(
+        f"/projects/{project['id']}/status",
+        json={"status": "archived"},
+    )
+
+    delete_response = client.delete(f"/projects/{project['id']}")
+    detail_response = client.get(f"/projects/{project['id']}")
+    archived_response = client.get("/projects", params={"status": "archived"})
+
+    assert delete_response.status_code == 204
+    assert detail_response.status_code == 404
+    assert archived_response.status_code == 200
+    assert archived_response.json() == []
+
+
+def test_delete_archived_project_removes_linked_project_assets(client):
+    project = client.post(
+        "/projects",
+        json={"name": "Retired Payments", "code": "retired-payments"},
+    ).json()
+    document = client.post(
+        f"/projects/{project['id']}/documents",
+        json={
+            "type": "prd",
+            "name": "Retired Payments PRD",
+            "source_mode": "url",
+            "source_uri": "https://example.test/prd.md",
+        },
+    ).json()
+    package = client.post(
+        f"/projects/{project['id']}/skill-packages",
+        json={"system_key": "retired-payments", "name": "Retired Payments Skill"},
+    ).json()
+    client.post(
+        f"/skill-packages/{package['id']}/versions",
+        json={
+            "summary": "Retired v1",
+            "content": {"prompt_template": "Generate cases"},
+        },
+    )
+    client.post(
+        f"/projects/{project['id']}/test-cases",
+        json={
+            "title": "Refund succeeds",
+            "module": "Refund",
+            "feature": "Original route",
+            "case_type": "functional",
+            "priority": "high",
+            "preconditions": ["Order exists"],
+            "steps": [{"text": "Submit refund"}],
+            "expected_results": [{"text": "Refund is accepted"}],
+            "tags": ["retired"],
+            "automation_flag": False,
+            "automation_notes": None,
+        },
+    )
+    client.patch(
+        f"/projects/{project['id']}/status",
+        json={"status": "archived"},
+    )
+
+    delete_response = client.delete(f"/projects/{project['id']}")
+    documents_response = client.get(f"/projects/{project['id']}/documents")
+    package_versions_response = client.get(f"/skill-packages/{package['id']}/versions")
+
+    assert delete_response.status_code == 204
+    assert documents_response.status_code == 404
+    assert package_versions_response.status_code == 404
+    assert document["name"] == "Retired Payments PRD"
+
+
 def test_patch_project_status_rejects_invalid_status(client):
     project = client.post(
         "/projects",

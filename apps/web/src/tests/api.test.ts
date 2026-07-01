@@ -10,11 +10,18 @@ import {
   createAutomationRerun,
   createAutomationRun,
   createDocumentVersion,
+  createGlobalSkillLibraryItem,
+  createGlobalSkillVersion,
+  getGlobalSkillLibraryItem,
+  createProjectSkillBinding,
+  createSkillPackage,
+  createSkillPackageVersion,
   createProjectEnvironment,
   createGenerationTask,
   createProjectDocument,
   getProject,
   getRuntimeSettings,
+  updateRuntimeSettings,
   listProjectAutomationDebugProposals,
   listProjectAutomationFinalReports,
   listProjectAutomationSchedules,
@@ -26,12 +33,25 @@ import {
   listProjectAutomationFailureAnalyses,
   listProjectAutomationRuns,
   listProjectAutomationReports,
+  listGlobalSkillLibrary,
+  listGlobalSkillVersions,
+  listProjectSkillBindings,
+  listProjectSkillPackages,
   listProjectGenerationTasks,
+  listDocumentVersions,
+  listSkillPackageVersions,
   listProjectPublishedTestCases,
   listProjects,
   listProjectTestCases,
   parseDocumentVersion,
   publishTestCase,
+  publishGlobalSkillVersion,
+  rollbackGlobalSkillVersion,
+  activateSkillPackageVersion,
+  setProjectSkillBindingDefault,
+  updateGlobalSkillLibraryItem,
+  updateGlobalSkillVersion,
+  updateProjectSkillBinding,
   updateProjectEnvironment,
   updateAutomationRun,
   reviewAutomationDebugProposal,
@@ -105,6 +125,60 @@ describe("api fallbacks", () => {
         name: "Payments Platform",
       },
     });
+  });
+
+  it("maps known demo project slugs to the live numeric API project ids", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        id: 1,
+        name: "Payments Platform",
+        code: "payments",
+        description: "Checkout and refunds",
+        status: "active",
+        default_provider: "cursor",
+        default_prompt_profile: "default",
+      }),
+    );
+    fetchMock.mockResolvedValueOnce(jsonResponse([]));
+    fetchMock.mockResolvedValueOnce(jsonResponse([]));
+
+    await expect(getProject("payments")).resolves.toMatchObject({
+      kind: "success",
+      project: {
+        id: "1",
+        code: "payments",
+      },
+    });
+    await expect(listProjectDocuments("payments")).resolves.toEqual({
+      kind: "success",
+      documents: [],
+    });
+    await expect(listProjectTestCases("payments")).resolves.toEqual({
+      kind: "success",
+      items: [],
+    });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "http://127.0.0.1:8000/projects/1",
+      expect.objectContaining({
+        cache: "no-store",
+      }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "http://127.0.0.1:8000/projects/1/documents",
+      expect.objectContaining({
+        cache: "no-store",
+      }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      "http://127.0.0.1:8000/projects/1/test-cases",
+      expect.objectContaining({
+        cache: "no-store",
+      }),
+    );
   });
 
   it("distinguishes project http errors from missing projects", async () => {
@@ -225,6 +299,10 @@ describe("api fallbacks", () => {
           pattern: "pom",
           reporter: "allure-playwright",
         },
+        storage: {
+          artifact_root: "var/artifacts",
+          document_root: "data/documents",
+        },
       }),
     );
 
@@ -248,12 +326,169 @@ describe("api fallbacks", () => {
           pattern: "pom",
           reporter: "allure-playwright",
         },
+        storage: {
+          artifactRoot: "var/artifacts",
+          documentRoot: "data/documents",
+        },
       },
     });
     expect(fetchMock).toHaveBeenCalledWith(
       "http://127.0.0.1:8000/settings/runtime",
       expect.objectContaining({
         cache: "no-store",
+      }),
+    );
+  });
+
+  it("fills runtime settings defaults when older API responses omit new sections", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        cursor: {
+          command: "cursor-agent",
+          timeout_seconds: 180,
+          cwd: "D:/TestOps",
+        },
+        codex: {
+          failure_analysis_model: "codex-provider-boundary",
+        },
+        notifications: {
+          lark_webhook_configured: false,
+        },
+        runner: {
+          framework: "playwright",
+          language: "typescript",
+          pattern: "pom",
+          reporter: "allure-playwright",
+        },
+      }),
+    );
+
+    await expect(getRuntimeSettings()).resolves.toEqual({
+      kind: "success",
+      settings: {
+        cursor: {
+          command: "cursor-agent",
+          timeoutSeconds: 180,
+          cwd: "D:/TestOps",
+        },
+        codex: {
+          failureAnalysisModel: "codex-provider-boundary",
+        },
+        notifications: {
+          larkWebhookConfigured: false,
+        },
+        runner: {
+          framework: "playwright",
+          language: "typescript",
+          pattern: "pom",
+          reporter: "allure-playwright",
+        },
+        storage: {
+          artifactRoot: "var/artifacts",
+          documentRoot: "data/documents",
+        },
+      },
+    });
+  });
+
+  it("updates runtime settings through the API", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        cursor: {
+          command: "cursor-custom",
+          timeout_seconds: 240,
+          cwd: "D:/Menusifu/TestOps",
+        },
+        codex: {
+          failure_analysis_model: "codex-latest",
+        },
+        notifications: {
+          lark_webhook_configured: false,
+        },
+        runner: {
+          framework: "playwright",
+          language: "typescript",
+          pattern: "screenplay",
+          reporter: "html",
+        },
+        storage: {
+          artifact_root: "var/test-artifacts",
+          document_root: "var/test-documents",
+        },
+      }),
+    );
+
+    await expect(
+      updateRuntimeSettings({
+        cursor: {
+          command: "cursor-custom",
+          timeoutSeconds: 240,
+          cwd: "D:/Menusifu/TestOps",
+        },
+        codex: {
+          failureAnalysisModel: "codex-latest",
+        },
+        runner: {
+          framework: "playwright",
+          language: "typescript",
+          pattern: "screenplay",
+          reporter: "html",
+        },
+        storage: {
+          artifactRoot: "var/test-artifacts",
+          documentRoot: "var/test-documents",
+        },
+      }),
+    ).resolves.toEqual({
+      kind: "success",
+      settings: {
+        cursor: {
+          command: "cursor-custom",
+          timeoutSeconds: 240,
+          cwd: "D:/Menusifu/TestOps",
+        },
+        codex: {
+          failureAnalysisModel: "codex-latest",
+        },
+        notifications: {
+          larkWebhookConfigured: false,
+        },
+        runner: {
+          framework: "playwright",
+          language: "typescript",
+          pattern: "screenplay",
+          reporter: "html",
+        },
+        storage: {
+          artifactRoot: "var/test-artifacts",
+          documentRoot: "var/test-documents",
+        },
+      },
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/settings/runtime",
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({
+          cursor: {
+            command: "cursor-custom",
+            timeout_seconds: 240,
+            cwd: "D:/Menusifu/TestOps",
+          },
+          codex: {
+            failure_analysis_model: "codex-latest",
+          },
+          runner: {
+            framework: "playwright",
+            language: "typescript",
+            pattern: "screenplay",
+            reporter: "html",
+          },
+          storage: {
+            artifact_root: "var/test-artifacts",
+            document_root: "var/test-documents",
+          },
+        }),
       }),
     );
   });
@@ -499,6 +734,370 @@ describe("api fallbacks", () => {
         parseStatus: "queued",
       },
     });
+    fetchMock.mockResolvedValueOnce(jsonResponse([versionResponse]));
+    await expect(listDocumentVersions("7")).resolves.toMatchObject({
+      kind: "success",
+      data: [
+        {
+          id: "12",
+          versionNo: 1,
+          parseStatus: "queued",
+        },
+      ],
+    });
+  });
+
+  it("creates, lists, versions, and activates skill packages through the API", async () => {
+    const packageResponse = {
+      id: 21,
+      project_id: 1,
+      system_key: "payments",
+      name: "Payments Skill",
+      status: "active",
+      active_version_id: null,
+      active_version_summary: null,
+      created_at: "2026-05-18T09:00:00Z",
+      updated_at: "2026-05-18T09:00:00Z",
+    };
+    const versionResponse = {
+      id: 31,
+      skill_package_id: 21,
+      version_no: 1,
+      storage_uri: "oss://skills/payments/v1.zip",
+      structured_metadata: { scenario_taxonomy: ["happy_path"] },
+      summary: "Payments v1",
+      created_at: "2026-05-18T09:01:00Z",
+    };
+    const activatedResponse = {
+      ...packageResponse,
+      active_version_id: 31,
+      active_version_summary: "Payments v1",
+    };
+
+    fetchMock.mockResolvedValueOnce(jsonResponse(packageResponse, 201));
+    fetchMock.mockResolvedValueOnce(jsonResponse([packageResponse]));
+    fetchMock.mockResolvedValueOnce(jsonResponse(versionResponse, 201));
+    fetchMock.mockResolvedValueOnce(jsonResponse([versionResponse]));
+    fetchMock.mockResolvedValueOnce(jsonResponse(activatedResponse));
+
+    await expect(
+      createSkillPackage("1", {
+        system_key: "payments",
+        name: "Payments Skill",
+      }),
+    ).resolves.toMatchObject({
+      kind: "success",
+      data: {
+        id: "21",
+        systemKey: "payments",
+      },
+    });
+    await expect(listProjectSkillPackages("1")).resolves.toMatchObject({
+      kind: "success",
+      data: [{ id: "21", name: "Payments Skill" }],
+    });
+    await expect(
+      createSkillPackageVersion("21", {
+        summary: "Payments v1",
+        storage_uri: "oss://skills/payments/v1.zip",
+        content: { scenario_taxonomy: ["happy_path"] },
+      }),
+    ).resolves.toMatchObject({
+      kind: "success",
+      data: {
+        id: "31",
+        summary: "Payments v1",
+        storageUri: "oss://skills/payments/v1.zip",
+      },
+    });
+    await expect(listSkillPackageVersions("21")).resolves.toMatchObject({
+      kind: "success",
+      data: [{ id: "31", versionNo: 1, storageUri: "oss://skills/payments/v1.zip" }],
+    });
+    await expect(activateSkillPackageVersion("1", "21", "31")).resolves.toMatchObject({
+      kind: "success",
+      data: { activeVersionId: "31", activeVersionSummary: "Payments v1" },
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/skill-packages/21/versions",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          summary: "Payments v1",
+          storage_uri: "oss://skills/payments/v1.zip",
+          content: { scenario_taxonomy: ["happy_path"] },
+        }),
+      }),
+    );
+  });
+
+  it("lists global skills and skill versions through the API", async () => {
+    const skillResponse = {
+      id: 101,
+      skill_key: "prd_rules_core",
+      name: "PRD + 业务规则主模板",
+      description: "Generate evidence-backed cases.",
+      category: "core",
+      domain: "general",
+      input_types: ["prd", "business_rule"],
+      status: "active",
+      owner: "system",
+      current_production_version_id: 201,
+      current_production_version_label: "v1 Production",
+      created_at: "2026-06-28T10:00:00Z",
+      updated_at: "2026-06-28T10:00:00Z",
+    };
+    const versionResponse = {
+      id: 201,
+      global_skill_id: 101,
+      version_no: 1,
+      version_label: "v1 Production",
+      status: "production",
+      prompt_template: "Generate test cases",
+      scenario_taxonomy: ["happy_path", "boundary"],
+      review_checklist: ["traceable", "observable"],
+      coverage_dimensions: ["core_user_journey"],
+      evidence_policy: "Only derive cases from explicit evidence.",
+      storage_uri: "seed://skills/prd_rules_core/v1",
+      change_log: "Initial version",
+      release_notes: "Baseline release",
+      created_by: "system",
+      created_at: "2026-06-28T10:00:00Z",
+      published_at: "2026-06-28T10:00:00Z",
+    };
+
+    fetchMock.mockResolvedValueOnce(jsonResponse([skillResponse]));
+    fetchMock.mockResolvedValueOnce(jsonResponse(skillResponse));
+    fetchMock.mockResolvedValueOnce(jsonResponse([versionResponse]));
+
+    await expect(listGlobalSkillLibrary()).resolves.toMatchObject({
+      kind: "success",
+      data: [{ id: "101", skillKey: "prd_rules_core", currentProductionVersionLabel: "v1 Production" }],
+    });
+    await expect(getGlobalSkillLibraryItem("101")).resolves.toMatchObject({
+      kind: "success",
+      data: { id: "101", name: "PRD + 业务规则主模板" },
+    });
+    await expect(listGlobalSkillVersions("101")).resolves.toMatchObject({
+      kind: "success",
+      data: [{ id: "201", versionLabel: "v1 Production", status: "production" }],
+    });
+  });
+
+  it("creates, updates, and publishes global skills through the API", async () => {
+    const createdSkillResponse = {
+      id: 102,
+      skill_key: "workflow_recovery_plus",
+      name: "流程恢复补场景模板",
+      description: "Focus on rollback and async recovery.",
+      category: "extension",
+      domain: "general",
+      input_types: ["prd", "business_rule"],
+      status: "active",
+      owner: "workspace",
+      current_production_version_id: null,
+      current_production_version_label: null,
+      created_at: "2026-06-29T01:00:00Z",
+      updated_at: "2026-06-29T01:00:00Z",
+    };
+    const updatedSkillResponse = {
+      ...createdSkillResponse,
+      description: "Updated description",
+      updated_at: "2026-06-29T01:10:00Z",
+    };
+    const createdVersionResponse = {
+      id: 205,
+      global_skill_id: 102,
+      version_no: 1,
+      version_label: "v1 Draft",
+      status: "draft",
+      prompt_template: "Generate recovery cases",
+      scenario_taxonomy: ["recovery", "rollback"],
+      review_checklist: ["traceable"],
+      coverage_dimensions: ["exception_flow"],
+      evidence_policy: "Only use explicit evidence.",
+      storage_uri: "oss://skills/workflow-recovery/v1.zip",
+      change_log: "Initial draft",
+      release_notes: "Draft release",
+      created_by: "workspace",
+      created_at: "2026-06-29T01:20:00Z",
+      published_at: null,
+    };
+    const publishedVersionResponse = {
+      ...createdVersionResponse,
+      status: "production",
+      version_label: "v1 Production",
+      published_at: "2026-06-29T01:30:00Z",
+    };
+    const rolledBackVersionResponse = {
+      ...publishedVersionResponse,
+      version_label: "v1 Rollback Target",
+    };
+
+    fetchMock.mockResolvedValueOnce(jsonResponse(createdSkillResponse, 201));
+    fetchMock.mockResolvedValueOnce(jsonResponse(updatedSkillResponse));
+    fetchMock.mockResolvedValueOnce(jsonResponse(createdVersionResponse, 201));
+    fetchMock.mockResolvedValueOnce(jsonResponse(createdVersionResponse));
+    fetchMock.mockResolvedValueOnce(jsonResponse(publishedVersionResponse));
+    fetchMock.mockResolvedValueOnce(jsonResponse(rolledBackVersionResponse));
+
+    await expect(
+      createGlobalSkillLibraryItem({
+        skill_key: "workflow_recovery_plus",
+        name: "流程恢复补场景模板",
+        description: "Focus on rollback and async recovery.",
+        category: "extension",
+        domain: "general",
+        input_types: ["prd", "business_rule"],
+        owner: "workspace",
+      }),
+    ).resolves.toMatchObject({
+      kind: "success",
+      data: { id: "102", skillKey: "workflow_recovery_plus" },
+    });
+
+    await expect(
+      updateGlobalSkillLibraryItem("102", {
+        description: "Updated description",
+      }),
+    ).resolves.toMatchObject({
+      kind: "success",
+      data: { description: "Updated description" },
+    });
+
+    await expect(
+      createGlobalSkillVersion("102", {
+        version_label: "v1 Draft",
+        prompt_template: "Generate recovery cases",
+        scenario_taxonomy: ["recovery", "rollback"],
+        review_checklist: ["traceable"],
+        coverage_dimensions: ["exception_flow"],
+        evidence_policy: "Only use explicit evidence.",
+        storage_uri: "oss://skills/workflow-recovery/v1.zip",
+        change_log: "Initial draft",
+        release_notes: "Draft release",
+        created_by: "workspace",
+        status: "draft",
+      }),
+    ).resolves.toMatchObject({
+      kind: "success",
+      data: { id: "205", versionLabel: "v1 Draft", status: "draft" },
+    });
+
+    await expect(
+      updateGlobalSkillVersion("102", "205", {
+        version_label: "v1 Draft",
+      }),
+    ).resolves.toMatchObject({
+      kind: "success",
+      data: { id: "205", versionLabel: "v1 Draft" },
+    });
+
+    await expect(publishGlobalSkillVersion("102", "205")).resolves.toMatchObject({
+      kind: "success",
+      data: { id: "205", status: "production", versionLabel: "v1 Production" },
+    });
+    await expect(rollbackGlobalSkillVersion("102", "205")).resolves.toMatchObject({
+      kind: "success",
+      data: { id: "205", status: "production", versionLabel: "v1 Rollback Target" },
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/skills/library/102/versions/205/rollback",
+      expect.objectContaining({
+        method: "POST",
+      }),
+    );
+  });
+
+  it("lists, creates, and updates project skill bindings through the API", async () => {
+    const bindingResponse = {
+      id: 301,
+      project_id: 1,
+      global_skill_id: 101,
+      global_skill_version_id: 201,
+      binding_type: "primary",
+      status: "active",
+      is_default: true,
+      override_payload: {},
+      skill_key: "prd_rules_core",
+      skill_name: "PRD + 业务规则主模板",
+      version_label: "v1 Production",
+      version_status: "production",
+      skill_category: "core",
+      skill_domain: "general",
+      input_types: ["prd", "business_rule"],
+      created_at: "2026-06-28T10:00:00Z",
+      updated_at: "2026-06-28T10:00:00Z",
+    };
+    const updatedBindingResponse = {
+      ...bindingResponse,
+      global_skill_version_id: 202,
+      version_label: "v2 Candidate",
+      is_default: false,
+      updated_at: "2026-06-29T02:00:00Z",
+    };
+
+    fetchMock.mockResolvedValueOnce(jsonResponse([bindingResponse]));
+    fetchMock.mockResolvedValueOnce(jsonResponse(bindingResponse, 201));
+    fetchMock.mockResolvedValueOnce(jsonResponse(bindingResponse));
+    fetchMock.mockResolvedValueOnce(jsonResponse(updatedBindingResponse));
+
+    await expect(listProjectSkillBindings("1")).resolves.toMatchObject({
+      kind: "success",
+      data: [{ id: "301", skillName: "PRD + 业务规则主模板", isDefault: true }],
+    });
+    await expect(
+      createProjectSkillBinding("1", {
+        global_skill_id: 101,
+        binding_type: "primary",
+        is_default: true,
+      }),
+    ).resolves.toMatchObject({
+      kind: "success",
+      data: { id: "301", globalSkillId: "101", versionLabel: "v1 Production" },
+    });
+    await expect(setProjectSkillBindingDefault("1", "301")).resolves.toMatchObject({
+      kind: "success",
+      data: { id: "301", isDefault: true },
+    });
+    await expect(
+      updateProjectSkillBinding("1", "301", {
+        global_skill_version_id: 202,
+        is_default: false,
+      }),
+    ).resolves.toMatchObject({
+      kind: "success",
+      data: { id: "301", globalSkillVersionId: "202", versionLabel: "v2 Candidate" },
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/projects/1/skill-bindings",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          global_skill_id: 101,
+          binding_type: "primary",
+          is_default: true,
+        }),
+      }),
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/projects/1/skill-bindings/301/set-default",
+      expect.objectContaining({
+        method: "POST",
+      }),
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/projects/1/skill-bindings/301",
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({
+          global_skill_version_id: 202,
+          is_default: false,
+        }),
+      }),
+    );
   });
 
   it("maps generation task responses from the API", async () => {
@@ -511,7 +1110,7 @@ describe("api fallbacks", () => {
           provider: "cursor",
           model: "gpt-4.1-mini",
           prompt_version: "default",
-          input_refs: { document_ids: [1, 2] },
+          input_refs: { document_version_ids: [1, 2], skill_version_id: 31 },
           started_at: null,
           finished_at: "2026-05-18T09:32:00Z",
           error_message: "broker unreachable",
@@ -530,7 +1129,7 @@ describe("api fallbacks", () => {
           provider: "cursor",
           model: "gpt-4.1-mini",
           promptVersion: "default",
-          inputRefs: { document_ids: [1, 2] },
+          inputRefs: { document_version_ids: [1, 2], skill_version_id: 31 },
           startedAt: null,
           finishedAt: "2026-05-18T09:32:00Z",
           errorMessage: "broker unreachable",
@@ -549,7 +1148,12 @@ describe("api fallbacks", () => {
         provider: "cursor",
         model: "cursor-default",
         prompt_version: "default",
-        input_refs: { document_ids: [7] },
+        input_refs: {
+          document_version_ids: [12],
+          skill_version_id: 31,
+          seed_test_case_ids: [301, 302],
+          coverage_gap_note: "补充退款失败后的回滚与告警场景",
+        },
         started_at: null,
         finished_at: null,
         error_message: null,
@@ -559,7 +1163,10 @@ describe("api fallbacks", () => {
 
     await expect(
       createGenerationTask("1", {
-        input_document_ids: [7],
+        input_document_version_ids: [12],
+        input_skill_version_id: 31,
+        seed_test_case_ids: [301, 302],
+        coverage_gap_note: "补充退款失败后的回滚与告警场景",
         provider: "cursor",
         model: null,
         prompt_profile: null,
@@ -569,9 +1176,100 @@ describe("api fallbacks", () => {
       data: {
         id: "11",
         provider: "cursor",
-        inputRefs: { document_ids: [7] },
+        inputRefs: {
+          document_version_ids: [12],
+          skill_version_id: 31,
+          seed_test_case_ids: [301, 302],
+          coverage_gap_note: "补充退款失败后的回滚与告警场景",
+        },
       },
     });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/projects/1/generation-tasks",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          input_document_version_ids: [12],
+          input_skill_version_id: 31,
+          seed_test_case_ids: [301, 302],
+          coverage_gap_note: "补充退款失败后的回滚与告警场景",
+          provider: "cursor",
+          model: null,
+          prompt_profile: null,
+        }),
+      }),
+    );
+  });
+
+  it("creates generation tasks with a project skill binding through the API", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        id: 12,
+        project_id: 1,
+        status: "queued",
+        provider: "cursor",
+        model: "cursor-default",
+        prompt_version: "default",
+        input_refs: {
+          document_version_ids: [18],
+          skill_binding_id: 301,
+          global_skill_id: 101,
+          global_skill_version_id: 201,
+          skill_binding_snapshot: {
+            binding_id: 301,
+            global_skill_id: 101,
+            global_skill_version_id: 201,
+            skill_name: "PRD + 业务规则主模板",
+            version_label: "v1 Production",
+          },
+          seed_test_case_ids: [],
+          coverage_gap_note: null,
+        },
+        started_at: null,
+        finished_at: null,
+        error_message: null,
+        created_at: "2026-06-28T10:30:00Z",
+      }),
+    );
+
+    await expect(
+      createGenerationTask("1", {
+        input_document_version_ids: [18],
+        input_skill_binding_id: 301,
+        seed_test_case_ids: [],
+        coverage_gap_note: null,
+        provider: "cursor",
+        model: null,
+        prompt_profile: null,
+      }),
+    ).resolves.toMatchObject({
+      kind: "success",
+      data: {
+        id: "12",
+        inputRefs: {
+          document_version_ids: [18],
+          skill_binding_id: 301,
+          global_skill_id: 101,
+          global_skill_version_id: 201,
+        },
+      },
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/projects/1/generation-tasks",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          input_document_version_ids: [18],
+          input_skill_binding_id: 301,
+          seed_test_case_ids: [],
+          coverage_gap_note: null,
+          provider: "cursor",
+          model: null,
+          prompt_profile: null,
+        }),
+      }),
+    );
   });
 
   it("falls back to demo test cases only when the backend is unavailable", async () => {
@@ -627,6 +1325,11 @@ describe("api fallbacks", () => {
           tags: ["smoke"],
           automationFlag: true,
           automationNotes: "Use checkout fixture",
+          uiContext: null,
+          linkedRequirement: null,
+          sourceRefs: [],
+          generationTaskId: null,
+          publishedAt: null,
         },
       ],
     });

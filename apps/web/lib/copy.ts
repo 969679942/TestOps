@@ -29,7 +29,7 @@ export const copy = {
   selectAll: "全选",
   clearSelection: "清空选择",
   noDocuments: "暂无文档",
-  noDocumentsHint: "上传 PRD、Swagger 或 Figma 链接后即可生成用例。",
+  noDocumentsHint: "上传 PRD、业务规则、补充资料、Swagger 或 Figma 链接后即可生成用例。",
   generationComplete: "生成完成",
   generationCompleteHint: "请在下方预览草稿，修改措辞后批准并发布。",
   noTestCases: "暂无用例",
@@ -57,7 +57,7 @@ export const copy = {
   preconditions: "前置条件",
   modeGenerate: "上传资料生成",
   modeImport: "导入用例",
-  modeGenerateHint: "上传 PRD、Swagger 或 Figma 资料，由系统生成用例草稿。",
+  modeGenerateHint: "上传 PRD、业务规则、补充资料、Swagger 或 Figma 资料，由系统生成用例草稿。",
   modeImportHint: "已有用例文件时，可直接导入 JSON 用例文件，无需先生成用例草稿。",
   importTitle: "上传用例文件",
   importHint: "导入后将进入预览、评审与发布流程。",
@@ -108,7 +108,7 @@ export const copy = {
   navLabel: "导航",
   projectNavLabel: "项目导航",
   workspaceEyebrow: "项目工作台",
-  testCasePreviewEyebrow: "用例预览",
+  testCasePreviewEyebrow: "测试用例库",
   testCasePreviewHint: "筛选、查看并编辑生成的用例草稿，完成后批准并发布。",
   testCaseDetailEyebrow: "用例详情",
   projectDirectoryEyebrow: "项目目录",
@@ -178,6 +178,7 @@ export const copy = {
   archivedProjects: "已归档项目",
   projectArchived: "项目已归档",
   projectArchivedHint: "该项目已归档，可继续查看历史数据。如需继续操作，请先恢复项目。",
+  archivedProjectReadonlyHint: "归档项目仅支持查看、恢复或删除，恢复后才能继续主链路。",
   archiveProjectConfirm: "归档后项目将从默认列表隐藏，但不会删除已有数据。",
   archiveProjectImpact: "历史文档、用例、生成任务和自动化计划会继续保留，只会从默认项目列表移除。",
   confirmArchiveProject: "确认归档",
@@ -185,6 +186,12 @@ export const copy = {
   restoreProjectImpact: "恢复后，项目将重新回到进行中项目列表，并恢复文档、用例和计划的常规操作入口。",
   confirmRestoreProject: "确认恢复",
   archivedProjectActionHint: "项目已归档，请先恢复后再继续操作。",
+  deleteProject: "删除项目",
+  deleteProjectConfirm: "删除后项目文档、Skills、生成任务、用例和自动化数据将不可恢复。",
+  deleteProjectImpact: "为避免误删，只有已归档项目可以删除。若只是暂停使用，请保留归档状态。",
+  confirmDeleteProject: "确认删除",
+  projectDeletedToast: "项目已删除。",
+  deleteProjectFailed: "删除项目失败，请稍后再试。",
   updateProjectStatusFailed: "项目状态更新失败，请稍后再试。",
 } as const;
 
@@ -230,6 +237,8 @@ export const statusLabels: Record<string, string> = {
 
 export const documentTypeLabels: Record<string, string> = {
   prd: "PRD",
+  business_rule: "业务规则",
+  supplement: "补充资料",
   swagger: "Swagger",
   figma: "Figma",
 };

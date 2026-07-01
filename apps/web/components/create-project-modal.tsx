@@ -19,7 +19,7 @@ export function CreateProjectModal({ open, onClose, onCreated }: CreateProjectMo
   const [visible, setVisible] = useState(open);
   const [closing, setClosing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const panelRef = useModalA11y(open && visible && !closing, onClose);
+  const panelRef = useModalA11y<HTMLDialogElement>(open && visible && !closing, onClose);
 
   useEffect(() => {
     if (open) {
@@ -64,15 +64,15 @@ export function CreateProjectModal({ open, onClose, onCreated }: CreateProjectMo
     <div
       className={`modal-backdrop ${closing ? "is-closing" : ""}`}
       role="presentation"
-      onClick={handleClose}
+      onMouseDown={handleClose}
     >
-      <div
+      <dialog
+        open
         ref={panelRef}
         className={`modal-panel ${closing ? "is-closing" : ""}`}
-        role="dialog"
         aria-modal="true"
         aria-labelledby="create-project-title"
-        onClick={(event) => event.stopPropagation()}
+        onMouseDown={(event) => event.stopPropagation()}
       >
         <button className="modal-close" type="button" onClick={handleClose} aria-label={copy.closeModal}>
           ×
@@ -84,7 +84,7 @@ export function CreateProjectModal({ open, onClose, onCreated }: CreateProjectMo
             handleClose();
           }}
         />
-      </div>
+      </dialog>
     </div>
   );
 }
