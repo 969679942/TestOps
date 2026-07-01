@@ -49,7 +49,7 @@ export function ProjectWorkspaceTabs({
       </div>
 
       {archived ? (
-        <div className="archived-action-lock" role="status">
+        <div className="archived-action-lock" aria-live="polite">
           {copy.archivedProjectActionHint}
         </div>
       ) : (

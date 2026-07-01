@@ -60,6 +60,49 @@ describe("ProjectDirectory", () => {
     expect(html).toContain('title="即时零售演示项目 20260527225325"');
     expect(html).not.toContain("project-code");
     expect(html).not.toContain('title="quick-commerce-demo-20260527225325"');
-    expect(html).toContain("进入项目工作区");
+    expect(html).toContain("打开工作台");
+    expect(html).toContain('href="/projects/11"');
+    expect(html).toContain('href="/projects/11/documents"');
+    expect(html).toContain('href="/projects/11/skills"');
+    expect(html).toContain('href="/projects/11/generation-tasks"');
+    expect(html).toContain("上传文档");
+    expect(html).toContain("配置 Skills");
+    expect(html).toContain("生成用例");
+    expect(html).toContain("project-launchpad");
+    expect(html).toContain("project-quick-jump");
+    expect(html).toContain("搜索项目或模块");
+    expect(html).toContain("快捷跳转");
+    expect(html).toContain("Ctrl K");
+  });
+
+  it("renders archived projects as read-only records with delete instead of favorite actions", () => {
+    const html = renderToStaticMarkup(
+      <ProjectDirectory
+        locale="zh"
+        projects={[]}
+        archivedProjects={[
+          {
+            id: "12",
+            name: "Payments Platform",
+            code: "payments",
+            description: "Checkout and settlement flows.",
+            status: "archived",
+            defaultProvider: "cursor",
+            defaultPromptProfile: "default",
+            documentCount: 3,
+            testCaseCount: 8,
+            publishedCount: 5,
+          },
+        ]}
+      />,
+    );
+
+    expect(html).toContain("删除项目");
+    expect(html).toContain("归档项目仅支持查看、恢复或删除，恢复后才能继续主链路。");
+    expect(html).not.toContain('href="/projects/12/documents"');
+    expect(html).not.toContain('href="/projects/12/skills"');
+    expect(html).not.toContain('href="/projects/12/generation-tasks"');
+    expect(html).not.toContain("已收藏");
+    expect(html).not.toContain('aria-pressed="false">收藏</button>');
   });
 });

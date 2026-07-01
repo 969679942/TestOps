@@ -56,3 +56,8 @@ def update_project_status(
     session: Session = Depends(get_session),
 ) -> ProjectRead:
     return project_service.update_project_status(session, project_id, payload.status)
+
+
+@router.delete("/projects/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_project(project_id: int, session: Session = Depends(get_session)) -> None:
+    project_service.delete_archived_project(session, project_id)

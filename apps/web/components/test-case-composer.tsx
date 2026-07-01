@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -60,6 +60,7 @@ export function TestCaseComposer({
   sidebarFooter,
 }: TestCaseComposerProps) {
   const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
   const [draft, setDraft] = useState<TestCaseDraft>(() => hydrateDraft(testCase));
   const [toast, setToast] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [fieldErrors, setFieldErrors] = useState<TestCaseFieldErrors>({});
@@ -96,6 +97,10 @@ export function TestCaseComposer({
     setFieldErrors(nextFieldErrors);
     if (hasFieldErrors(nextFieldErrors)) {
       setToast({ type: "error", text: "请完善必填项后再保存。" });
+      window.setTimeout(() => {
+        const firstInvalid = formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]');
+        firstInvalid?.focus();
+      }, 0);
       return;
     }
     setBusy(true);
@@ -129,7 +134,7 @@ export function TestCaseComposer({
   }
 
   return (
-    <form className="case-editor" onSubmit={handleSubmit} noValidate>
+    <form ref={formRef} className="case-editor" onSubmit={handleSubmit} noValidate>
       {toast ? <div className={`toast toast-${toast.type}`}>{toast.text}</div> : null}
 
       <div className="case-editor-header">
@@ -142,7 +147,7 @@ export function TestCaseComposer({
           {testCase ? <StatusBadge status={testCase.status} /> : null}
           {!isReadOnly ? (
             <button className="button-primary" type="submit" disabled={busy}>
-              {busy ? "保存中…" : mode === "create" ? "创建用例" : "保存变更"}
+              {busy ? "保存中…" : mode === "create" ? "创建用例" : "保存修改"}
             </button>
           ) : null}
         </div>

@@ -24,12 +24,41 @@ def test_project_document_generation_review_publish_flow(client, monkeypatch):
             "source_uri": "/tmp/prd.md",
         },
     ).json()
+    version = client.post(
+        f"/documents/{document['id']}/versions",
+        json={
+            "filename": "payments-prd.md",
+            "content": "# Payments PRD\n\n## Acceptance Criteria\n- Submit checkout order",
+        },
+    ).json()
+    skill_package = client.post(
+        f"/projects/{project['id']}/skill-packages",
+        json={
+            "system_key": "payments",
+            "name": "Payments Skill",
+        },
+    ).json()
+    skill_version = client.post(
+        f"/skill-packages/{skill_package['id']}/versions",
+        json={
+            "summary": "Payments v1",
+            "content": {
+                "prompt_template": "Generate payments test cases",
+                "scenario_taxonomy": ["happy_path", "boundary"],
+                "review_checklist": ["traceable", "observable"],
+            },
+        },
+    ).json()
+    activated_package = client.post(
+        f"/projects/{project['id']}/skill-packages/{skill_package['id']}/activate/{skill_version['id']}"
+    ).json()
     generation_task = client.post(
         f"/projects/{project['id']}/generation-tasks",
         json={
             "provider": "cursor",
             "prompt_profile": "default",
-            "input_document_ids": [document["id"]],
+            "input_document_version_ids": [version["id"]],
+            "input_skill_version_id": skill_version["id"],
         },
     ).json()
     test_case = client.post(
@@ -63,8 +92,16 @@ def test_project_document_generation_review_publish_flow(client, monkeypatch):
     assert project["code"] == "payments"
     assert document["type"] == "prd"
     assert document["parse_status"] == "uploaded"
+    assert version["version_no"] == 1
+    assert skill_package["system_key"] == "payments"
+    assert activated_package["active_version_id"] == skill_version["id"]
     assert generation_task["status"] == "queued"
-    assert generation_task["input_refs"] == {"document_ids": [document["id"]]}
+    assert generation_task["input_refs"] == {
+        "document_version_ids": [version["id"]],
+        "skill_version_id": skill_version["id"],
+        "seed_test_case_ids": [],
+        "coverage_gap_note": None,
+    }
     assert test_case["status"] == "draft"
     assert approve.status_code == 201
     assert publish.status_code == 200

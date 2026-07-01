@@ -55,6 +55,20 @@ def create_asset(session: Session, project_id: int, payload: DocumentCreate) -> 
     session.add(asset)
     session.commit()
     session.refresh(asset)
+
+    if payload.source_uri and payload.source_mode in {"url", "external_link"}:
+        version = create_version(
+            session,
+            asset.id,
+            DocumentVersionCreate(source_uri=payload.source_uri),
+        )
+        queued_version = trigger_parse_version(session, version.id)
+        asset = _get_document_asset(session, asset.id)
+        asset.parse_status = queued_version.parse_status
+        session.add(asset)
+        session.commit()
+        session.refresh(asset)
+
     return asset
 
 
@@ -96,6 +110,20 @@ async def upload_asset_file(
         source_mode=source_mode,
         source_uri=f"storage://{relative}",
     )
+    session.add(asset)
+    session.commit()
+    session.refresh(asset)
+
+    version = create_uploaded_binary_version(
+        session,
+        document_id=asset.id,
+        filename=original_name,
+        raw_bytes=raw,
+        source_uri=asset.source_uri,
+    )
+    queued_version = trigger_parse_version(session, version.id)
+    asset = _get_document_asset(session, asset.id)
+    asset.parse_status = queued_version.parse_status
     session.add(asset)
     session.commit()
     session.refresh(asset)
@@ -149,6 +177,79 @@ def _next_version_no(session: Session, document_id: int) -> int:
     return int(current or 0) + 1
 
 
+def _build_version_storage_path(
+    *,
+    project_id: int,
+    document_id: int,
+    version_no: int,
+    filename: str,
+) -> str:
+    return str(
+        Path("projects")
+        / str(project_id)
+        / "documents"
+        / str(document_id)
+        / f"v{version_no}"
+        / filename
+    )
+
+
+def _store_version_bytes(
+    *,
+    project_id: int,
+    document_id: int,
+    version_no: int,
+    filename: str,
+    raw_bytes: bytes,
+) -> tuple[str, str]:
+    storage = LocalArtifactStorage(Path(settings.artifact_storage_root))
+    storage_path = storage.save_bytes(
+        _build_version_storage_path(
+            project_id=project_id,
+            document_id=document_id,
+            version_no=version_no,
+            filename=filename,
+        ),
+        raw_bytes,
+    )
+    return storage_path, sha256(raw_bytes).hexdigest()
+
+
+def create_uploaded_binary_version(
+    session: Session,
+    *,
+    document_id: int,
+    filename: str,
+    raw_bytes: bytes,
+    source_uri: str | None,
+) -> DocumentVersion:
+    asset = _get_document_asset(session, document_id)
+    version_no = _next_version_no(session, document_id)
+    storage_path, checksum = _store_version_bytes(
+        project_id=asset.project_id,
+        document_id=asset.id,
+        version_no=version_no,
+        filename=_safe_filename(filename, f"document-{document_id}.bin"),
+        raw_bytes=raw_bytes,
+    )
+
+    version = DocumentVersion(
+        document_asset_id=document_id,
+        version_no=version_no,
+        storage_path=storage_path,
+        checksum=checksum,
+        source_uri=source_uri,
+        parse_status="uploaded",
+        structured_metadata={},
+    )
+    asset.parse_status = "uploaded"
+    session.add(asset)
+    session.add(version)
+    session.commit()
+    session.refresh(version)
+    return version
+
+
 def create_version(
     session: Session,
     document_id: int,
@@ -161,18 +262,13 @@ def create_version(
 
     if payload.content is not None:
         content = payload.content.encode("utf-8")
-        checksum = sha256(content).hexdigest()
-        filename = _safe_filename(payload.filename, f"document-{document_id}.txt")
-        relative_path = str(
-            Path("projects")
-            / str(asset.project_id)
-            / "documents"
-            / str(asset.id)
-            / f"v{version_no}"
-            / filename
+        storage_path, checksum = _store_version_bytes(
+            project_id=asset.project_id,
+            document_id=asset.id,
+            version_no=version_no,
+            filename=_safe_filename(payload.filename, f"document-{document_id}.txt"),
+            raw_bytes=content,
         )
-        storage = LocalArtifactStorage(Path(settings.artifact_storage_root))
-        storage_path = storage.save_bytes(relative_path, content)
 
     version = DocumentVersion(
         document_asset_id=document_id,
@@ -209,9 +305,12 @@ def trigger_parse_version(session: Session, version_id: int) -> DocumentVersion:
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Document version not found",
         )
+    asset = _get_document_asset(session, version.document_asset_id)
 
     version.parse_status = "queued"
     version.parse_summary = None
+    asset.parse_status = "queued"
+    session.add(asset)
     session.add(version)
     session.commit()
     session.refresh(version)
@@ -220,6 +319,8 @@ def trigger_parse_version(session: Session, version_id: int) -> DocumentVersion:
     if dispatch_issue:
         version.parse_status = "failed"
         version.parse_summary = dispatch_issue
+        asset.parse_status = "failed"
+        session.add(asset)
         session.add(version)
         session.commit()
         session.refresh(version)

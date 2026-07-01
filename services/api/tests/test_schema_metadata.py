@@ -10,6 +10,8 @@ from app.models import (  # noqa: F401
     project,
     report,
     schedule,
+    skill_package,
+    skill_package_version,
     testcase,
 )
 
@@ -29,7 +31,13 @@ def test_registered_model_metadata_matches_schema() -> None:
         "document_versions",
         "environments",
         "generation_tasks",
+        "global_skill_definitions",
+        "global_skill_versions",
+        "project_skill_bindings",
         "projects",
+        "skill_package_versions",
+        "skill_packages",
+        "test_case_directories",
         "test_case_reviews",
         "test_cases",
     ]

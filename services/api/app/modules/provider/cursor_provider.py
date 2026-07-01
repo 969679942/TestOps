@@ -16,15 +16,77 @@ class CursorProviderError(RuntimeError):
     pass
 
 
+def _render_json_section(title: str, value: Any) -> str:
+    return f"{title}: {json.dumps(value, ensure_ascii=False)}"
+
+
 def _build_prompt(request: ProviderGenerationRequest) -> str:
+    context_bundle = dict(request.context_bundle)
+    skill_package = context_bundle.get("skill_package", {})
+    input_refs = dict(request.input_refs)
+    seed_test_case_ids = input_refs.get("seed_test_case_ids", [])
+    coverage_gap_note = input_refs.get("coverage_gap_note")
+
     return "\n".join(
         [
-            "You are generating QA test case drafts for the TestOps platform.",
+            "You are a senior QA analyst generating traceable test case drafts for the TestOps platform.",
             "Return only JSON with this shape:",
-            '{"cases":[{"title":"...","steps":["..."],"expected_results":["..."]}]}',
+            '{"cases":[{"title":"...","module":"...","feature":"...","case_type":"functional|negative|regression|permission|boundary","priority":"high|medium|low","linked_requirement":"...","preconditions":[{"text":"..."}],"steps":[{"text":"..."}],"expected_results":[{"text":"..."}],"tags":["..."],"source_refs":[{"source_kind":"document_version","document_version_id":1,"document_name":"...","section":"...","excerpt":"..."}]}]}',
+            "Generation rules:",
+            "1. Every case must be backed by explicit evidence from requirements, business rules, contracts, UI hints, supplements, or the gap note.",
+            "2. Do not invent unsupported fields, APIs, roles, states, or business rules.",
+            "3. Prefer concise, executable steps and observable expected results.",
+            "4. Cover the core user journey first, then boundary, negative, permission, state, recovery, or regression scenarios when evidence supports them.",
+            "5. If sources contain ambiguity, stay conservative and anchor the case to the clearest available evidence.",
             f"Project ID: {request.project_id}",
             f"Prompt profile: {request.prompt_version}",
-            f"Input refs: {json.dumps(dict(request.input_refs), ensure_ascii=False)}",
+            _render_json_section("Selected document versions", input_refs.get("document_version_ids", [])),
+            _render_json_section("Selected skill version", input_refs.get("skill_version_id")),
+            _render_json_section("Selected skill binding", input_refs.get("skill_binding_id")),
+            _render_json_section("Selected global skill version", input_refs.get("global_skill_version_id")),
+            _render_json_section("Seed test case ids", seed_test_case_ids),
+            _render_json_section("Coverage gap note", coverage_gap_note),
+            _render_json_section("Document catalog", context_bundle.get("document_catalog", [])),
+            _render_json_section(
+                "Requirements and acceptance criteria",
+                {
+                    "requirement_candidates": context_bundle.get("requirement_candidates", [])[:16],
+                    "acceptance_criteria": context_bundle.get("acceptance_criteria", [])[:16],
+                },
+            ),
+            _render_json_section(
+                "Business rules and supplemental clarifications",
+                {
+                    "business_rules": context_bundle.get("business_rules", [])[:16],
+                    "supplements": context_bundle.get("supplements", [])[:16],
+                    "edge_cases": context_bundle.get("edge_cases", [])[:16],
+                },
+            ),
+            _render_json_section(
+                "API and UI hints",
+                {
+                    "swagger_hints": context_bundle.get("swagger_hints", [])[:16],
+                    "figma_hints": context_bundle.get("figma_hints", [])[:16],
+                },
+            ),
+            _render_json_section("Known ambiguities", context_bundle.get("ambiguities", [])[:12]),
+            _render_json_section(
+                "Skill generation profile",
+                {
+                    "name": skill_package.get("name"),
+                    "summary": skill_package.get("summary"),
+                    "template_key": skill_package.get("metadata", {}).get("template_key")
+                    if isinstance(skill_package.get("metadata"), dict)
+                    else None,
+                    "prompt_template": skill_package.get("prompt_template"),
+                    "scenario_taxonomy": skill_package.get("scenario_taxonomy", []),
+                    "review_checklist": skill_package.get("review_checklist", []),
+                    "coverage_dimensions": skill_package.get("coverage_dimensions", []),
+                    "evidence_policy": skill_package.get("evidence_policy"),
+                },
+            ),
+            "Populate linked_requirement with the clearest requirement sentence, rule identifier, or gap note.",
+            "Populate source_refs with the concrete document_version / skill_version / rule references used to derive the case.",
         ]
     )
 

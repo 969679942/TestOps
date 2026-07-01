@@ -21,4 +21,5 @@ venv/
 tsconfig.tsbuildinfo
 *.egg-info/
 data/documents/
+services/api/data/documents/
 services/api/var/

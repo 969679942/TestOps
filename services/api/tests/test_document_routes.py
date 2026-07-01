@@ -27,7 +27,7 @@ def test_create_document_asset(client):
 
     assert response.status_code == 201
     assert response.json()["type"] == "figma"
-    assert response.json()["parse_status"] == "uploaded"
+    assert response.json()["parse_status"] == "queued"
 
 
 def test_create_document_asset_rejects_archived_project(client):
@@ -98,8 +98,8 @@ def test_list_document_assets_returns_project_documents(client):
         "Checkout API",
     ]
     assert [document["parse_status"] for document in response.json()] == [
-        "uploaded",
-        "uploaded",
+        "queued",
+        "queued",
     ]
 
 

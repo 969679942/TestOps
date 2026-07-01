@@ -170,6 +170,9 @@ def create_test_case(
         automation_flag=payload.automation_flag,
         automation_notes=payload.automation_notes,
         ui_context=payload.ui_context.model_dump() if payload.ui_context else None,
+        linked_requirement=payload.linked_requirement,
+        source_refs=list(payload.source_refs),
+        generation_task_id=payload.generation_task_id,
         status=payload.status,
     )
     session.add(test_case)
@@ -203,6 +206,9 @@ def import_test_cases(
             automation_flag=payload.automation_flag,
             automation_notes=payload.automation_notes,
             ui_context=payload.ui_context.model_dump() if payload.ui_context else None,
+            linked_requirement=payload.linked_requirement,
+            source_refs=list(payload.source_refs),
+            generation_task_id=payload.generation_task_id,
             status=payload.status,
         )
         session.add(test_case)
@@ -254,6 +260,8 @@ def update_test_case(
         updates["tags"] = list(payload.tags or [])
     if "ui_context" in updates and payload.ui_context is not None:
         updates["ui_context"] = payload.ui_context.model_dump()
+    if "source_refs" in updates and updates["source_refs"] is not None:
+        updates["source_refs"] = list(payload.source_refs or [])
     if "directory_id" in updates:
         directory = _validate_directory(session, test_case.project_id, payload.directory_id)
         updates["directory_id"] = directory.id if directory else None

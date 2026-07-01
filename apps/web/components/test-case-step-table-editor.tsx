@@ -1,5 +1,7 @@
 "use client";
 
+import { useRef } from "react";
+
 import {
   UI_STEP_ACTIONS,
   type UIAutomationStep,
@@ -30,6 +32,21 @@ export function TestCaseStepTableEditor({
   expectedResultErrorIndexes = [],
   onChange,
 }: TestCaseStepTableEditorProps) {
+  const stepKeyMapRef = useRef(new WeakMap<UIAutomationStep, string>());
+  const nextStepKeyRef = useRef(0);
+
+  function getStepKey(step: UIAutomationStep) {
+    const existing = stepKeyMapRef.current.get(step);
+    if (existing) {
+      return existing;
+    }
+
+    const key = `composer-step-${nextStepKeyRef.current}`;
+    nextStepKeyRef.current += 1;
+    stepKeyMapRef.current.set(step, key);
+    return key;
+  }
+
   function updateStep(index: number, patch: Partial<UIAutomationStep>) {
     onChange({
       steps: steps.map((step, stepIndex) =>
@@ -103,7 +120,7 @@ export function TestCaseStepTableEditor({
           </thead>
           <tbody>
             {steps.map((step, index) => (
-              <tr key={`composer-step-${index}`}>
+              <tr key={getStepKey(step)}>
                 <td className="case-step-index">{index + 1}</td>
                 <td>
                   <div className="case-step-cell">

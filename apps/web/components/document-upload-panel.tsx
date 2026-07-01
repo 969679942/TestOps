@@ -10,12 +10,9 @@ import { useEffect, useMemo, useState } from "react";
 
 import {
   ApiError,
-  createGenerationTask,
   createProjectDocument,
   deleteProjectDocument,
-  getProject,
   uploadProjectDocument,
-  waitForGenerationTask,
   type ProjectDocumentRecord,
 } from "../lib/workspace-api";
 
@@ -23,6 +20,7 @@ import { copy, documentTypeLabels, labelSourceMode } from "../lib/copy";
 
 import { FieldLabel } from "./field-label";
 import { FileUploadField } from "./file-upload-field";
+import { ConfirmActionModal } from "./confirm-action-modal";
 
 
 
@@ -36,11 +34,13 @@ type DocumentUploadPanelProps = Readonly<{
 
   onGeneratingChange?: (generating: boolean) => void;
 
+  showDocumentLibrary?: boolean;
+
 }>;
 
 
 
-type UploadKind = "prd" | "swagger" | "figma";
+type UploadKind = "prd" | "business_rule" | "supplement" | "swagger" | "figma";
 
 
 
@@ -75,6 +75,38 @@ const uploadKinds: Array<{
     sourceMode: "upload",
 
     accept: ".pdf,.doc,.docx,.md,.markdown",
+
+  },
+
+  {
+
+    kind: "business_rule",
+
+    label: "业务规则",
+
+    hint: "上传业务规则、约束说明或流程制度文档",
+
+    icon: "📘",
+
+    sourceMode: "upload",
+
+    accept: ".pdf,.doc,.docx,.md,.markdown,.txt",
+
+  },
+
+  {
+
+    kind: "supplement",
+
+    label: "补充资料",
+
+    hint: "上传 FAQ、埋点说明、历史缺陷、接口补充等上下文资料",
+
+    icon: "🧩",
+
+    sourceMode: "upload",
+
+    accept: ".pdf,.doc,.docx,.md,.markdown,.txt,.json,.csv",
 
   },
 
@@ -126,6 +158,8 @@ export function DocumentUploadPanel({
 
   onGeneratingChange,
 
+  showDocumentLibrary = true,
+
 }: DocumentUploadPanelProps) {
 
   const router = useRouter();
@@ -153,6 +187,7 @@ export function DocumentUploadPanel({
   const [generating, setGenerating] = useState(false);
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteCandidate, setDeleteCandidate] = useState<ProjectDocumentRecord | null>(null);
 
 
 
@@ -371,6 +406,7 @@ export function DocumentUploadPanel({
       setDocuments((current) => current.filter((document) => document.id !== documentId));
 
       setSelectedIds((current) => current.filter((id) => id !== documentId));
+      setDeleteCandidate(null);
 
       router.refresh();
 
@@ -415,76 +451,13 @@ export function DocumentUploadPanel({
     setGenerating(true);
 
     setToast(null);
+    router.push(
 
+      `/projects/${projectId}/generation-tasks?documentIds=${encodeURIComponent(selectedIds.join(","))}`,
 
-
-    try {
-
-      let provider = defaultProvider;
-
-      if (!provider) {
-
-        const project = await getProject(projectId);
-
-        provider = project.defaultProvider;
-
-      }
-
-
-
-      const task = await createGenerationTask(projectId, {
-
-        documentIds: selectedIds.map((id) => Number(id)),
-
-        provider,
-
-      });
-
-
-
-      const finished =
-
-        task.status === "completed" || task.status === "failed"
-
-          ? task
-
-          : await waitForGenerationTask(task.id);
-
-
-
-      if (finished.status === "failed") {
-
-        throw new Error(finished.errorMessage ?? copy.generateFailed);
-
-      }
-
-
-
-      router.push(`/projects/${projectId}/test-cases?generated=1`);
-
-      router.refresh();
-
-    } catch (generateError) {
-
-      const text =
-
-        generateError instanceof ApiError
-
-          ? generateError.message
-
-          : generateError instanceof Error
-
-            ? generateError.message
-
-            : copy.generateFailed;
-
-      setToast({ type: "error", text });
-
-    } finally {
-
-      setGenerating(false);
-
-    }
+    );
+    router.refresh();
+    setGenerating(false);
 
   }
 
@@ -492,36 +465,25 @@ export function DocumentUploadPanel({
 
   return (
 
-    <section className="upload-panel" aria-label="上传与生成">
+    <>
+    <section className="upload-panel" aria-label={showDocumentLibrary ? "上传与生成" : "上传文档"}>
 
       {toast ? (
-
-        <div className={`toast toast-${toast.type}`} role="status">
-
+        <div className={`toast toast-${toast.type}`} aria-live="polite">
           {toast.text}
-
         </div>
-
       ) : null}
 
 
 
       {generating ? (
-
-        <div className="loading-banner" role="status" aria-live="polite">
-
+        <div className="loading-banner" aria-live="polite">
           <span className="spinner" aria-hidden="true" />
-
           <div>
-
             <strong>{copy.generating}</strong>
-
             <p>{copy.generateProgress(selectedIds.length)}</p>
-
           </div>
-
         </div>
-
       ) : null}
 
 
@@ -660,6 +622,7 @@ export function DocumentUploadPanel({
 
 
 
+        {showDocumentLibrary ? (
         <div className="document-library">
 
           <div className="document-library-header">
@@ -770,7 +733,7 @@ export function DocumentUploadPanel({
 
                     aria-label={`删除 ${document.name}`}
 
-                    onClick={() => handleDelete(document.id)}
+                    onClick={() => setDeleteCandidate(document)}
 
                   >
 
@@ -787,10 +750,40 @@ export function DocumentUploadPanel({
           </div>
 
         </div>
+        ) : null}
 
       </div>
 
     </section>
+    <ConfirmActionModal
+      open={deleteCandidate !== null}
+      title="确认删除文档？"
+      description={
+        deleteCandidate
+          ? `将删除「${deleteCandidate.name}」，关联的生成输入可能无法继续追溯。`
+          : ""
+      }
+      confirmLabel="确认删除"
+      tone="danger"
+      submitting={deleteCandidate ? deletingId === deleteCandidate.id : false}
+      error={toast?.type === "error" ? toast.text : null}
+      onClose={() => {
+        if (deletingId) {
+          return;
+        }
+
+        setDeleteCandidate(null);
+        setToast(null);
+      }}
+      onConfirm={() => {
+        if (!deleteCandidate) {
+          return;
+        }
+
+        void handleDelete(deleteCandidate.id);
+      }}
+    />
+    </>
 
   );
 

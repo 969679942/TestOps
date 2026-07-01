@@ -85,7 +85,7 @@ export function TestCaseImportPanel({ projectId }: TestCaseImportPanelProps) {
       {toast ? <div className={`toast toast-${toast.type}`}>{toast.text}</div> : null}
 
       {importing ? (
-        <div className="loading-banner" role="status" aria-live="polite">
+        <div className="loading-banner" aria-live="polite">
           <span className="spinner" aria-hidden="true" />
           <div>
             <strong>{copy.importing}</strong>

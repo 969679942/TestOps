@@ -55,6 +55,8 @@ export type TestCaseDraft = {
   iteration: string;
   attachments: string[];
   linkedRequirement: string;
+  sourceRefs: Array<Record<string, unknown>>;
+  generationTaskId: string | null;
   preconditions: string[];
   steps: UIAutomationStep[];
   expectedResults: { text: string }[];
@@ -239,6 +241,14 @@ export function mapRawCase(raw: unknown, index: number): TestCaseDraft {
       typeof (record.linked_requirement ?? record.linkedRequirement) === "string"
         ? String(record.linked_requirement ?? record.linkedRequirement)
         : "",
+    sourceRefs: Array.isArray(record.source_refs ?? record.sourceRefs)
+      ? ((record.source_refs ?? record.sourceRefs) as Array<Record<string, unknown>>)
+      : [],
+    generationTaskId:
+      typeof (record.generation_task_id ?? record.generationTaskId) === "number" ||
+      typeof (record.generation_task_id ?? record.generationTaskId) === "string"
+        ? String(record.generation_task_id ?? record.generationTaskId)
+        : null,
     preconditions: asStringList(record.preconditions),
     steps: parseSteps(record.steps, `cases[${index}].steps`),
     expectedResults: parseExpected(
@@ -290,6 +300,8 @@ export function createEmptyTestCaseDraft(): TestCaseDraft {
     iteration: "",
     attachments: [],
     linkedRequirement: "",
+    sourceRefs: [],
+    generationTaskId: null,
     preconditions: ["测试环境可访问", "测试账号与数据已准备"],
     steps: [
       {
@@ -333,6 +345,9 @@ export function draftFromTestCase(testCase: {
   automationFlag: boolean;
   automationNotes: string | null;
   uiContext: UIContext | null;
+  linkedRequirement?: string | null;
+  sourceRefs?: Array<Record<string, unknown>>;
+  generationTaskId?: string | number | null;
 }): TestCaseDraft {
   const empty = createEmptyTestCaseDraft();
   return {
@@ -346,7 +361,12 @@ export function draftFromTestCase(testCase: {
     releaseVersion: empty.releaseVersion,
     iteration: empty.iteration,
     attachments: empty.attachments,
-    linkedRequirement: empty.linkedRequirement,
+    linkedRequirement: testCase.linkedRequirement ?? empty.linkedRequirement,
+    sourceRefs: testCase.sourceRefs ?? empty.sourceRefs,
+    generationTaskId:
+      testCase.generationTaskId === null || testCase.generationTaskId === undefined
+        ? empty.generationTaskId
+        : String(testCase.generationTaskId),
     preconditions: testCase.preconditions.length > 0 ? testCase.preconditions : empty.preconditions,
     steps:
       testCase.steps.length > 0
@@ -392,6 +412,9 @@ export function serializeDraftForApi(draft: TestCaseDraft) {
     tags: draft.tags.filter((item) => item.trim()),
     automationFlag: draft.automationFlag,
     automationNotes: draft.automationNotes,
+    linkedRequirement: draft.linkedRequirement.trim() || null,
+    sourceRefs: draft.sourceRefs,
+    generationTaskId: draft.generationTaskId ? Number(draft.generationTaskId) : null,
     uiContext: {
       schema_version: draft.uiContext.schemaVersion,
       framework: draft.uiContext.framework,

@@ -9,6 +9,8 @@ type ReviewEditorProps = Readonly<{
   item: TestCaseRecord | null;
   locale?: Locale;
   approveAction?: (formData: FormData) => Promise<void>;
+  requestChangeAction?: (formData: FormData) => Promise<void>;
+  rejectAction?: (formData: FormData) => Promise<void>;
   publishAction?: (formData: FormData) => Promise<void>;
   saveAction?: (formData: FormData) => Promise<void>;
 }>;
@@ -105,6 +107,8 @@ export function ReviewEditor({
   item,
   locale = "zh",
   approveAction,
+  requestChangeAction,
+  rejectAction,
   publishAction,
   saveAction,
 }: ReviewEditorProps) {
@@ -167,6 +171,15 @@ export function ReviewEditor({
           <p className="summary-value">{item.automationFlag ? t.yes : t.no}</p>
           <p>{t.automationHint}</p>
         </article>
+        <article className="review-meta-card">
+          <span className="eyebrow">可追溯性</span>
+          <p className="summary-value">{item.linkedRequirement ?? "待补充"}</p>
+          <p>
+            {item.sourceRefs?.length
+              ? `已关联 ${item.sourceRefs.length} 条来源依据`
+              : "当前用例尚未补充来源依据"}
+          </p>
+        </article>
       </section>
 
       <div className="form-grid">
@@ -211,7 +224,42 @@ export function ReviewEditor({
             placeholder={t.tagsPlaceholder}
           />
         </label>
+        <label className="form-field">
+          <span>关联需求</span>
+          <input
+            className="field-input"
+            name="linkedRequirement"
+            defaultValue={item.linkedRequirement ?? ""}
+            placeholder="请输入需求编号、标题或规则标识"
+          />
+        </label>
       </div>
+
+      {item.sourceRefs?.length ? (
+        <section className="review-section">
+          <div className="section-heading">
+            <div>
+              <span className="eyebrow">来源依据</span>
+              <h3>Traceability</h3>
+            </div>
+            <p>该用例生成时引用的文档、规则或技能包依据。</p>
+          </div>
+          <div className="review-stack">
+            {item.sourceRefs.map((sourceRef, index) => (
+              <article className="review-meta-card" key={`source-ref-${index + 1}`}>
+                <p className="summary-value">
+                  {String(sourceRef.document_name ?? sourceRef.skill_name ?? sourceRef.note ?? "来源依据")}
+                </p>
+                <p>
+                  {Object.entries(sourceRef)
+                    .map(([key, value]) => `${key}: ${String(value)}`)
+                    .join(" | ")}
+                </p>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <label className="inline-check review-toggle">
         <input defaultChecked={item.automationFlag} name="automationFlag" type="checkbox" />
@@ -289,9 +337,25 @@ export function ReviewEditor({
         />
       </label>
 
+      <label className="form-field">
+        <span>{t.reviewComment}</span>
+        <textarea
+          className="field-textarea"
+          name="reviewComment"
+          placeholder={t.reviewCommentPlaceholder}
+          rows={4}
+        />
+      </label>
+
       <div className="button-row">
         <button className="primary-button" type="submit">
           {t.saveDraft}
+        </button>
+        <button className="secondary-button" formAction={requestChangeAction} type="submit">
+          {t.requestChanges}
+        </button>
+        <button className="button-danger" formAction={rejectAction} type="submit">
+          {t.reject}
         </button>
         <button className="secondary-button" formAction={approveAction} type="submit">
           {t.approve}

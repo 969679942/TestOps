@@ -1,7 +1,14 @@
 from datetime import datetime
 from typing import Annotated, Any, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_serializer, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    model_serializer,
+    model_validator,
+)
 
 NonEmptyStr = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 TestCaseStatus = Literal["draft", "needs_update", "approved", "rejected", "published"]
@@ -81,21 +88,10 @@ class TestCaseCreate(BaseModel):
     automation_notes: str | None = None
     directory_id: int | None = None
     ui_context: UIContext | None = None
+    linked_requirement: str | None = None
+    source_refs: list[dict[str, Any]] = Field(default_factory=list)
+    generation_task_id: int | None = None
     status: Literal["draft"] = "draft"
-
-
-class TestCaseUpdate(BaseModel):
-    title: NonEmptyStr
-    module: NonEmptyStr
-    feature: NonEmptyStr
-    case_type: NonEmptyStr
-    priority: NonEmptyStr
-    preconditions: list[NonEmptyStr] = Field(default_factory=list)
-    steps: list[StepItem] = Field(min_length=1)
-    expected_results: list[StepItem] = Field(min_length=1)
-    tags: list[NonEmptyStr] = Field(default_factory=list)
-    automation_flag: bool = False
-    automation_notes: str | None = None
 
 
 class TestCaseRead(BaseModel):
@@ -116,10 +112,27 @@ class TestCaseRead(BaseModel):
     automation_notes: str | None
     directory_id: int | None
     ui_context: UIContext | None
+    linked_requirement: str | None = None
+    source_refs: list[dict[str, Any]] = Field(default_factory=list)
+    generation_task_id: int | None = None
     status: TestCaseStatus
     created_at: datetime
     updated_at: datetime
     published_at: datetime | None
+
+    @model_serializer(mode="wrap")
+    def serialize_model(self, handler: Any) -> dict[str, Any]:
+        data = handler(self)
+        if not isinstance(data, dict):
+            return data
+
+        if data.get("linked_requirement") is None:
+            data.pop("linked_requirement", None)
+        if not data.get("source_refs"):
+            data.pop("source_refs", None)
+        if data.get("generation_task_id") is None:
+            data.pop("generation_task_id", None)
+        return data
 
 
 class TestCaseUpdate(BaseModel):
@@ -136,6 +149,9 @@ class TestCaseUpdate(BaseModel):
     automation_notes: str | None = None
     directory_id: int | None = None
     ui_context: UIContext | None = None
+    linked_requirement: str | None = None
+    source_refs: list[dict[str, Any]] | None = None
+    generation_task_id: int | None = None
 
 
 class TestCaseImportRequest(BaseModel):

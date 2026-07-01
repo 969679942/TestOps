@@ -6,8 +6,21 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 from app.core.config import settings
+from app.core.schema_health import reconcile_legacy_revision_aliases
 from app.core.database import Base
-from app.models import document, generation, project, testcase  # noqa: F401
+from app.models import (  # noqa: F401
+    automation,
+    data_setup,
+    document,
+    environment,
+    generation,
+    project,
+    report,
+    schedule,
+    skill_package,
+    skill_package_version,
+    testcase,
+)
 
 config = context.config
 database_url = config.get_main_option("sqlalchemy.url") or settings.database_url
@@ -39,6 +52,8 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
+        with connection.begin():
+            reconcile_legacy_revision_aliases(connection)
         context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():

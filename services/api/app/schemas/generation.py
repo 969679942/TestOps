@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Annotated, Any
 
-from pydantic import BaseModel, ConfigDict, Field, PositiveInt, StringConstraints, field_validator
+from pydantic import BaseModel, ConfigDict, Field, PositiveInt, StringConstraints, field_validator, model_validator
 
 from app.modules.provider import PROVIDERS
 
@@ -12,7 +12,11 @@ class GenerationTaskCreate(BaseModel):
     provider: str | None = None
     model: NonEmptyStr | None = None
     prompt_profile: NonEmptyStr | None = None
-    input_document_ids: list[PositiveInt] = Field(default_factory=list)
+    input_document_version_ids: list[PositiveInt] = Field(min_length=1)
+    input_skill_version_id: PositiveInt | None = None
+    input_skill_binding_id: PositiveInt | None = None
+    seed_test_case_ids: list[PositiveInt] = Field(default_factory=list)
+    coverage_gap_note: NonEmptyStr | None = None
 
     @field_validator("provider")
     @classmethod
@@ -25,6 +29,12 @@ class GenerationTaskCreate(BaseModel):
             supported = ", ".join(sorted(PROVIDERS))
             raise ValueError(f"Provider must be one of: {supported}")
         return normalized
+
+    @model_validator(mode="after")
+    def validate_skill_input(self) -> "GenerationTaskCreate":
+        if self.input_skill_version_id is None and self.input_skill_binding_id is None:
+            raise ValueError("Either input_skill_version_id or input_skill_binding_id is required")
+        return self
 
 
 class GenerationTaskRead(BaseModel):
