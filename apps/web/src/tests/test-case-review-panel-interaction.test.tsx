@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { TestCaseReviewPanel } from "../../components/test-case-review-panel";
 
@@ -40,7 +40,26 @@ const reviewableCase = {
   publishedAt: null,
 };
 
+afterEach(() => {
+  cleanup();
+});
+
 describe("TestCaseReviewPanel interactions", () => {
+  it("blocks publishing until the test case is approved", () => {
+    render(
+      <TestCaseReviewPanel
+        testCase={{
+          ...reviewableCase,
+          status: "draft",
+        }}
+        reviews={[]}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "发布用例" })).toBeNull();
+    expect(screen.getByText("请先批准用例，再执行发布。")).toBeTruthy();
+  });
+
   it("uses the shared confirmation modal for reject and publish actions", () => {
     const browserConfirm = vi.spyOn(window, "confirm");
 

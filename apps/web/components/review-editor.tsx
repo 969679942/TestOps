@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 import { copy, formatValue, type Locale } from "../lib/i18n";
 import type { StructuredTextField, TestCaseRecord } from "../lib/types";
+import { ConfirmActionModal } from "./confirm-action-modal";
 
 type ReviewEditorProps = Readonly<{
   item: TestCaseRecord | null;
@@ -30,6 +31,27 @@ type DynamicTextListProps = Readonly<{
 
 const CASE_TYPE_OPTIONS = ["functional", "negative"];
 const PRIORITY_OPTIONS = ["high", "medium", "low"];
+type ConfirmedReviewAction = "reject" | "publish";
+
+const reviewConfirmationCopy: Record<
+  ConfirmedReviewAction,
+  {
+    title: string;
+    description: string;
+    confirmLabel: string;
+  }
+> = {
+  reject: {
+    title: "确认驳回用例？",
+    description: "驳回后该用例将标记为已驳回，不会进入发布流程。",
+    confirmLabel: "确认驳回",
+  },
+  publish: {
+    title: "确认发布用例？",
+    description: "发布后内容将锁定，并提供给下游自动化流程使用。",
+    confirmLabel: "确认发布",
+  },
+};
 
 function ensureEditableItems(items: string[]) {
   return items.length ? items : [""];
@@ -113,6 +135,8 @@ export function ReviewEditor({
   saveAction,
 }: ReviewEditorProps) {
   const t = copy[locale].components;
+  const formRef = useRef<HTMLFormElement>(null);
+  const [pendingConfirmation, setPendingConfirmation] = useState<ConfirmedReviewAction | null>(null);
   const [preconditions, setPreconditions] = useState(
     ensureEditableItems(item?.preconditions ?? []),
   );
@@ -141,8 +165,25 @@ export function ReviewEditor({
     );
   }
 
+  function submitConfirmedAction(action: ConfirmedReviewAction) {
+    const targetAction = action === "reject" ? rejectAction : publishAction;
+    if (!targetAction || !formRef.current) {
+      setPendingConfirmation(null);
+      return;
+    }
+
+    void targetAction(new FormData(formRef.current));
+    setPendingConfirmation(null);
+  }
+
+  const activeConfirmation = pendingConfirmation
+    ? reviewConfirmationCopy[pendingConfirmation]
+    : null;
+  const canPublish = item.status === "approved";
+
   return (
-    <form action={saveAction} className="review-editor">
+    <>
+    <form action={saveAction} className="review-editor" ref={formRef}>
       <div className="section-heading">
         <div>
           <span className="eyebrow">{t.reviewDraft}</span>
@@ -354,16 +395,36 @@ export function ReviewEditor({
         <button className="secondary-button" formAction={requestChangeAction} type="submit">
           {t.requestChanges}
         </button>
-        <button className="button-danger" formAction={rejectAction} type="submit">
+        <button className="button-danger" onClick={() => setPendingConfirmation("reject")} type="button">
           {t.reject}
         </button>
         <button className="secondary-button" formAction={approveAction} type="submit">
           {t.approve}
         </button>
-        <button className="secondary-button" formAction={publishAction} type="submit">
-          {t.publish}
-        </button>
+        {canPublish ? (
+          <button className="secondary-button" onClick={() => setPendingConfirmation("publish")} type="button">
+            {t.publish}
+          </button>
+        ) : (
+          <p className="helper-text">请先批准用例，再执行发布。</p>
+        )}
       </div>
     </form>
+    <ConfirmActionModal
+      open={pendingConfirmation !== null}
+      title={activeConfirmation?.title ?? ""}
+      description={activeConfirmation?.description ?? ""}
+      confirmLabel={activeConfirmation?.confirmLabel ?? ""}
+      tone="danger"
+      onClose={() => setPendingConfirmation(null)}
+      onConfirm={() => {
+        if (!pendingConfirmation) {
+          return;
+        }
+
+        submitConfirmedAction(pendingConfirmation);
+      }}
+    />
+    </>
   );
 }
