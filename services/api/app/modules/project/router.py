@@ -9,6 +9,7 @@ from app.schemas.project import (
     ProjectStatusFilter,
     ProjectStatusUpdate,
     ProjectSummaryRead,
+    ProjectWorkspaceRead,
 )
 
 router = APIRouter(tags=["projects"])
@@ -47,6 +48,14 @@ def create_project(
 @router.get("/projects/{project_id}", response_model=ProjectRead)
 def get_project(project_id: int, session: Session = Depends(get_session)) -> ProjectRead:
     return project_service.get_project(session, project_id)
+
+
+@router.get("/projects/{project_id}/workspace", response_model=ProjectWorkspaceRead)
+def get_project_workspace(
+    project_id: int,
+    session: Session = Depends(get_session),
+) -> ProjectWorkspaceRead:
+    return project_service.get_project_workspace(session, project_id)
 
 
 @router.patch("/projects/{project_id}/status", response_model=ProjectRead)

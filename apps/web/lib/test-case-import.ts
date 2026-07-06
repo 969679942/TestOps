@@ -1,13 +1,16 @@
 export {
   createEmptyTestCaseDraft,
-  downloadUiAutomationTemplate,
-  downloadUiAutomationTemplate as downloadImportTemplate,
   mapRawCase,
   parseUiAutomationFile,
-  parseUiAutomationFile as parseTestCaseImportFile,
   type ImportTestCaseInput,
   type TestCaseDraft,
   type UIAutomationStep,
   type UIContext,
   uiAutomationImportTemplate,
 } from "./ui-automation-case";
+
+export {
+  downloadTestCaseMarkdownTemplate as downloadImportTemplate,
+  parseTestCaseMarkdownFile as parseTestCaseImportFile,
+  testCaseMarkdownImportTemplate,
+} from "./test-case-markdown-import";

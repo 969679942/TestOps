@@ -39,8 +39,7 @@ export function TestCaseImportPanel({ projectId }: TestCaseImportPanelProps) {
 
     try {
       const text = await file.text();
-      const payload = JSON.parse(text) as unknown;
-      const cases = parseTestCaseImportFile(payload);
+      const cases = parseTestCaseImportFile(text);
       setFileName(file.name);
       setPreviewCount(cases.length);
       setParsedCases(cases);
@@ -116,13 +115,13 @@ export function TestCaseImportPanel({ projectId }: TestCaseImportPanelProps) {
             <span className="eyebrow">导入前校验</span>
             <h4>校验文件结构后再导入</h4>
           </div>
-          <p>先解析 JSON 文件结构，确认预览无误后再批量导入项目，避免格式异常的文件直接进入评审流程。</p>
+          <p>先解析 Markdown 文件结构，确认预览无误后再批量导入项目，避免格式异常的文件直接进入评审流程。</p>
         </div>
 
         <div className="field">
           <span>{copy.importFileLabel}</span>
           <FileUploadField
-            accept=".json,application/json"
+            accept=".md,.markdown,text/markdown"
             disabled={importing}
             fileName={fileName}
             onFileChange={handleFileChange}

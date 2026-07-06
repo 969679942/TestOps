@@ -48,7 +48,7 @@ export function CreateProjectForm({ onSuccess, onSubmittingChange }: CreateProje
       const message =
         submitError instanceof ApiError
           ? submitError.message
-          : copy.createFailed;
+          : "创建项目失败，请稍后重试。";
       setError(message);
     } finally {
       setSubmitting(false);

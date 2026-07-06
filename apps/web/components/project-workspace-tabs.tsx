@@ -6,6 +6,7 @@ import { copy } from "../lib/copy";
 import type { ProjectDocumentRecord } from "../lib/workspace-api";
 import { useTabList } from "../lib/use-tab-list";
 import { DocumentUploadPanel } from "./document-upload-panel";
+import { FieldHelp } from "./field-help";
 import { TestCaseImportPanel } from "./test-case-import-panel";
 
 type WorkspaceMode = "generate" | "import";
@@ -71,6 +72,7 @@ export function ProjectWorkspaceTabs({
               onClick={() => setMode("generate")}
             >
               {copy.modeGenerate}
+              <FieldHelp field="modeGenerate" label="AI 生成说明" />
             </button>
             <button
               type="button"
@@ -83,6 +85,7 @@ export function ProjectWorkspaceTabs({
               onClick={() => setMode("import")}
             >
               {copy.modeImport}
+              <FieldHelp field="modeImport" label="导入说明" />
             </button>
           </div>
 

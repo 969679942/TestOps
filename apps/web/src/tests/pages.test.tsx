@@ -6,6 +6,7 @@ const {
   WorkspaceApiError,
   listProjectsWithStatsMock,
   getWorkspaceProjectMock,
+  getProjectWorkspaceMock,
   listWorkspaceProjectDocumentsMock,
   listWorkspaceProjectTestCasesMock,
   listProjectTestCaseDirectoriesMock,
@@ -21,6 +22,8 @@ const {
   listGlobalSkillLibraryMock,
   getGlobalSkillLibraryItemMock,
   listGlobalSkillVersionsMock,
+  listGlobalSkillProjectBindingsMock,
+  getGlobalSkillUsageStatsMock,
   createGlobalSkillLibraryItemMock,
   createGlobalSkillVersionMock,
   listProjectAutomationSchedulesMock,
@@ -54,6 +57,7 @@ const {
     WorkspaceApiError,
     listProjectsWithStatsMock: vi.fn(),
     getWorkspaceProjectMock: vi.fn(),
+    getProjectWorkspaceMock: vi.fn(),
     listWorkspaceProjectDocumentsMock: vi.fn(),
     listWorkspaceProjectTestCasesMock: vi.fn(),
     listProjectTestCaseDirectoriesMock: vi.fn(),
@@ -69,6 +73,8 @@ const {
     listGlobalSkillLibraryMock: vi.fn(),
     getGlobalSkillLibraryItemMock: vi.fn(),
     listGlobalSkillVersionsMock: vi.fn(),
+    listGlobalSkillProjectBindingsMock: vi.fn(),
+    getGlobalSkillUsageStatsMock: vi.fn(),
     createGlobalSkillLibraryItemMock: vi.fn(),
     createGlobalSkillVersionMock: vi.fn(),
     listProjectAutomationSchedulesMock: vi.fn(),
@@ -117,13 +123,13 @@ vi.mock("../../components/settings-editor", () => ({
 vi.mock("../../components/project-workspace-client", () => ({
   ProjectWorkspaceClient: ({
     documents,
-    testCases,
+    testCaseCount,
   }: {
     documents: Array<unknown>;
-    testCases: Array<unknown>;
+    testCaseCount: number;
   }) => (
     <section className="data-card">
-      <div>workspace-client:{documents.length}:{testCases.length}</div>
+      <div>workspace-client:{documents.length}:{testCaseCount}</div>
     </section>
   ),
 }));
@@ -132,6 +138,7 @@ vi.mock("../../lib/workspace-api", () => ({
   ApiError: WorkspaceApiError,
   listProjectsWithStats: listProjectsWithStatsMock,
   getProject: getWorkspaceProjectMock,
+  getProjectWorkspace: getProjectWorkspaceMock,
   listProjectDocuments: listWorkspaceProjectDocumentsMock,
   listProjectTestCases: listWorkspaceProjectTestCasesMock,
   listProjectTestCaseDirectories: listProjectTestCaseDirectoriesMock,
@@ -150,6 +157,8 @@ vi.mock("../../lib/api", () => ({
   listGlobalSkillLibrary: listGlobalSkillLibraryMock,
   getGlobalSkillLibraryItem: getGlobalSkillLibraryItemMock,
   listGlobalSkillVersions: listGlobalSkillVersionsMock,
+  listGlobalSkillProjectBindings: listGlobalSkillProjectBindingsMock,
+  getGlobalSkillUsageStats: getGlobalSkillUsageStatsMock,
   createGlobalSkillLibraryItem: createGlobalSkillLibraryItemMock,
   createGlobalSkillVersion: createGlobalSkillVersionMock,
   listProjectAutomationSchedules: listProjectAutomationSchedulesMock,
@@ -196,6 +205,8 @@ const workspaceProject = {
 describe("workspace pages", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    listWorkspaceProjectTestCasesMock.mockResolvedValue([]);
+    listProjectGenerationTasksMock.mockResolvedValue({ kind: "success", tasks: [] });
   });
 
   it("renders an unavailable state when the project directory API fails", async () => {
@@ -228,45 +239,32 @@ describe("workspace pages", () => {
   });
 
   it("renders the project workspace header and wide content shell", async () => {
-    getWorkspaceProjectMock.mockResolvedValue(workspaceProject);
-    listWorkspaceProjectDocumentsMock.mockResolvedValue([
-      {
-        id: "doc-1",
-        projectId: "1",
-        type: "prd",
-        name: "Payments PRD",
-        sourceMode: "upload",
-        sourceUri: "docs/payments-prd.pdf",
+    getProjectWorkspaceMock.mockResolvedValue({
+      project: {
+        ...workspaceProject,
+        documentCount: 2,
+        testCaseCount: 1,
+        publishedCount: 0,
       },
-      {
-        id: "doc-2",
-        projectId: "1",
-        type: "swagger",
-        name: "Payments Swagger",
-        sourceMode: "url",
-        sourceUri: "https://example.com/swagger.json",
-      },
-    ]);
-    listWorkspaceProjectTestCasesMock.mockResolvedValue([
-      {
-        id: "case-1",
-        projectId: "1",
-        title: "Create order with saved card",
-        module: "Checkout",
-        feature: "Card payment",
-        caseType: "functional",
-        priority: "high",
-        preconditions: ["Saved card exists"],
-        steps: [{ text: "Open checkout" }],
-        expectedResults: [{ text: "Order completes" }],
-        tags: ["smoke"],
-        automationFlag: true,
-        automationNotes: null,
-        uiContext: null,
-        status: "draft",
-        publishedAt: null,
-      },
-    ]);
+      documents: [
+        {
+          id: "doc-1",
+          projectId: "1",
+          type: "prd",
+          name: "Payments PRD",
+          sourceMode: "upload",
+          sourceUri: "docs/payments-prd.pdf",
+        },
+        {
+          id: "doc-2",
+          projectId: "1",
+          type: "swagger",
+          name: "Payments Swagger",
+          sourceMode: "url",
+          sourceUri: "https://example.com/swagger.json",
+        },
+      ],
+    });
 
     const html = renderToStaticMarkup(
       await ProjectWorkspacePage({
@@ -280,12 +278,16 @@ describe("workspace pages", () => {
   });
 
   it("renders an archive banner and restore action for archived projects", async () => {
-    getWorkspaceProjectMock.mockResolvedValue({
-      ...workspaceProject,
-      status: "archived",
+    getProjectWorkspaceMock.mockResolvedValue({
+      project: {
+        ...workspaceProject,
+        status: "archived",
+        documentCount: 0,
+        testCaseCount: 0,
+        publishedCount: 0,
+      },
+      documents: [],
     });
-    listWorkspaceProjectDocumentsMock.mockResolvedValue([]);
-    listWorkspaceProjectTestCasesMock.mockResolvedValue([]);
 
     const html = renderToStaticMarkup(
       await ProjectWorkspacePage({
@@ -443,26 +445,28 @@ describe("workspace pages", () => {
 
     const html = renderToStaticMarkup(await SkillsCenterPage());
 
-    expect(html).toContain("Skills");
+    expect(html).toContain("技能中心");
+    expect(html).toContain("共享技能库");
     expect(html).toContain("新建 Skill");
     expect(html).toContain("Skill 目录");
     expect(html).toContain("最近更新 · 共 2 个");
     expect(html).toContain("更多筛选");
-    expect(html).toContain("使用帮助");
+    expect(html).toContain("导入 Skill");
     expect(html).toContain("已发布 1 个，仅草稿 1 个");
-    expect(html).toContain("搜索 Skill");
+    expect(html).toContain("搜索");
     expect(html).toContain("最近更新优先");
     expect(html).toContain("当前生产版本");
     expect(html).toContain("草稿版本");
     expect(html).toContain("最近更新");
     expect(html).toContain("状态");
-    expect(html).toContain("生产中");
+    expect(html).toContain("已发布");
     expect(html).toContain("仅草稿");
     expect(html).toContain("PRD + 业务规则主模板");
     expect(html).toContain("流程恢复补场景模板");
     expect(html).toContain("创建首个版本");
     expect(html).toContain("新建版本");
-    expect(html).toContain('href="/skills/101"');
+    expect(html).toContain('href="/skills/101/versions/202"');
+    expect(html).toContain("编辑");
     expect(html.indexOf("流程恢复补场景模板")).toBeLessThan(html.indexOf("PRD + 业务规则主模板"));
     expect(html).not.toContain("How It Works");
     expect(html).not.toContain("新增版本 / 上传归档地址");
@@ -531,6 +535,35 @@ describe("workspace pages", () => {
         },
       ],
     });
+    listGlobalSkillProjectBindingsMock.mockResolvedValue({
+      kind: "success",
+      data: [
+        {
+          bindingId: "301",
+          projectId: "1",
+          projectName: "支付平台",
+          projectCode: "payments",
+          bindingType: "primary",
+          isDefault: true,
+          globalSkillVersionId: "201",
+          versionLabel: "v1 Production",
+          versionStatus: "production",
+          updatedAt: "2026-06-28T10:00:00Z",
+        },
+      ],
+    });
+    getGlobalSkillUsageStatsMock.mockResolvedValue({
+      kind: "success",
+      data: {
+        boundProjectCount: 1,
+        generationTaskCount: 3,
+        succeededGenerationCount: 2,
+        failedGenerationCount: 1,
+        latestGenerationAt: "2026-06-28T10:00:00Z",
+        draftVersionCount: 1,
+        productionVersionLabel: "v1 Production",
+      },
+    });
 
     const html = renderToStaticMarkup(
       await SkillDetailPage({
@@ -541,10 +574,19 @@ describe("workspace pages", () => {
     expect(html).toContain("PRD + 业务规则主模板");
     expect(html).toContain("v1 Production");
     expect(html).toContain("Generate test cases");
-    expect(html).toContain("traceable / observable");
-    expect(html).toContain("在线修改 Skill 定义");
-    expect(html).toContain("保存版本内容");
-    expect(html).toContain("发布为生产版本");
+    expect(html).toContain("正常路径");
+    expect(html).toContain("内容预览");
+    expect(html).toContain("版本历史");
+    expect(html).toContain("项目绑定");
+    expect(html).toContain("效果概览");
+    expect(html).toContain("设置");
+    expect(html).toContain("提示词模板");
+    expect(html).toContain("变更说明");
+    expect(html).toContain("版本对比");
+    expect(html).toContain("支付平台");
+    expect(html).toContain("保存设置");
+    expect(html).not.toContain("推荐更新方式");
+    expect(html).not.toContain("保存版本内容");
   });
 
   it("renders generation task history in the current Chinese workspace", async () => {
@@ -666,6 +708,26 @@ describe("workspace pages", () => {
         },
       ],
     });
+    listGlobalSkillLibraryMock.mockResolvedValue({
+      kind: "success",
+      data: [
+        {
+          id: "101",
+          skillKey: "prd_rules_core",
+          name: "PRD + 业务规则主模板",
+          description: "Generate evidence-backed cases.",
+          category: "core",
+          domain: "general",
+          inputTypes: ["prd", "business_rule"],
+          status: "active",
+          owner: "system",
+          currentProductionVersionId: "201",
+          currentProductionVersionLabel: "v1 Production",
+          createdAt: "2026-06-28T10:00:00Z",
+          updatedAt: "2026-06-28T10:00:00Z",
+        },
+      ],
+    });
 
     const html = renderToStaticMarkup(
       await ProjectGenerationTasksPage({
@@ -692,6 +754,82 @@ describe("workspace pages", () => {
     expect(html).toContain("/projects/1/documents");
   });
 
+  it("enables queue generation with platform skills when project has no bindings", async () => {
+    getProjectMock.mockResolvedValue({
+      kind: "success",
+      project: workspaceProject,
+    });
+    listProjectGenerationTasksMock.mockResolvedValue({
+      kind: "success",
+      tasks: [],
+    });
+    listProjectDocumentsApiMock.mockResolvedValue({
+      kind: "success",
+      documents: [
+        {
+          id: "12",
+          projectId: "19",
+          type: "prd",
+          name: "Checkout PRD",
+          sourceMode: "upload",
+          sourceUri: "docs/checkout.md",
+          parseStatus: "parsed",
+        },
+      ],
+    });
+    listDocumentVersionsMock.mockResolvedValue({
+      kind: "success",
+      data: [
+        {
+          id: "1201",
+          documentAssetId: "12",
+          versionNo: 1,
+          storagePath: null,
+          checksum: null,
+          sourceUri: "docs/checkout.md",
+          parseStatus: "parsed",
+          parseSummary: "Ready",
+          structuredMetadata: {},
+        },
+      ],
+    });
+    listProjectSkillBindingsMock.mockResolvedValue({ kind: "success", data: [] });
+    listProjectSkillPackagesMock.mockResolvedValue({ kind: "success", data: [] });
+    listGlobalSkillLibraryMock.mockResolvedValue({
+      kind: "success",
+      data: [
+        {
+          id: "101",
+          skillKey: "prd_rules_core",
+          name: "PRD + 业务规则主模板",
+          description: "Generate evidence-backed cases.",
+          category: "core",
+          domain: "general",
+          inputTypes: ["prd", "business_rule"],
+          status: "active",
+          owner: "system",
+          currentProductionVersionId: "201",
+          currentProductionVersionLabel: "v1 Production",
+          createdAt: "2026-06-28T10:00:00Z",
+          updatedAt: "2026-06-28T10:00:00Z",
+        },
+      ],
+    });
+    listProjectReviewTestCasesMock.mockResolvedValue({ kind: "success", items: [] });
+
+    const html = renderToStaticMarkup(
+      await ProjectGenerationTasksPage({
+        params: Promise.resolve({ projectId: "19" }),
+        searchParams: Promise.resolve({ documentIds: "12" }),
+      }),
+    );
+
+    expect(html).toContain("平台共享");
+    expect(html).toContain('name="globalSkillId"');
+    expect(html).toContain("排队生成");
+    expect(html).not.toContain('type="submit" disabled');
+  });
+
   it("shows an archive lock on the generation tasks page", async () => {
     getProjectMock.mockResolvedValue({
       kind: "success",
@@ -715,6 +853,26 @@ describe("workspace pages", () => {
     listProjectSkillPackagesMock.mockResolvedValue({
       kind: "success",
       data: [],
+    });
+    listGlobalSkillLibraryMock.mockResolvedValue({
+      kind: "success",
+      data: [
+        {
+          id: "101",
+          skillKey: "prd_rules_core",
+          name: "PRD + 业务规则主模板",
+          description: "Generate evidence-backed cases.",
+          category: "core",
+          domain: "general",
+          inputTypes: ["prd", "business_rule"],
+          status: "active",
+          owner: "system",
+          currentProductionVersionId: "201",
+          currentProductionVersionLabel: "v1 Production",
+          createdAt: "2026-06-28T10:00:00Z",
+          updatedAt: "2026-06-28T10:00:00Z",
+        },
+      ],
     });
 
     const html = renderToStaticMarkup(

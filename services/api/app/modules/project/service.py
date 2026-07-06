@@ -30,6 +30,7 @@ from app.schemas.project import (
     ProjectStatus,
     ProjectStatusFilter,
     ProjectSummaryRead,
+    ProjectWorkspaceRead,
 )
 
 _VALID_PROJECT_STATUSES = {"active", "archived"}
@@ -107,13 +108,52 @@ def ensure_project_is_active(project: Project) -> Project:
     return project
 
 
+def _project_list_order(statement: Select[tuple[Project]]) -> Select[tuple[Project]]:
+    return statement.order_by(Project.updated_at.desc(), Project.id.desc())
+
+
 def list_projects(
     session: Session,
     *,
     status_filter: ProjectStatusFilter = "active",
 ) -> list[ProjectRead]:
-    statement = _apply_project_status_filter(select(Project).order_by(Project.id), status_filter)
+    statement = _apply_project_status_filter(_project_list_order(select(Project)), status_filter)
     return [_build_project_read(project) for project in session.scalars(statement)]
+
+
+def _build_project_summary(session: Session, project: Project) -> ProjectSummaryRead:
+    document_count = session.scalar(
+        select(func.count())
+        .select_from(DocumentAsset)
+        .where(DocumentAsset.project_id == project.id)
+    )
+    test_case_count = session.scalar(
+        select(func.count())
+        .select_from(TestCase)
+        .where(TestCase.project_id == project.id)
+    )
+    published_count = session.scalar(
+        select(func.count())
+        .select_from(TestCase)
+        .where(
+            TestCase.project_id == project.id,
+            TestCase.status == "published",
+        )
+    )
+    return ProjectSummaryRead(
+        id=project.id,
+        name=project.name,
+        code=project.code,
+        description=project.description,
+        status=_normalize_project_status_value(project.status),
+        default_provider=project.default_provider,
+        default_prompt_profile=project.default_prompt_profile,
+        created_at=project.created_at,
+        updated_at=project.updated_at,
+        document_count=int(document_count or 0),
+        test_case_count=int(test_case_count or 0),
+        published_count=int(published_count or 0),
+    )
 
 
 def list_project_summaries(
@@ -121,45 +161,24 @@ def list_project_summaries(
     *,
     status_filter: ProjectStatusFilter = "active",
 ) -> list[ProjectSummaryRead]:
-    statement = _apply_project_status_filter(select(Project).order_by(Project.id), status_filter)
+    statement = _apply_project_status_filter(_project_list_order(select(Project)), status_filter)
     projects = list(session.scalars(statement))
-    summaries: list[ProjectSummaryRead] = []
-    for project in projects:
-        document_count = session.scalar(
-            select(func.count())
-            .select_from(DocumentAsset)
-            .where(DocumentAsset.project_id == project.id)
+    return [_build_project_summary(session, project) for project in projects]
+
+
+def get_project_workspace(session: Session, project_id: int) -> ProjectWorkspaceRead:
+    project = _get_project_model(session, project_id)
+    documents = list(
+        session.scalars(
+            select(DocumentAsset)
+            .where(DocumentAsset.project_id == project_id)
+            .order_by(DocumentAsset.id)
         )
-        test_case_count = session.scalar(
-            select(func.count())
-            .select_from(TestCase)
-            .where(TestCase.project_id == project.id)
-        )
-        published_count = session.scalar(
-            select(func.count())
-            .select_from(TestCase)
-            .where(
-                TestCase.project_id == project.id,
-                TestCase.status == "published",
-            )
-        )
-        summaries.append(
-            ProjectSummaryRead(
-                id=project.id,
-                name=project.name,
-                code=project.code,
-                description=project.description,
-                status=_normalize_project_status_value(project.status),
-                default_provider=project.default_provider,
-                default_prompt_profile=project.default_prompt_profile,
-                created_at=project.created_at,
-                updated_at=project.updated_at,
-                document_count=int(document_count or 0),
-                test_case_count=int(test_case_count or 0),
-                published_count=int(published_count or 0),
-            )
-        )
-    return summaries
+    )
+    return ProjectWorkspaceRead(
+        project=_build_project_summary(session, project),
+        documents=documents,
+    )
 
 
 def get_project(session: Session, project_id: int) -> ProjectRead:

@@ -33,6 +33,30 @@ def test_client_uses_migrated_test_database(client, test_database_url):
     assert "document_assets" in tables
 
 
+def test_get_project_workspace_returns_summary_and_documents(client):
+    project = client.post(
+        "/projects",
+        json={"name": "Workspace Bootstrap", "code": "workspace-bootstrap"},
+    ).json()
+    document = client.post(
+        f"/projects/{project['id']}/documents",
+        json={
+            "type": "prd",
+            "name": "Bootstrap PRD",
+            "source_mode": "upload",
+            "source_uri": "docs/bootstrap.pdf",
+        },
+    ).json()
+
+    response = client.get(f"/projects/{project['id']}/workspace")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["project"]["id"] == project["id"]
+    assert payload["project"]["document_count"] == 1
+    assert payload["documents"][0]["id"] == document["id"]
+
+
 def test_create_project(client):
     response = client.post(
         "/projects",
@@ -56,8 +80,8 @@ def test_list_projects_returns_created_projects(client):
 
     assert response.status_code == 200
     assert [project["code"] for project in response.json()] == [
-        "core-banking",
         "retail-banking",
+        "core-banking",
     ]
 
 
@@ -123,8 +147,8 @@ def test_list_projects_supports_all_status_filter(client):
     assert archive_response.status_code == 200
     assert response.status_code == 200
     assert [project["code"] for project in response.json()] == [
-        active_project["code"],
         archived_project["code"],
+        active_project["code"],
     ]
 
 

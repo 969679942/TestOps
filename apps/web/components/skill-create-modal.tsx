@@ -74,10 +74,10 @@ export function SkillCreateModal({ open, onClose, form }: SkillCreateModalProps)
         <div className="review-stack">
           <div className="section-heading">
             <div>
-              <span className="eyebrow">Quick Actions</span>
+              <span className="eyebrow">快速操作</span>
               <h3 id="skill-create-title">新建 Skill</h3>
             </div>
-            <p>先定义用途、输入类型和责任边界，再由项目去绑定使用。</p>
+            <p>填写提示词与证据策略即可创建，创建后直接进入内容编辑。</p>
           </div>
           {form}
         </div>

@@ -2,13 +2,17 @@ import React from "react";
 import { revalidatePath } from "next/cache";
 
 import { AppShell } from "../../../../components/app-shell";
+import { GenerationCreateForm } from "../../../../components/generation-create-form";
 import { GenerationTaskList } from "../../../../components/generation-task-list";
+import { PageDescription } from "../../../../components/page-description";
 import { ProjectArchiveBanner } from "../../../../components/project-archive-banner";
 import { copy as uiCopy } from "../../../../lib/copy";
 import {
   createGenerationTask,
+  createProjectSkillBinding,
   getProject,
   listDocumentVersions,
+  listGlobalSkillLibrary,
   listProjectSkillBindings,
   listProjectDocuments,
   listProjectGenerationTasks,
@@ -16,13 +20,19 @@ import {
   listProjectTestCases,
 } from "../../../../lib/api";
 import { copy, localizedHref, normalizeLocale, type LocaleSearchParams } from "../../../../lib/i18n";
+import { countFailedGenerationTasks } from "../../../../lib/project-workspace-metrics";
 import { translateProjectName } from "../../../../lib/project-display";
 
 type ProjectGenerationTasksPageProps = {
   params: Promise<{
     projectId: string;
   }>;
-  searchParams?: Promise<LocaleSearchParams>;
+  searchParams?: Promise<
+    LocaleSearchParams & {
+      documentIds?: string | string[];
+      focus?: string | string[];
+    }
+  >;
 };
 
 function parseSearchParam(value: string | string[] | undefined): string[] {
@@ -48,10 +58,7 @@ export default async function ProjectGenerationTasksPage({
   searchParams,
 }: ProjectGenerationTasksPageProps) {
   const { projectId } = await params;
-  const resolvedSearchParams =
-    ((await searchParams) ?? {}) as LocaleSearchParams & {
-      documentIds?: string | string[];
-    };
+  const resolvedSearchParams = (await searchParams) ?? {};
   const locale = normalizeLocale(resolvedSearchParams.lang);
   const t = copy[locale];
   const projectResult = await getProject(projectId);
@@ -97,14 +104,17 @@ export default async function ProjectGenerationTasksPage({
   const projectDisplayName = translateProjectName(project.name, locale);
   const archived = project.status === "archived";
 
-  const [taskList, documentList, bindingsResult, skillPackagesResult, testCaseList] = await Promise.all([
-    listProjectGenerationTasks(projectId),
-    listProjectDocuments(projectId),
-    listProjectSkillBindings(projectId),
-    listProjectSkillPackages(projectId),
-    listProjectTestCases(projectId),
-  ]);
+  const [taskList, documentList, bindingsResult, skillPackagesResult, testCaseList, globalSkillsResult] =
+    await Promise.all([
+      listProjectGenerationTasks(projectId),
+      listProjectDocuments(projectId),
+      listProjectSkillBindings(projectId),
+      listProjectSkillPackages(projectId),
+      listProjectTestCases(projectId),
+      listGlobalSkillLibrary(),
+    ]);
   const tasks = taskList.kind === "http-error" ? [] : taskList.tasks;
+  const failedTaskCount = countFailedGenerationTasks(tasks);
   const documents = documentList.kind === "success" ? documentList.documents : [];
   const versionResults = await Promise.all(
     documents.map(async (document) => ({
@@ -116,8 +126,13 @@ export default async function ProjectGenerationTasksPage({
   const skillPackages = skillPackagesResult.kind === "success" ? skillPackagesResult.data : [];
   const activeSkillPackages = skillPackages.filter((item) => item.activeVersionId);
   const preferredBindings = bindings.filter((item) => item.status === "active");
+  const platformSkills =
+    globalSkillsResult.kind === "success"
+      ? globalSkillsResult.data.filter((item) => item.currentProductionVersionId !== null)
+      : [];
   const seedCases = testCaseList.kind === "success" ? testCaseList.items : [];
   const selectedDocumentIds = new Set(parseSearchParam(resolvedSearchParams.documentIds));
+  const focusFailed = parseSearchParam(resolvedSearchParams.focus).includes("failed");
   const preselectedVersionIds = new Set(
     versionResults
       .flatMap((item) => {
@@ -133,6 +148,20 @@ export default async function ProjectGenerationTasksPage({
       }),
   );
 
+  const hasDocumentVersions = versionResults.some(
+    (item) => item.versions.kind === "success" && item.versions.data.length > 0,
+  );
+  const hasSkillSelection =
+    preferredBindings.length > 0 || activeSkillPackages.length > 0 || platformSkills.length > 0;
+  const canQueueGeneration = !archived && hasDocumentVersions && hasSkillSelection;
+  const queueDisabledReason = archived
+    ? null
+    : !hasDocumentVersions
+      ? "请先上传文档并生成至少一个文档版本。"
+      : !hasSkillSelection
+        ? "当前没有可用技能。请先在项目技能页绑定共享 Skill，或激活本地 Skill 包。"
+        : null;
+
   async function createGenerationAction(formData: FormData) {
     "use server";
 
@@ -144,18 +173,54 @@ export default async function ProjectGenerationTasksPage({
       .getAll("documentVersionId")
       .map((value) => Number.parseInt(String(value), 10))
       .filter((value) => Number.isInteger(value) && value > 0);
+    if (inputDocumentVersionIds.length === 0) {
+      throw new Error("请至少选择一个文档版本。");
+    }
+
     const seedTestCaseIds = formData
       .getAll("seedTestCaseId")
       .map((value) => Number.parseInt(String(value), 10))
       .filter((value) => Number.isInteger(value) && value > 0);
-    const inputSkillVersionId = Number.parseInt(read("skillVersionId"), 10);
-    const inputSkillBindingId = Number.parseInt(read("skillBindingId"), 10);
+
+    let inputSkillBindingId = Number.parseInt(read("skillBindingId"), 10);
+    let inputSkillVersionId = Number.parseInt(read("skillVersionId"), 10);
+    const globalSkillId = Number.parseInt(read("globalSkillId"), 10);
+
+    if (!Number.isInteger(inputSkillBindingId) || inputSkillBindingId <= 0) {
+      inputSkillBindingId = Number.NaN;
+    }
+    if (!Number.isInteger(inputSkillVersionId) || inputSkillVersionId <= 0) {
+      inputSkillVersionId = Number.NaN;
+    }
+
+    if (!Number.isInteger(inputSkillBindingId) && !Number.isInteger(inputSkillVersionId)) {
+      if (Number.isInteger(globalSkillId) && globalSkillId > 0) {
+        const bindingResult = await createProjectSkillBinding(projectId, {
+          global_skill_id: globalSkillId,
+          binding_type: "primary",
+          is_default: true,
+        });
+        if (bindingResult.kind !== "success") {
+          throw new Error(
+            bindingResult.kind === "http-error"
+              ? (bindingResult.message ?? "自动绑定平台 Skill 失败。")
+              : "技能服务暂时不可用。",
+          );
+        }
+        inputSkillBindingId = Number(bindingResult.data.id);
+      }
+    }
+
+    if (!Number.isInteger(inputSkillBindingId) && !Number.isInteger(inputSkillVersionId)) {
+      throw new Error("请选择生成技能，或确保平台共享技能可用。");
+    }
+
     const provider = read("provider");
     const model = read("model");
     const promptProfile = read("promptProfile");
     const coverageGapNote = read("coverageGapNote");
 
-    await createGenerationTask(projectId, {
+    const result = await createGenerationTask(projectId, {
       input_document_version_ids: inputDocumentVersionIds,
       input_skill_version_id: Number.isInteger(inputSkillVersionId) ? inputSkillVersionId : null,
       input_skill_binding_id: Number.isInteger(inputSkillBindingId) ? inputSkillBindingId : null,
@@ -165,6 +230,15 @@ export default async function ProjectGenerationTasksPage({
       model: model || null,
       prompt_profile: promptProfile || null,
     });
+
+    if (result.kind !== "success") {
+      throw new Error(
+        result.kind === "http-error"
+          ? (result.message ?? "创建生成任务失败。")
+          : "生成服务暂时不可用。",
+      );
+    }
+
     revalidatePath(`/projects/${projectId}/generation-tasks`);
   }
 
@@ -173,12 +247,26 @@ export default async function ProjectGenerationTasksPage({
       currentPath={`/projects/${projectId}/generation-tasks`}
       locale={locale}
       project={project}
+      failedTaskCount={failedTaskCount}
     >
       <section className="page-header">
         <span className="eyebrow">{t.generationPage.eyebrow}</span>
         <h2>生成任务</h2>
         <p>当前项目：{projectDisplayName}。{t.generationPage.description}</p>
+        <PageDescription page="generationTasks" />
       </section>
+
+      {failedTaskCount > 0 ? (
+        <section className="alert-panel alert-panel-danger" role="alert">
+          <div className="alert-panel-copy">
+            <h3>有 {failedTaskCount} 个生成任务失败</h3>
+            <p>请查看失败原因，确认资料解析、Skill 绑定与模型配置后重新创建任务。</p>
+          </div>
+          <a className="button-secondary" href="#generation-task-failed">
+            查看失败详情
+          </a>
+        </section>
+      ) : null}
 
       <section className="summary-grid" aria-label={t.generationPage.summary}>
         <article className="summary-card">
@@ -206,7 +294,13 @@ export default async function ProjectGenerationTasksPage({
           <p>默认主链路只保留文档、项目技能和覆盖说明。Provider、模型和参考用例等高级配置按需展开，减少首屏决策成本。</p>
         </div>
 
-        <form action={createGenerationAction} className="review-stack generation-create-form">
+        <GenerationCreateForm
+          action={createGenerationAction}
+          canSubmit={canQueueGeneration}
+          disabledReason={queueDisabledReason}
+          submitLabel={t.generationPage.queueGeneration}
+          hideSubmit={archived}
+        >
           <div className="review-stack">
             <div>
               <h4>文档版本</h4>
@@ -280,9 +374,7 @@ export default async function ProjectGenerationTasksPage({
                     </label>
                   ))}
                 </div>
-              ) : activeSkillPackages.length === 0 ? (
-                <p>当前没有已绑定的共享技能，也没有已激活的本地 Skill 版本，请先到项目技能页配置。</p>
-              ) : (
+              ) : activeSkillPackages.length > 0 ? (
                 <div className="review-stack">
                   <p>当前项目还没有绑定共享技能，以下使用本地兼容包作为回退方案。</p>
                   {activeSkillPackages.map((skillPackage, index) => (
@@ -300,6 +392,26 @@ export default async function ProjectGenerationTasksPage({
                     </label>
                   ))}
                 </div>
+              ) : platformSkills.length > 0 ? (
+                <div className="review-stack">
+                  <p>项目尚未绑定技能，将自动使用平台共享技能（提交时绑定到当前项目）。</p>
+                  {platformSkills.map((skill, index) => (
+                    <label className="inline-check" key={skill.id}>
+                      <input
+                        type="radio"
+                        name="globalSkillId"
+                        value={String(skill.id)}
+                        defaultChecked={index === 0}
+                        disabled={archived}
+                      />
+                      <span>
+                        {skill.name} · {skill.currentProductionVersionLabel ?? "生产版"} · 平台共享
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <p>当前没有已绑定的共享技能、本地 Skill 或平台生产版 Skill，请先到项目技能页配置。</p>
               )}
             </div>
           </div>
@@ -374,21 +486,8 @@ export default async function ProjectGenerationTasksPage({
               </div>
             </div>
           </details>
-          {archived ? (
-            <div className="archived-action-lock">{uiCopy.archivedProjectActionHint}</div>
-          ) : (
-            <button
-              className="primary-button"
-              type="submit"
-              disabled={
-                documents.length === 0 ||
-                (preferredBindings.length === 0 && activeSkillPackages.length === 0)
-              }
-            >
-              {t.generationPage.queueGeneration}
-            </button>
-          )}
-        </form>
+          {archived ? <div className="archived-action-lock">{uiCopy.archivedProjectActionHint}</div> : null}
+        </GenerationCreateForm>
       </section>
 
       {taskList.kind === "unavailable" ? (
@@ -405,7 +504,7 @@ export default async function ProjectGenerationTasksPage({
 
       {archived ? <ProjectArchiveBanner /> : null}
 
-      <GenerationTaskList items={tasks} locale={locale} />
+      <GenerationTaskList items={tasks} locale={locale} highlightFailed={focusFailed || failedTaskCount > 0} />
 
       <section className="workspace-links" aria-label={t.generationPage.followUp}>
         <a

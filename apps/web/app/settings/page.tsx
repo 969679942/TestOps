@@ -1,5 +1,6 @@
 import React from "react";
 import { AppShell } from "../../components/app-shell";
+import { PageDescription } from "../../components/page-description";
 import { SettingsEditor } from "../../components/settings-editor";
 import { getRuntimeSettings } from "../../lib/api";
 import { copy, normalizeLocale, type LocaleSearchParams } from "../../lib/i18n";
@@ -21,6 +22,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps =
         <span className="eyebrow">{pageText.eyebrow}</span>
         <h2>{pageText.title}</h2>
         <p>{pageText.description}</p>
+        <PageDescription page="settings" />
       </section>
 
       {runtimeSettings ? (

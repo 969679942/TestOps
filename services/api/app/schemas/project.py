@@ -3,6 +3,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, StringConstraints
 
+from app.schemas.document import DocumentRead
+
 NonEmptyStr = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 ProjectStatus = Literal["active", "archived"]
 ProjectStatusFilter = Literal["active", "archived", "all"]
@@ -36,3 +38,8 @@ class ProjectSummaryRead(ProjectRead):
     document_count: int
     test_case_count: int
     published_count: int
+
+
+class ProjectWorkspaceRead(BaseModel):
+    project: ProjectSummaryRead
+    documents: list[DocumentRead]

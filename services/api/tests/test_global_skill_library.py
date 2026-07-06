@@ -4,15 +4,16 @@ def test_global_skill_library_seeds_and_lists_definitions(client):
     assert response.status_code == 200
     data = response.json()
     assert len(data) >= 3
-    assert data[0]["skill_key"] == "prd_rules_core"
-    assert data[0]["current_production_version_label"] == "v1 Production"
-    assert "prd" in data[0]["input_types"]
+    prd_skill = next(item for item in data if item["skill_key"] == "prd_rules_core")
+    assert prd_skill["current_production_version_label"] == "v1 生产版"
+    assert "prd" in prd_skill["input_types"]
 
 
 def test_global_skill_library_returns_detail_and_versions(client):
     library = client.get("/skills/library")
     assert library.status_code == 200
-    skill_id = library.json()[0]["id"]
+    prd_skill = next(item for item in library.json() if item["skill_key"] == "prd_rules_core")
+    skill_id = prd_skill["id"]
 
     detail = client.get(f"/skills/library/{skill_id}")
     versions = client.get(f"/skills/library/{skill_id}/versions")
@@ -22,6 +23,21 @@ def test_global_skill_library_returns_detail_and_versions(client):
     assert detail.json()["skill_key"] == "prd_rules_core"
     assert versions.json()[0]["status"] == "production"
     assert "traceable" in versions.json()[0]["review_checklist"]
+
+
+def test_global_skill_library_exposes_bindings_and_usage_stats(client):
+    library = client.get("/skills/library")
+    assert library.status_code == 200
+    skill_id = library.json()[0]["id"]
+
+    bindings = client.get(f"/skills/library/{skill_id}/bindings")
+    stats = client.get(f"/skills/library/{skill_id}/usage-stats")
+
+    assert bindings.status_code == 200
+    assert stats.status_code == 200
+    assert isinstance(bindings.json(), list)
+    assert "bound_project_count" in stats.json()
+    assert "generation_task_count" in stats.json()
 
 
 def test_project_skill_bindings_can_be_created_listed_and_switched_default(client):
@@ -81,6 +97,30 @@ def test_project_skill_bindings_can_be_created_listed_and_switched_default(clien
     assert switched_binding.status_code == 200
     assert switched_binding.json()["global_skill_version_id"] == second_skill["current_production_version_id"]
     assert switched_binding.json()["is_default"] is True
+
+
+def test_global_skill_library_allows_minimal_create(client):
+    response = client.post("/skills/library", json={"input_types": ["prd"]})
+
+    assert response.status_code == 201
+    data = response.json()
+    assert data["skill_key"].startswith("skill_")
+    assert data["name"] == "未命名 Skill"
+    assert data["category"] == "core"
+    assert data["domain"] == "general"
+    assert data["input_types"] == ["prd"]
+
+
+def test_global_skill_library_derives_key_from_name(client):
+    response = client.post(
+        "/skills/library",
+        json={"name": "Recovery Plus", "input_types": ["business_rule"]},
+    )
+
+    assert response.status_code == 201
+    data = response.json()
+    assert data["skill_key"] == "recovery_plus"
+    assert data["name"] == "Recovery Plus"
 
 
 def test_global_skill_library_supports_create_update_and_publish(client):

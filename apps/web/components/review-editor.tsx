@@ -5,6 +5,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { copy, formatValue, type Locale } from "../lib/i18n";
 import type { StructuredTextField, TestCaseRecord } from "../lib/types";
 import { ConfirmActionModal } from "./confirm-action-modal";
+import { FieldHelp } from "./field-help";
 
 type ReviewEditorProps = Readonly<{
   item: TestCaseRecord | null;
@@ -229,11 +230,17 @@ export function ReviewEditor({
           <input className="field-input" name="title" defaultValue={item.title} />
         </label>
         <label className="form-field">
-          <span>{t.module}</span>
+          <span>
+            {t.module}
+            <FieldHelp field="module" />
+          </span>
           <input className="field-input" name="module" defaultValue={item.module} />
         </label>
         <label className="form-field">
-          <span>{t.feature}</span>
+          <span>
+            {t.feature}
+            <FieldHelp field="feature" />
+          </span>
           <input className="field-input" name="feature" defaultValue={item.feature} />
         </label>
         <label className="form-field">
@@ -247,7 +254,10 @@ export function ReviewEditor({
           </select>
         </label>
         <label className="form-field">
-          <span>{t.priority}</span>
+          <span>
+            {t.priority}
+            <FieldHelp field="priority" />
+          </span>
           <select className="field-input" defaultValue={item.priority} name="priority">
             {PRIORITY_OPTIONS.map((option) => (
               <option key={option} value={option}>
@@ -395,16 +405,26 @@ export function ReviewEditor({
         <button className="secondary-button" formAction={requestChangeAction} type="submit">
           {t.requestChanges}
         </button>
+        <FieldHelp field="requestChanges" label="退回修改说明" />
         <button className="button-danger" onClick={() => setPendingConfirmation("reject")} type="button">
           {t.reject}
         </button>
+        <FieldHelp field="reject" label="驳回说明" />
         <button className="secondary-button" formAction={approveAction} type="submit">
           {t.approve}
         </button>
+        <FieldHelp field="approve" label="批准说明" />
         {canPublish ? (
-          <button className="secondary-button" onClick={() => setPendingConfirmation("publish")} type="button">
-            {t.publish}
-          </button>
+          <>
+            <button
+              className="secondary-button"
+              onClick={() => setPendingConfirmation("publish")}
+              type="button"
+            >
+              {t.publish}
+            </button>
+            <FieldHelp field="publish" label="发布说明" />
+          </>
         ) : (
           <p className="helper-text">请先批准用例，再执行发布。</p>
         )}

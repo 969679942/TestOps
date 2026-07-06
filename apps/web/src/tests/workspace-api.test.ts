@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  createProject,
   createTestCase,
   deleteProject,
   listProjectTestCaseDirectories,
@@ -82,6 +83,86 @@ describe("workspace-api project archive helpers", () => {
         body: JSON.stringify({ status: "archived" }),
       }),
     );
+  });
+
+  it("creates a project and retries with a new code after a code conflict", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ detail: "Project with this name or code already exists" }), {
+          status: 409,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          id: 99,
+          name: "New Project",
+          code: "new-project-ab12",
+          description: null,
+          status: "active",
+          default_provider: "cursor",
+          default_prompt_profile: "default",
+        }, 201),
+      );
+
+    await expect(
+      createProject({
+        name: "New Project",
+        code: "new-project",
+      }),
+    ).resolves.toMatchObject({
+      id: "99",
+      name: "New Project",
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("surfaces a friendly message when the project name already exists", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ detail: "Project with this name or code already exists" }), {
+        status: 409,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    await expect(
+      createProject({
+        name: "支付平台",
+        code: "payments",
+      }),
+    ).rejects.toMatchObject({
+      message: "项目名称或项目代号已存在，请换一个名称。",
+      status: 409,
+    });
+  });
+
+  it("surfaces a friendly message when archiving fails because the project is missing", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ detail: "Project not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    await expect(updateProjectStatus("999", "archived")).rejects.toMatchObject({
+      message: "项目不存在或已被删除。",
+      status: 404,
+    });
+  });
+
+  it("surfaces a friendly message when deleting an active project", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ detail: "Archive the project before deleting it" }), {
+        status: 409,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    await expect(deleteProject("12")).rejects.toMatchObject({
+      message: "请先归档项目，再执行删除。",
+      status: 409,
+    });
   });
 
   it("deletes an archived project through the workspace API", async () => {

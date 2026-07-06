@@ -15,7 +15,7 @@ describe("AppShell", () => {
     expect(html).toContain('href="/"');
     expect(html).toContain(">项目<");
     expect(html).toContain('href="/skills"');
-    expect(html).toContain(">Skills<");
+    expect(html).toContain(">技能中心<");
     expect(html).toContain(">设置<");
     expect(html).not.toContain("语言");
     expect(html).not.toContain("?lang=");

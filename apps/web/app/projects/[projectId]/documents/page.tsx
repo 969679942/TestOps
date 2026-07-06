@@ -1,6 +1,7 @@
 import React from "react";
 
 import { AppShell } from "../../../../components/app-shell";
+import { PageDescription } from "../../../../components/page-description";
 import { DocumentUploadPanel } from "../../../../components/document-upload-panel";
 import { ProjectArchiveBanner } from "../../../../components/project-archive-banner";
 import {
@@ -9,6 +10,7 @@ import {
   listProjectDocuments,
 } from "../../../../lib/api";
 import { copy, localizedHref, normalizeLocale, type LocaleSearchParams } from "../../../../lib/i18n";
+import { formatDocumentSourceDisplay, shouldShowDocumentSourceLine } from "../../../../lib/document-display";
 import { translateProjectName } from "../../../../lib/project-display";
 import type { DocumentVersionRecord } from "../../../../lib/types";
 
@@ -102,6 +104,7 @@ export default async function ProjectDocumentsPage({
         <p>
           当前项目：{translateProjectName(project.name, locale)}。{t.documentsPage.description}
         </p>
+        <PageDescription page="documents" />
       </section>
 
       {archived ? (
@@ -144,7 +147,9 @@ export default async function ProjectDocumentsPage({
                     </div>
                     <span className="status-pill">{document.parseStatus ?? "pending"}</span>
                   </div>
-                  <p>{document.sourceUri ?? "stored internally"}</p>
+                  {shouldShowDocumentSourceLine(document.sourceUri) ? (
+                    <p>{formatDocumentSourceDisplay(document.sourceUri)}</p>
+                  ) : null}
                   {latestVersion ? (
                     <div className="review-stack">
                       <article className="review-meta-card">

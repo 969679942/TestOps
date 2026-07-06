@@ -65,13 +65,13 @@ class GlobalSkillDefinitionRead(BaseModel):
 
 
 class GlobalSkillDefinitionCreate(BaseModel):
-    skill_key: NonEmptyStr
-    name: NonEmptyStr
-    description: NonEmptyStr
-    category: NonEmptyStr
-    domain: NonEmptyStr
-    input_types: list[NonEmptyStr] = Field(default_factory=list)
-    owner: NonEmptyStr = "workspace"
+    skill_key: str = ""
+    name: str = ""
+    description: str = ""
+    category: str = ""
+    domain: str = ""
+    input_types: list[str] = Field(default_factory=list)
+    owner: str = "workspace"
 
 
 class GlobalSkillDefinitionUpdate(BaseModel):
@@ -131,3 +131,26 @@ class GlobalSkillVersionUpdate(BaseModel):
     release_notes: str | None = None
     created_by: NonEmptyStr | None = None
     status: NonEmptyStr | None = None
+
+
+class GlobalSkillProjectBindingRead(BaseModel):
+    binding_id: int
+    project_id: int
+    project_name: str
+    project_code: str
+    binding_type: str
+    is_default: bool
+    global_skill_version_id: int
+    version_label: str
+    version_status: str
+    updated_at: datetime
+
+
+class GlobalSkillUsageStatsRead(BaseModel):
+    bound_project_count: int
+    generation_task_count: int
+    succeeded_generation_count: int
+    failed_generation_count: int
+    latest_generation_at: datetime | None
+    draft_version_count: int
+    production_version_label: str | None

@@ -6,6 +6,8 @@ import {
   deleteProject as deleteProjectApi,
   deleteProjectDocument as deleteProjectDocumentApi,
   getProject as getProjectApi,
+  getProjectWorkspace as getProjectWorkspaceApi,
+  type ProjectWorkspacePayload,
   getTestCase as getTestCaseApi,
   importTestCases as importTestCasesApi,
   listProjectDocuments as listProjectDocumentsApi,
@@ -33,6 +35,12 @@ import type {
   TestCaseMutationPayload,
   TestCaseRecord as ApiTestCaseRecord,
 } from "./types";
+import {
+  mapApiUnavailableMessage,
+  mapProjectCreateError,
+  mapProjectDeleteError,
+  mapProjectStatusUpdateError,
+} from "./api-errors";
 
 export type ProjectRecord = Omit<ApiProjectRecord, "id"> & {
   id: string;
@@ -83,6 +91,7 @@ type RequestResult<T> =
   | {
       kind: "http-error";
       status: number;
+      message?: string;
     };
 
 type ProjectListResult = {
@@ -144,10 +153,10 @@ export class ApiError extends Error {
 
 function throwFromResult<T>(result: RequestResult<T>, fallbackMessage: string): never {
   if (result.kind === "http-error") {
-    throw new ApiError(fallbackMessage, result.status);
+    throw new ApiError(result.message ?? fallbackMessage, result.status);
   }
 
-  throw new ApiError(fallbackMessage, 503);
+  throw new ApiError(mapApiUnavailableMessage(), 503);
 }
 
 function unwrapData<T>(result: RequestResult<T>, fallbackMessage: string): T {
@@ -274,34 +283,101 @@ export async function getProject(projectId: string): Promise<ProjectRecord> {
   throw new ApiError("加载项目信息失败。", 503);
 }
 
+export async function getProjectWorkspace(projectId: string): Promise<ProjectWorkspacePayload> {
+  const result = await getProjectWorkspaceApi(projectId);
+
+  if (result.kind === "success") {
+    return {
+      project: {
+        ...result.data.project,
+        id: String(result.data.project.id),
+      },
+      documents: result.data.documents.map((document) => ({
+        ...document,
+        id: String(document.id),
+        projectId: String(document.projectId),
+      })),
+    };
+  }
+
+  if (result.kind === "not-found") {
+    throw new ApiError("项目不存在。", 404);
+  }
+
+  if (result.kind === "http-error") {
+    throw new ApiError(result.message ?? "加载项目工作台失败。", result.status);
+  }
+
+  throw new ApiError(mapApiUnavailableMessage(), 503);
+}
+
+function throwProjectMutationError(
+  result: RequestResult<unknown>,
+  mapHttpError: (status: number, message?: string) => string,
+): never {
+  if (result.kind === "http-error") {
+    throw new ApiError(mapHttpError(result.status, result.message), result.status);
+  }
+
+  throw new ApiError(mapApiUnavailableMessage(), 503);
+}
+
 export async function createProject(input: {
   name: string;
   code: string;
   description?: string;
 }): Promise<ProjectRecord> {
-  return mapProject(
-    unwrapData(
-      await createProjectApi({
-        name: input.name,
-        code: input.code,
-        description: input.description ?? null,
-      }),
-      "创建项目失败。",
-    ),
-  );
+  let code = input.code;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const result = await createProjectApi({
+      name: input.name,
+      code,
+      description: input.description ?? null,
+    });
+
+    if (result.kind === "success") {
+      return mapProject(result.data);
+    }
+
+    if (result.kind === "http-error" && result.status === 409 && attempt < 2) {
+      code = `${input.code}-${Date.now().toString(36).slice(-4)}`;
+      continue;
+    }
+
+    if (result.kind === "http-error") {
+      throw new ApiError(mapProjectCreateError(result.status, result.message), result.status);
+    }
+
+    throw new ApiError(mapApiUnavailableMessage(), 503);
+  }
+
+  throw new ApiError(mapProjectCreateError(409), 409);
 }
 
 export async function updateProjectStatus(
   projectId: string,
   status: ProjectStatus,
 ): Promise<ProjectRecord> {
-  return mapProject(
-    unwrapData(await updateProjectStatusApi(projectId, status), "更新项目状态失败。"),
+  const result = await updateProjectStatusApi(projectId, status);
+
+  if (result.kind === "success") {
+    return mapProject(result.data);
+  }
+
+  return throwProjectMutationError(result, (errorStatus, message) =>
+    mapProjectStatusUpdateError(errorStatus, message, status),
   );
 }
 
 export async function deleteProject(projectId: string): Promise<void> {
-  unwrapData(await deleteProjectApi(projectId), "删除项目失败。");
+  const result = await deleteProjectApi(projectId);
+
+  if (result.kind === "success") {
+    return;
+  }
+
+  return throwProjectMutationError(result, mapProjectDeleteError);
 }
 
 export async function listProjectDocuments(projectId: string): Promise<ProjectDocumentRecord[]> {

@@ -1,13 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { copy, statusLabels } from "../lib/copy";
+import {
+  loadTestCaseListFilters,
+  paginateItems,
+  saveTestCaseListFilters,
+} from "../lib/list-session-state";
 import type { TestCaseDirectoryTreeNode } from "../lib/test-case-directory-utils";
 import type { TestCaseRecord } from "../lib/workspace-api";
+import { QueryTrail } from "./query-trail";
+import { TablePagination } from "./table-pagination";
 import { TestCaseDirectoryTree } from "./test-case-directory-tree";
-import { TestCaseResultsTable } from "./test-case-results-table";
+import {
+  formatStatusSummary,
+  summarizeTestCaseStatuses,
+  TestCaseResultsTable,
+} from "./test-case-results-table";
 
 type TestCaseListWorkspaceProps = Readonly<{
   projectId: string;
@@ -51,6 +62,30 @@ function resolveDirectoryScopeIds(
   return [];
 }
 
+function findDirectoryName(
+  directories: TestCaseDirectoryTreeNode[],
+  selectedDirectoryId: string | null,
+) {
+  if (!selectedDirectoryId) {
+    return null;
+  }
+  if (selectedDirectoryId === "unclassified") {
+    return "未分类";
+  }
+
+  for (const directory of directories) {
+    if (directory.id === selectedDirectoryId) {
+      return directory.name;
+    }
+    const child = directory.children.find((item) => item.id === selectedDirectoryId);
+    if (child) {
+      return child.name;
+    }
+  }
+
+  return null;
+}
+
 export function TestCaseListWorkspace({
   projectId,
   testCases,
@@ -58,9 +93,37 @@ export function TestCaseListWorkspace({
   showGeneratedBanner = false,
   importedCount = 0,
 }: TestCaseListWorkspaceProps) {
+  const [hydrated, setHydrated] = useState(false);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<(typeof statusFilters)[number]>("all");
   const [selectedDirectoryId, setSelectedDirectoryId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const resetGuard = useRef(0);
+
+  useEffect(() => {
+    const saved = loadTestCaseListFilters(projectId);
+    setQuery(saved.query);
+    setStatus((saved.status as (typeof statusFilters)[number]) || "all");
+    setSelectedDirectoryId(saved.selectedDirectoryId);
+    setPage(saved.page);
+    setPageSize(saved.pageSize);
+    setHydrated(true);
+  }, [projectId]);
+
+  useEffect(() => {
+    if (!hydrated) {
+      return;
+    }
+    saveTestCaseListFilters(projectId, {
+      query,
+      status,
+      selectedDirectoryId,
+      page,
+      pageSize,
+    });
+  }, [hydrated, page, pageSize, projectId, query, selectedDirectoryId, status]);
+
   const hasActiveFilters =
     query.trim().length > 0 || status !== "all" || selectedDirectoryId !== null;
 
@@ -90,11 +153,56 @@ export function TestCaseListWorkspace({
     });
   }, [query, selectedDirectoryId, selectedScopeIds, status, testCases]);
 
+  const paginated = useMemo(
+    () => paginateItems(filtered, page, pageSize),
+    [filtered, page, pageSize],
+  );
+
+  const statusSummary = useMemo(
+    () => formatStatusSummary(summarizeTestCaseStatuses(filtered)),
+    [filtered],
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [query, selectedDirectoryId, status]);
+
   function resetFilters() {
+    const now = Date.now();
+    if (now - resetGuard.current < 1000) {
+      return;
+    }
+    resetGuard.current = now;
     setQuery("");
     setStatus("all");
     setSelectedDirectoryId(null);
+    setPage(1);
   }
+
+  const directoryName = findDirectoryName(directories, selectedDirectoryId);
+  const queryTrailItems = [
+    status !== "all"
+      ? {
+          id: "status",
+          label: `状态：${statusLabels[status] ?? status}`,
+          onRemove: () => setStatus("all"),
+        }
+      : null,
+    query.trim()
+      ? {
+          id: "query",
+          label: `关键词：${query.trim()}`,
+          onRemove: () => setQuery(""),
+        }
+      : null,
+    selectedDirectoryId
+      ? {
+          id: "directory",
+          label: `目录：${directoryName ?? selectedDirectoryId}`,
+          onRemove: () => setSelectedDirectoryId(null),
+        }
+      : null,
+  ].filter(Boolean) as Array<{ id: string; label: string; onRemove: () => void }>;
 
   return (
     <section className="case-workspace">
@@ -128,7 +236,7 @@ export function TestCaseListWorkspace({
         <section className="list-toolbar case-workspace-toolbar">
           <div className="case-workspace-toolbar-left">
             <Link className="button-primary" href={`/projects/${projectId}/test-cases/new`}>
-              + 新建用例
+              + 新增
             </Link>
             <div className="case-workspace-flow-actions">
               <Link className="button-secondary" href={`/projects/${projectId}`}>
@@ -138,7 +246,7 @@ export function TestCaseListWorkspace({
                 导入用例
               </Link>
               <Link className="button-secondary" href={`/projects/${projectId}/review`}>
-                预览评审
+                进入评审
               </Link>
             </div>
           </div>
@@ -181,6 +289,8 @@ export function TestCaseListWorkspace({
           </div>
         </section>
 
+        <QueryTrail items={queryTrailItems} />
+
         <section className="data-card case-results-panel">
           <div className="section-heading">
             <div>
@@ -190,13 +300,28 @@ export function TestCaseListWorkspace({
             <p className="toolbar-meta">{copy.listCount(filtered.length, testCases.length)}</p>
           </div>
 
+          {statusSummary ? <p className="list-status-summary">{statusSummary}</p> : null}
+
           {filtered.length === 0 ? (
             <article className="empty-card wide">
               <h3>{testCases.length === 0 ? copy.noTestCases : copy.noMatchingCases}</h3>
               <p>{testCases.length === 0 ? copy.noTestCasesHint : copy.adjustFiltersHint}</p>
             </article>
           ) : (
-            <TestCaseResultsTable projectId={projectId} items={filtered} />
+            <>
+              <TestCaseResultsTable projectId={projectId} items={paginated.items} />
+              <TablePagination
+                page={paginated.page}
+                pageSize={paginated.pageSize}
+                totalItems={paginated.totalItems}
+                totalPages={paginated.totalPages}
+                onPageChange={setPage}
+                onPageSizeChange={(nextSize) => {
+                  setPageSize(nextSize);
+                  setPage(1);
+                }}
+              />
+            </>
           )}
         </section>
       </div>

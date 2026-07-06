@@ -43,7 +43,9 @@ describe("DocumentUploadPanel interactions", () => {
     fireEvent.click(screen.getByRole("button", { name: "删除 Payments PRD" }));
 
     expect(screen.getByRole("dialog", { name: "确认删除文档？" })).toBeTruthy();
-    expect(screen.getByText("将删除「Payments PRD」，关联的生成输入可能无法继续追溯。")).toBeTruthy();
+    expect(
+      screen.getByText("确认删除文档「Payments PRD」吗？删除后将影响关联生成任务追溯。"),
+    ).toBeTruthy();
     expect(screen.getByRole("button", { name: "确认删除" })).toBeTruthy();
   });
 });

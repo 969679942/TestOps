@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import re
+import secrets
 from datetime import UTC, datetime
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.models.generation import GenerationTask
 from app.models.global_skill_definition import GlobalSkillDefinition
 from app.models.global_skill_version import GlobalSkillVersion
 from app.models.project import Project
@@ -21,6 +24,8 @@ from app.schemas.skill_package import (
     GlobalSkillVersionCreate,
     GlobalSkillVersionRead,
     GlobalSkillVersionUpdate,
+    GlobalSkillProjectBindingRead,
+    GlobalSkillUsageStatsRead,
     SkillPackageCreate,
     SkillPackageRead,
     SkillPackageVersionCreate,
@@ -335,6 +340,7 @@ def ensure_global_skill_library_seeded(session: Session) -> None:
         select(GlobalSkillDefinition.id).limit(1)
     )
     if has_existing is not None:
+        _sync_system_skill_templates(session)
         return
 
     seeded_at = _utcnow()
@@ -372,11 +378,63 @@ def ensure_global_skill_library_seeded(session: Session) -> None:
     session.commit()
 
 
+def _sync_system_skill_templates(session: Session) -> None:
+    seed_by_key = {seed["skill_key"]: seed for seed in list_global_skill_library_seeds()}
+    definitions = list(
+        session.scalars(
+            select(GlobalSkillDefinition).where(GlobalSkillDefinition.owner == "system")
+        )
+    )
+    changed = False
+    for definition in definitions:
+        seed = seed_by_key.get(definition.skill_key)
+        if seed is None:
+            continue
+
+        definition.name = seed["name"]
+        definition.description = seed["description"]
+        definition.category = seed["category"]
+        definition.domain = seed["domain"]
+        definition.input_types = list(seed["input_types"])
+        definition.status = seed["status"]
+
+        versions = list(
+            session.scalars(
+                select(GlobalSkillVersion)
+                .where(GlobalSkillVersion.global_skill_id == definition.id)
+                .order_by(GlobalSkillVersion.version_no)
+            )
+        )
+        if not versions:
+            continue
+
+        version = versions[0]
+        if version.created_by != "system":
+            continue
+
+        version.version_label = seed["version_label"]
+        version.prompt_template = seed["prompt_template"]
+        version.scenario_taxonomy = list(seed["scenario_taxonomy"])
+        version.review_checklist = list(seed["review_checklist"])
+        version.coverage_dimensions = list(seed["coverage_dimensions"])
+        version.evidence_policy = seed["evidence_policy"]
+        version.storage_uri = seed["storage_uri"]
+        version.change_log = seed["change_log"]
+        version.release_notes = seed["release_notes"]
+        changed = True
+
+    if changed:
+        session.commit()
+
+
 def list_global_skill_definitions(session: Session) -> list[GlobalSkillDefinitionRead]:
     ensure_global_skill_library_seeded(session)
     definitions = list(
         session.scalars(
-            select(GlobalSkillDefinition).order_by(GlobalSkillDefinition.id)
+            select(GlobalSkillDefinition).order_by(
+                GlobalSkillDefinition.updated_at.desc(),
+                GlobalSkillDefinition.id.desc(),
+            )
         )
     )
     return [_map_global_skill_definition_read(session, definition) for definition in definitions]
@@ -390,29 +448,150 @@ def get_global_skill_definition(
     return _map_global_skill_definition_read(session, definition)
 
 
+def list_global_skill_project_bindings(
+    session: Session,
+    skill_id: int,
+) -> list[GlobalSkillProjectBindingRead]:
+    _get_global_skill_definition(session, skill_id)
+    rows = session.execute(
+        select(ProjectSkillBinding, Project)
+        .join(Project, Project.id == ProjectSkillBinding.project_id)
+        .where(ProjectSkillBinding.global_skill_id == skill_id)
+        .order_by(ProjectSkillBinding.is_default.desc(), Project.name)
+    ).all()
+    results: list[GlobalSkillProjectBindingRead] = []
+    for binding, project in rows:
+        version = _get_global_skill_version(session, binding.global_skill_version_id)
+        results.append(
+            GlobalSkillProjectBindingRead(
+                binding_id=binding.id,
+                project_id=project.id,
+                project_name=project.name,
+                project_code=project.code,
+                binding_type=binding.binding_type,
+                is_default=binding.is_default,
+                global_skill_version_id=binding.global_skill_version_id,
+                version_label=version.version_label,
+                version_status=version.status,
+                updated_at=binding.updated_at,
+            )
+        )
+    return results
+
+
+def get_global_skill_usage_stats(
+    session: Session,
+    skill_id: int,
+) -> GlobalSkillUsageStatsRead:
+    definition = _get_global_skill_definition(session, skill_id)
+    bindings = list(
+        session.scalars(
+            select(ProjectSkillBinding).where(ProjectSkillBinding.global_skill_id == skill_id)
+        )
+    )
+    versions = list(
+        session.scalars(
+            select(GlobalSkillVersion).where(GlobalSkillVersion.global_skill_id == skill_id)
+        )
+    )
+    production = next((item for item in versions if item.status == "production"), None)
+    draft_count = sum(1 for item in versions if item.status == "draft")
+
+    tasks = list(session.scalars(select(GenerationTask)))
+    matched_tasks = [
+        task
+        for task in tasks
+        if task.input_refs.get("global_skill_id") in {skill_id, str(skill_id)}
+    ]
+    succeeded = sum(1 for task in matched_tasks if task.status == "completed")
+    failed = sum(1 for task in matched_tasks if task.status == "failed")
+    latest_at = max((task.created_at for task in matched_tasks), default=None)
+
+    return GlobalSkillUsageStatsRead(
+        bound_project_count=len({binding.project_id for binding in bindings}),
+        generation_task_count=len(matched_tasks),
+        succeeded_generation_count=succeeded,
+        failed_generation_count=failed,
+        latest_generation_at=latest_at,
+        draft_version_count=draft_count,
+        production_version_label=production.version_label if production else None,
+    )
+
+
+def _normalize_skill_key(value: str) -> str:
+    normalized = re.sub(r"[^a-zA-Z0-9_]+", "_", value.strip().lower())
+    normalized = re.sub(r"_+", "_", normalized).strip("_")
+    return normalized[:64]
+
+
+def _allocate_unique_skill_key(session: Session, base_key: str) -> str:
+    candidate = base_key[:64] or f"skill_{secrets.token_hex(4)}"
+    suffix = 2
+
+    while session.scalar(
+        select(GlobalSkillDefinition.id).where(GlobalSkillDefinition.skill_key == candidate)
+    ) is not None:
+        stem = base_key[: max(1, 58 - len(str(suffix)))]
+        candidate = f"{stem}_{suffix}"[:64]
+        suffix += 1
+
+    return candidate
+
+
+def _resolve_global_skill_create(payload: GlobalSkillDefinitionCreate) -> dict[str, object]:
+    skill_key_raw = payload.skill_key.strip()
+    name_raw = payload.name.strip()
+    description = payload.description.strip()
+    category = payload.category.strip() or "core"
+    domain = payload.domain.strip() or "general"
+    owner = payload.owner.strip() or "workspace"
+    input_types = [item.strip() for item in payload.input_types if item.strip()] or ["prd"]
+
+    if skill_key_raw:
+        base_key = _normalize_skill_key(skill_key_raw)
+    elif name_raw:
+        base_key = _normalize_skill_key(name_raw)
+    else:
+        base_key = f"skill_{secrets.token_hex(4)}"
+
+    if not base_key:
+        base_key = f"skill_{secrets.token_hex(4)}"
+
+    if name_raw:
+        name = name_raw
+    elif skill_key_raw:
+        name = skill_key_raw
+    else:
+        name = "未命名 Skill"
+
+    return {
+        "skill_key": base_key,
+        "name": name,
+        "description": description,
+        "category": category,
+        "domain": domain,
+        "input_types": input_types,
+        "owner": owner,
+    }
+
+
 def create_global_skill_definition(
     session: Session,
     payload: GlobalSkillDefinitionCreate,
 ) -> GlobalSkillDefinitionRead:
     ensure_global_skill_library_seeded(session)
-    existing = session.scalar(
-        select(GlobalSkillDefinition).where(GlobalSkillDefinition.skill_key == payload.skill_key)
-    )
-    if existing is not None:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Global skill key already exists",
-        )
+    resolved = _resolve_global_skill_create(payload)
+    skill_key = _allocate_unique_skill_key(session, str(resolved["skill_key"]))
 
     definition = GlobalSkillDefinition(
-        skill_key=payload.skill_key,
-        name=payload.name,
-        description=payload.description,
-        category=payload.category,
-        domain=payload.domain,
-        input_types=list(payload.input_types),
+        skill_key=skill_key,
+        name=str(resolved["name"]),
+        description=str(resolved["description"]),
+        category=str(resolved["category"]),
+        domain=str(resolved["domain"]),
+        input_types=list(resolved["input_types"]),
         status="active",
-        owner=payload.owner,
+        owner=str(resolved["owner"]),
     )
     session.add(definition)
     session.commit()

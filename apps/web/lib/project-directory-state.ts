@@ -37,7 +37,7 @@ export function moveProjectBetweenLists(
 
     return {
       activeItems: activeItems.filter((project) => project.id !== projectId),
-      archivedItems: [...archivedItems, { ...moved, status: "archived" }],
+      archivedItems: prependProject(archivedItems, { ...moved, status: "archived" }),
     };
   }
 
@@ -47,7 +47,7 @@ export function moveProjectBetweenLists(
   }
 
   return {
-    activeItems: [...activeItems, { ...moved, status: "active" }],
+    activeItems: prependProject(activeItems, { ...moved, status: "active" }),
     archivedItems: archivedItems.filter((project) => project.id !== projectId),
   };
 }

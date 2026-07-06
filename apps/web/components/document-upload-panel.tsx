@@ -17,6 +17,8 @@ import {
 } from "../lib/workspace-api";
 
 import { copy, documentTypeLabels, labelSourceMode } from "../lib/copy";
+import { formatDocumentSourceDisplay, shouldShowDocumentSourceLine } from "../lib/document-display";
+import { deleteConfirmMessage } from "../lib/design-spec-copy";
 
 import { FieldLabel } from "./field-label";
 import { FileUploadField } from "./file-upload-field";
@@ -710,14 +712,13 @@ export function DocumentUploadPanel({
                       <strong>{document.name}</strong>
 
                       <p>
-
                         {documentTypeLabels[document.type] ?? document.type} ·{" "}
-
                         {labelSourceMode(document.sourceMode)}
-
                       </p>
 
-                      <small>{document.sourceUri ?? copy.internalStorage}</small>
+                      {shouldShowDocumentSourceLine(document.sourceUri) ? (
+                        <small>{formatDocumentSourceDisplay(document.sourceUri)}</small>
+                      ) : null}
 
                     </div>
 
@@ -757,13 +758,21 @@ export function DocumentUploadPanel({
     </section>
     <ConfirmActionModal
       open={deleteCandidate !== null}
-      title="确认删除文档？"
-      description={
+      title={
         deleteCandidate
-          ? `将删除「${deleteCandidate.name}」，关联的生成输入可能无法继续追溯。`
+          ? deleteConfirmMessage("document", { name: deleteCandidate.name }).title
           : ""
       }
-      confirmLabel="确认删除"
+      description={
+        deleteCandidate
+          ? deleteConfirmMessage("document", { name: deleteCandidate.name }).description
+          : ""
+      }
+      confirmLabel={
+        deleteCandidate
+          ? deleteConfirmMessage("document", { name: deleteCandidate.name }).confirmLabel
+          : "确认删除"
+      }
       tone="danger"
       submitting={deleteCandidate ? deletingId === deleteCandidate.id : false}
       error={toast?.type === "error" ? toast.text : null}

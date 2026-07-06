@@ -76,7 +76,7 @@ export function SkillVersionCreateModal({
         <div className="review-stack">
           <div className="section-heading">
             <div>
-              <span className="eyebrow">Version Draft</span>
+              <span className="eyebrow">版本草稿</span>
               <h3 id="skill-version-create-title">{title}</h3>
             </div>
             <p>先保存草稿，再进入详情页继续编辑、发布或回滚。</p>

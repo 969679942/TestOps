@@ -2,9 +2,12 @@ import React from "react";
 
 import { AppShell } from "../../../../components/app-shell";
 import { Breadcrumbs } from "../../../../components/breadcrumbs";
+import { PageDescription } from "../../../../components/page-description";
 import { TestCaseListWorkspace } from "../../../../components/test-case-list-workspace";
 import { WorkflowSteps } from "../../../../components/workflow-steps";
 import { copy } from "../../../../lib/copy";
+import { countPendingReviewCases } from "../../../../lib/project-workspace-metrics";
+import { resolveTestCaseListStep } from "../../../../lib/workflow-step-utils";
 import {
   localizedHref,
   normalizeLocale,
@@ -51,6 +54,7 @@ export default async function TestCaseListPage({
   );
 
   const publishedCount = testCases.filter((item) => item.status === "published").length;
+  const pendingReviewCount = countPendingReviewCases(testCases);
   const projectDisplayName = translateProjectName(project.name, locale);
 
   return (
@@ -59,6 +63,7 @@ export default async function TestCaseListPage({
       locale={locale}
       project={project}
       testCaseCount={testCases.length}
+      pendingReviewCount={pendingReviewCount}
     >
       <Breadcrumbs
         items={[
@@ -75,11 +80,12 @@ export default async function TestCaseListPage({
         <span className="eyebrow">{copy.testCasePreviewEyebrow}</span>
         <h2>测试用例库</h2>
         <p>当前项目：{projectDisplayName}。{copy.testCasePreviewHint}</p>
+        <PageDescription page="testCaseList" />
       </section>
 
       <WorkflowSteps
         projectId={projectId}
-        currentStep={publishedCount > 0 ? "publish" : "preview"}
+        currentStep={resolveTestCaseListStep({ publishedCount, testCaseCount: testCases.length })}
         documentCount={documents.length}
         testCaseCount={testCases.length}
         publishedCount={publishedCount}

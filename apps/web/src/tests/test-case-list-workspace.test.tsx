@@ -55,13 +55,13 @@ describe("TestCaseListWorkspace", () => {
 
     expect(html).toContain("上传资料生成");
     expect(html).toContain("导入用例");
-    expect(html).toContain("预览评审");
+    expect(html).toContain("进入评审");
     expect(html).toContain("测试特性目录");
     expect(html).toContain("登录");
-    expect(html).toContain("名称");
-    expect(html).toContain("编号");
-    expect(html).toContain("结果");
-    expect(html).toContain("执行方式");
+    expect(html).toContain("用例标题");
+    expect(html).toContain("模块");
+    expect(html).toContain("功能点");
+    expect(html).toContain("步骤数");
     expect(html).toContain("Create order with saved card");
     expect(html).toContain("/projects/1/test-cases/new");
   });

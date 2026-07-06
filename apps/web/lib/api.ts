@@ -30,6 +30,8 @@ import type {
   GlobalSkillVersionRecord,
   GlobalSkillVersionCreateRecord,
   GlobalSkillVersionUpdateRecord,
+  GlobalSkillProjectBindingRecord,
+  GlobalSkillUsageStatsRecord,
   ProjectSkillBindingRecord,
   ProjectLookupResult,
   ProjectListResult,
@@ -44,6 +46,8 @@ import type {
   TestCaseMutationPayload,
   TestCaseRecord,
 } from "./types";
+
+import { parseApiErrorMessage } from "./api-errors";
 
 type ProjectApiRecord = {
   id: number;
@@ -191,6 +195,29 @@ type GlobalSkillVersionApiRecord = {
   created_by: string;
   created_at: string;
   published_at: string | null;
+};
+
+type GlobalSkillProjectBindingApiRecord = {
+  binding_id: number;
+  project_id: number;
+  project_name: string;
+  project_code: string;
+  binding_type: string;
+  is_default: boolean;
+  global_skill_version_id: number;
+  version_label: string;
+  version_status: string;
+  updated_at: string;
+};
+
+type GlobalSkillUsageStatsApiRecord = {
+  bound_project_count: number;
+  generation_task_count: number;
+  succeeded_generation_count: number;
+  failed_generation_count: number;
+  latest_generation_at: string | null;
+  draft_version_count: number;
+  production_version_label: string | null;
 };
 
 type ProjectSkillBindingApiRecord = {
@@ -384,10 +411,23 @@ type RequestResult<T> =
   | {
       kind: "http-error";
       status: number;
+      message?: string;
     }
   | {
       kind: "unavailable";
     };
+
+function getApiBaseUrl() {
+  if (process.env.TESTOPS_API_BASE_URL) {
+    return process.env.TESTOPS_API_BASE_URL;
+  }
+
+  if (typeof window !== "undefined") {
+    return process.env.NEXT_PUBLIC_TESTOPS_API_BASE_URL ?? "/api";
+  }
+
+  return "http://127.0.0.1:8000";
+}
 
 export type CreateProjectDocumentPayload = {
   type: string;
@@ -494,7 +534,6 @@ export type ReviewAutomationDebugProposalPayload = {
   comment?: string | null;
 };
 
-const API_BASE_URL = process.env.TESTOPS_API_BASE_URL ?? "http://127.0.0.1:8000";
 const demoProjectApiIdAliases: Record<string, string> = {
   payments: "1",
   "account-center": "2",
@@ -962,7 +1001,7 @@ async function requestJson<T>(
   init?: RequestInit,
 ): Promise<RequestResult<T>> {
   try {
-    const response = await fetch(`${API_BASE_URL}${path}`, {
+    const response = await fetch(`${getApiBaseUrl()}${path}`, {
       ...init,
       cache: "no-store",
       headers: {
@@ -972,9 +1011,17 @@ async function requestJson<T>(
     });
 
     if (!response.ok) {
+      let message: string | undefined;
+      try {
+        message = parseApiErrorMessage(await response.json());
+      } catch {
+        message = undefined;
+      }
+
       return {
         kind: "http-error",
         status: response.status,
+        message,
       };
     }
 
@@ -1268,6 +1315,37 @@ function mapGlobalSkillVersion(
     createdBy: item.created_by,
     createdAt: item.created_at,
     publishedAt: item.published_at,
+  };
+}
+
+function mapGlobalSkillProjectBinding(
+  item: GlobalSkillProjectBindingApiRecord,
+): GlobalSkillProjectBindingRecord {
+  return {
+    bindingId: String(item.binding_id),
+    projectId: String(item.project_id),
+    projectName: item.project_name,
+    projectCode: item.project_code,
+    bindingType: item.binding_type,
+    isDefault: item.is_default,
+    globalSkillVersionId: String(item.global_skill_version_id),
+    versionLabel: item.version_label,
+    versionStatus: item.version_status,
+    updatedAt: item.updated_at,
+  };
+}
+
+function mapGlobalSkillUsageStats(
+  item: GlobalSkillUsageStatsApiRecord,
+): GlobalSkillUsageStatsRecord {
+  return {
+    boundProjectCount: item.bound_project_count,
+    generationTaskCount: item.generation_task_count,
+    succeededGenerationCount: item.succeeded_generation_count,
+    failedGenerationCount: item.failed_generation_count,
+    latestGenerationAt: item.latest_generation_at,
+    draftVersionCount: item.draft_version_count,
+    productionVersionLabel: item.production_version_label,
   };
 }
 
@@ -1686,6 +1764,65 @@ export async function getProject(projectId: string): Promise<ProjectLookupResult
   };
 }
 
+type ProjectWorkspaceApiRecord = {
+  project: ProjectSummaryApiRecord;
+  documents: ProjectDocumentApiRecord[];
+};
+
+export type ProjectWorkspacePayload = {
+  project: ProjectSummaryRecord;
+  documents: DocumentAsset[];
+};
+
+export async function getProjectWorkspace(
+  projectId: string,
+): Promise<
+  | { kind: "success"; data: ProjectWorkspacePayload }
+  | { kind: "not-found" }
+  | { kind: "http-error"; status: number; message?: string }
+  | { kind: "unavailable" }
+> {
+  const result = await requestJson<ProjectWorkspaceApiRecord>(projectPath(projectId, "/workspace"));
+
+  if (result.kind === "unavailable") {
+    const project = getDemoProject(projectId);
+    if (!project) {
+      return { kind: "not-found" };
+    }
+
+    return {
+      kind: "success",
+      data: {
+        project: {
+          ...project,
+          documentCount: (demoDocuments[projectId] ?? []).length,
+          testCaseCount: (demoTestCases[projectId] ?? []).length,
+          publishedCount: (demoTestCases[projectId] ?? []).filter(
+            (item) => item.status === "published",
+          ).length,
+        },
+        documents: demoDocuments[projectId] ?? [],
+      },
+    };
+  }
+
+  if (result.kind === "http-error") {
+    if (result.status === 404) {
+      return { kind: "not-found" };
+    }
+
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: {
+      project: mapProjectSummary(result.data.project),
+      documents: result.data.documents.map(mapDocument),
+    },
+  };
+}
+
 export async function getRuntimeSettings(): Promise<RuntimeSettingsResult> {
   const result = await requestJson<RuntimeSettingsApiRecord>("/settings/runtime");
 
@@ -1856,7 +1993,7 @@ export async function uploadProjectDocument(
     formData.append("name", payload.name);
     formData.append("source_mode", payload.sourceMode ?? "upload");
 
-    const response = await fetch(`${API_BASE_URL}${projectPath(projectId, "/documents/upload")}`, {
+    const response = await fetch(`${getApiBaseUrl()}${projectPath(projectId, "/documents/upload")}`, {
       method: "POST",
       body: formData,
       cache: "no-store",
@@ -1866,9 +2003,17 @@ export async function uploadProjectDocument(
     });
 
     if (!response.ok) {
+      let message: string | undefined;
+      try {
+        message = parseApiErrorMessage(await response.json());
+      } catch {
+        message = undefined;
+      }
+
       return {
         kind: "http-error",
         status: response.status,
+        message,
       };
     }
 
@@ -2132,6 +2277,40 @@ export async function listGlobalSkillVersions(
   return {
     kind: "success",
     data: result.data.map(mapGlobalSkillVersion),
+  };
+}
+
+export async function listGlobalSkillProjectBindings(
+  skillId: string,
+): Promise<RequestResult<GlobalSkillProjectBindingRecord[]>> {
+  const result = await requestJson<GlobalSkillProjectBindingApiRecord[]>(
+    `/skills/library/${skillId}/bindings`,
+  );
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: result.data.map(mapGlobalSkillProjectBinding),
+  };
+}
+
+export async function getGlobalSkillUsageStats(
+  skillId: string,
+): Promise<RequestResult<GlobalSkillUsageStatsRecord>> {
+  const result = await requestJson<GlobalSkillUsageStatsApiRecord>(
+    `/skills/library/${skillId}/usage-stats`,
+  );
+
+  if (result.kind !== "success") {
+    return result;
+  }
+
+  return {
+    kind: "success",
+    data: mapGlobalSkillUsageStats(result.data),
   };
 }
 

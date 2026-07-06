@@ -11,6 +11,8 @@ type AppShellProps = Readonly<{
   locale?: Locale;
   project?: ProjectRecord | null;
   testCaseCount?: number;
+  pendingReviewCount?: number;
+  failedTaskCount?: number;
   contentWidth?: "default" | "wide";
 }>;
 
@@ -43,6 +45,8 @@ export function AppShell({
   locale = "zh",
   project,
   testCaseCount = 0,
+  pendingReviewCount = 0,
+  failedTaskCount = 0,
   contentWidth = "default",
 }: AppShellProps) {
   const t = copy[locale].appShell;
@@ -59,7 +63,11 @@ export function AppShell({
         { href: `/projects/${project.id}`, label: t.overview, exact: true },
         { href: `/projects/${project.id}/documents`, label: t.documents },
         { href: `/projects/${project.id}/skills`, label: t.projectSkills },
-        { href: `/projects/${project.id}/generation-tasks`, label: t.generationTasks },
+        {
+          href: `/projects/${project.id}/generation-tasks`,
+          label: t.generationTasks,
+          badge: failedTaskCount,
+        },
         {
           href: `/projects/${project.id}/automation-schedules`,
           label: t.automationSchedules,
@@ -69,7 +77,11 @@ export function AppShell({
           label: t.testCases,
           badge: testCaseCount,
         },
-        { href: `/projects/${project.id}/review`, label: t.review },
+        {
+          href: `/projects/${project.id}/review`,
+          label: t.review,
+          badge: pendingReviewCount,
+        },
       ]
     : [];
 

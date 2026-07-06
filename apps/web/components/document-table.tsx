@@ -1,6 +1,7 @@
 import React from "react";
 
 import { copy, formatValue, type Locale } from "../lib/i18n";
+import { formatDocumentSourceDisplay } from "../lib/document-display";
 import type { DocumentAsset } from "../lib/types";
 
 type DocumentTableProps = Readonly<{
@@ -37,7 +38,7 @@ export function DocumentTable({ items, locale = "zh" }: DocumentTableProps) {
                 <tr key={item.id}>
                   <td>{item.name}</td>
                   <td>{formatValue(item.type, locale, t.unknown)}</td>
-                  <td>{item.sourceUri ?? t.stored}</td>
+                  <td>{formatDocumentSourceDisplay(item.sourceUri)}</td>
                   <td>
                     <span className="status-pill">
                       {formatValue(item.parseStatus, locale, t.pendingParse)}

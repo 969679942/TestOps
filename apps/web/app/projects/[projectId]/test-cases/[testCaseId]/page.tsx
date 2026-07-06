@@ -2,10 +2,13 @@ import React from "react";
 
 import { AppShell } from "../../../../../components/app-shell";
 import { Breadcrumbs } from "../../../../../components/breadcrumbs";
+import { PageDescription } from "../../../../../components/page-description";
 import { TestCaseEditor } from "../../../../../components/test-case-editor";
 import { TestCaseReviewPanel } from "../../../../../components/test-case-review-panel";
 import { WorkflowSteps } from "../../../../../components/workflow-steps";
 import { copy } from "../../../../../lib/copy";
+import { countPendingReviewCases } from "../../../../../lib/project-workspace-metrics";
+import { resolveTestCaseDetailStep } from "../../../../../lib/workflow-step-utils";
 import {
   localizedHref,
   normalizeLocale,
@@ -48,6 +51,7 @@ export default async function TestCaseDetailPage({
   );
 
   const publishedCount = testCases.filter((item) => item.status === "published").length;
+  const pendingReviewCount = countPendingReviewCases(testCases);
   const projectDisplayName = translateProjectName(project.name, locale);
 
   return (
@@ -56,6 +60,7 @@ export default async function TestCaseDetailPage({
       locale={locale}
       project={project}
       testCaseCount={testCases.length}
+      pendingReviewCount={pendingReviewCount}
     >
       <Breadcrumbs
         items={[
@@ -75,11 +80,12 @@ export default async function TestCaseDetailPage({
       <section className="page-header compact">
         <span className="eyebrow">{copy.testCaseDetailEyebrow}</span>
         <h2>{testCase.title}</h2>
+        <PageDescription page="testCaseEdit" />
       </section>
 
       <WorkflowSteps
         projectId={projectId}
-        currentStep={testCase.status === "published" ? "publish" : "preview"}
+        currentStep={resolveTestCaseDetailStep(testCase.status)}
         documentCount={documents.length}
         testCaseCount={testCases.length}
         publishedCount={publishedCount}

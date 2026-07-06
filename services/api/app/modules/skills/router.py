@@ -7,6 +7,8 @@ from app.schemas.skill_package import (
     GlobalSkillDefinitionCreate,
     GlobalSkillDefinitionRead,
     GlobalSkillDefinitionUpdate,
+    GlobalSkillProjectBindingRead,
+    GlobalSkillUsageStatsRead,
     GlobalSkillVersionCreate,
     GlobalSkillVersionRead,
     GlobalSkillVersionUpdate,
@@ -71,6 +73,28 @@ def update_global_skill(
         skill_id=skill_id,
         payload=payload,
     )
+
+
+@router.get(
+    "/skills/library/{skill_id}/bindings",
+    response_model=list[GlobalSkillProjectBindingRead],
+)
+def list_global_skill_project_bindings(
+    skill_id: int,
+    session: Session = Depends(get_session),
+) -> list[GlobalSkillProjectBindingRead]:
+    return skills_service.list_global_skill_project_bindings(session, skill_id)
+
+
+@router.get(
+    "/skills/library/{skill_id}/usage-stats",
+    response_model=GlobalSkillUsageStatsRead,
+)
+def get_global_skill_usage_stats(
+    skill_id: int,
+    session: Session = Depends(get_session),
+) -> GlobalSkillUsageStatsRead:
+    return skills_service.get_global_skill_usage_stats(session, skill_id)
 
 
 @router.get(

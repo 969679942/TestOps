@@ -10,9 +10,8 @@ SKILL_TEMPLATE_LIBRARY: dict[str, dict[str, Any]] = {
         "label": "PRD + 业务规则主模板",
         "description": "覆盖主流程、边界、异常、权限、状态流转与规则约束，适合作为大多数业务系统的起始模板。",
         "prompt_template": (
-            "Generate test cases from PRD, business rules, supplements, API hints, and UI hints. "
-            "Prefer evidence-backed cases, cover the core flow first, then add boundary, negative, "
-            "permission, state transition, and recovery scenarios when supported by the source."
+            "基于 PRD、业务规则、补充资料、API 提示和界面提示生成测试用例。"
+            "优先输出有证据支撑的用例，先覆盖核心流程，再补充边界、异常、权限、状态流转和恢复场景。"
         ),
         "scenario_taxonomy": [
             "happy_path",
@@ -38,14 +37,14 @@ SKILL_TEMPLATE_LIBRARY: dict[str, dict[str, Any]] = {
             "state_transition",
             "fallback_and_recovery",
         ],
-        "evidence_policy": "Only derive cases from explicit requirements, rules, contracts, UI evidence, or seeded-case gaps. Mark ambiguity instead of hallucinating.",
+        "evidence_policy": "仅依据明确需求、规则、契约、界面证据或种子用例缺口推导用例；遇到歧义应标记待确认，禁止臆造。",
     },
     "api_contract_regression": {
         "label": "API 合同与回归模板",
         "description": "聚焦接口契约、字段校验、鉴权、幂等与错误模型，适合 Swagger/OpenAPI 驱动的生成。",
         "prompt_template": (
-            "Generate API-focused cases from Swagger/OpenAPI contracts and linked business rules. "
-            "Emphasize required fields, schema validation, auth, idempotency, error codes, and backward compatibility."
+            "基于 Swagger/OpenAPI 契约及关联业务规则生成 API 测试用例。"
+            "重点覆盖必填字段、结构校验、鉴权、幂等、错误码和向后兼容性。"
         ),
         "scenario_taxonomy": [
             "contract",
@@ -68,14 +67,14 @@ SKILL_TEMPLATE_LIBRARY: dict[str, dict[str, Any]] = {
             "auth_and_permission",
             "idempotency_and_retry",
         ],
-        "evidence_policy": "Prefer contract-backed assertions and explicit rule references; do not invent endpoints or payload fields.",
+        "evidence_policy": "优先使用契约与明确规则作为断言依据；不得臆造接口或字段。",
     },
     "workflow_recovery": {
         "label": "跨系统流程与补场景模板",
         "description": "适合已有主流程用例后补缺，重点补齐回滚、通知、审计、异步一致性与重试恢复。",
         "prompt_template": (
-            "Supplement missing scenarios around cross-system workflows. Focus on rollback, retry, notification, "
-            "audit trail, async consistency, and exception recovery without rewriting already-covered core paths."
+            "围绕跨系统流程补充缺失场景，聚焦回滚、重试、通知、审计、异步一致性和异常恢复，"
+            "避免重复改写已覆盖的核心路径。"
         ),
         "scenario_taxonomy": [
             "gap_fill",
@@ -97,7 +96,7 @@ SKILL_TEMPLATE_LIBRARY: dict[str, dict[str, Any]] = {
             "message_and_notification",
             "audit_and_operability",
         ],
-        "evidence_policy": "Use the gap note and seeded cases only to supplement missing coverage. Avoid duplicating existing scenarios unless evidence shows a variant is needed.",
+        "evidence_policy": "仅依据缺口说明和已有种子用例补充缺失覆盖；除非证据表明需要变体，否则避免重复已有场景。",
     },
 }
 
@@ -108,7 +107,7 @@ GLOBAL_SKILL_LIBRARY_SEEDS: dict[str, dict[str, Any]] = {
         "category": "core",
         "domain": "general",
         "input_types": ["prd", "business_rule", "supplement", "swagger", "figma"],
-        "version_label": "v1 Production",
+        "version_label": "v1 生产版",
         "status": "active",
         "owner": "system",
     },
@@ -118,7 +117,7 @@ GLOBAL_SKILL_LIBRARY_SEEDS: dict[str, dict[str, Any]] = {
         "category": "api",
         "domain": "integration",
         "input_types": ["swagger", "business_rule", "supplement"],
-        "version_label": "v1 Production",
+        "version_label": "v1 生产版",
         "status": "active",
         "owner": "system",
     },
@@ -128,7 +127,7 @@ GLOBAL_SKILL_LIBRARY_SEEDS: dict[str, dict[str, Any]] = {
         "category": "workflow",
         "domain": "cross_system",
         "input_types": ["prd", "business_rule", "supplement", "swagger"],
-        "version_label": "v1 Production",
+        "version_label": "v1 生产版",
         "status": "active",
         "owner": "system",
     },
@@ -167,8 +166,8 @@ def list_global_skill_library_seeds() -> list[dict[str, Any]]:
                 "review_checklist": list(template["review_checklist"]),
                 "coverage_dimensions": list(template["coverage_dimensions"]),
                 "evidence_policy": template["evidence_policy"],
-                "change_log": "Initial seeded version from the built-in skill template library.",
-                "release_notes": "Provides a read-only production baseline for the Skills Center P0 library.",
+                "change_log": "内置技能模板库的初始种子版本。",
+                "release_notes": "为技能中心 P0 库提供只读生产基线。",
                 "created_by": "system",
                 "template_key": key,
                 "template_label": template["label"],

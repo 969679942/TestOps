@@ -104,6 +104,7 @@ describe("api fallbacks", () => {
     await expect(listProjects()).resolves.toEqual({
       kind: "http-error",
       status: 503,
+      message: "boom",
     });
   });
 
@@ -187,6 +188,7 @@ describe("api fallbacks", () => {
     await expect(getProject("1")).resolves.toEqual({
       kind: "http-error",
       status: 503,
+      message: "boom",
     });
   });
 
@@ -623,6 +625,7 @@ describe("api fallbacks", () => {
     await expect(listProjectDocuments("1")).resolves.toEqual({
       kind: "http-error",
       status: 502,
+      message: "boom",
     });
   });
 

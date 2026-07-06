@@ -2,6 +2,7 @@ import React from "react";
 
 import { AppShell } from "../components/app-shell";
 
+import { PageDescription } from "../components/page-description";
 import { ProjectDirectory } from "../components/project-directory";
 
 import { copy } from "../lib/copy";
@@ -36,6 +37,7 @@ export default async function HomePage({ searchParams }: HomePageProps = {}) {
         <span className="eyebrow">{copy.projectDirectoryEyebrow}</span>
         <h2>{copy.projectDirectoryTitle}</h2>
         <p>{copy.projectDirectoryHint}</p>
+        <PageDescription page="projectList" />
       </section>
       {loadError ? (
         <section className="alert-panel" role="alert">

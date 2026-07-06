@@ -1,23 +1,32 @@
-import React from "react";
+import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
 import { AppShell } from "../../../components/app-shell";
-import { SkillVersionPublishAction } from "../../../components/skill-version-publish-action";
-import { SkillVersionRollbackAction } from "../../../components/skill-version-rollback-action";
+import { SkillBindingsPanel } from "../../../components/skill-bindings-panel";
+import { SkillDetailTabs } from "../../../components/skill-detail-tabs";
+import { SkillEvalPanel } from "../../../components/skill-eval-panel";
+import { SkillForkDraftForm } from "../../../components/skill-fork-draft-form";
+import { SkillProductionPreview } from "../../../components/skill-production-preview";
+import { SkillSettingsForm } from "../../../components/skill-settings-form";
+import { SkillVersionDiff } from "../../../components/skill-version-diff";
+import { SkillVersionTimeline } from "../../../components/skill-version-timeline";
 import {
+  createGlobalSkillVersion,
   getGlobalSkillLibraryItem,
+  getGlobalSkillUsageStats,
+  listGlobalSkillProjectBindings,
   listGlobalSkillVersions,
-  publishGlobalSkillVersion,
-  rollbackGlobalSkillVersion,
   updateGlobalSkillLibraryItem,
-  updateGlobalSkillVersion,
 } from "../../../lib/api";
-import { normalizeLocale, type LocaleSearchParams } from "../../../lib/i18n";
+import { localizedHref, normalizeLocale, type LocaleSearchParams } from "../../../lib/i18n";
+import { formatSkillCategory, formatSkillDomain } from "../../../lib/skill-copy";
+import {
+  isDefaultSkillName,
+  isMeaningfulSkillDescription,
+} from "../../../lib/skill-content-utils";
 
 type SkillDetailPageProps = Readonly<{
-  params: Promise<{
-    skillId: string;
-  }>;
+  params: Promise<{ skillId: string }>;
   searchParams?: Promise<LocaleSearchParams>;
 }>;
 
@@ -39,16 +48,23 @@ export default async function SkillDetailPage({
 }: SkillDetailPageProps) {
   const { skillId } = await params;
   const locale = normalizeLocale((await searchParams)?.lang);
-  const skillResult = await getGlobalSkillLibraryItem(skillId);
-  const versionsResult = await listGlobalSkillVersions(skillId);
+  const [skillResult, versionsResult, bindingsResult, statsResult] = await Promise.all([
+    getGlobalSkillLibraryItem(skillId),
+    listGlobalSkillVersions(skillId),
+    listGlobalSkillProjectBindings(skillId),
+    getGlobalSkillUsageStats(skillId),
+  ]);
 
   if (skillResult.kind !== "success") {
     return (
       <AppShell currentPath="/skills" locale={locale} contentWidth="wide">
         <section className="page-header">
-          <span className="eyebrow">Skills</span>
+          <span className="eyebrow">技能中心</span>
           <h2>技能详情不可用</h2>
           <p>当前无法加载所选 Skill。</p>
+          <a className="button-secondary" href={localizedHref("/skills", locale)}>
+            返回技能库
+          </a>
         </section>
       </AppShell>
     );
@@ -56,8 +72,25 @@ export default async function SkillDetailPage({
 
   const skill = skillResult.data;
   const versions = versionsResult.kind === "success" ? versionsResult.data : [];
+  const bindings = bindingsResult.kind === "success" ? bindingsResult.data : [];
+  const stats =
+    statsResult.kind === "success"
+      ? statsResult.data
+      : {
+          boundProjectCount: 0,
+          generationTaskCount: 0,
+          succeededGenerationCount: 0,
+          failedGenerationCount: 0,
+          latestGenerationAt: null,
+          draftVersionCount: 0,
+          productionVersionLabel: null,
+        };
   const productionVersion =
-    versions.find((item) => item.status === "production") ?? versions[0] ?? null;
+    versions.find((item) => item.status === "production") ??
+    (skill.currentProductionVersionId !== null
+      ? versions.find((item) => String(item.id) === String(skill.currentProductionVersionId))
+      : null) ??
+    null;
 
   async function updateSkillAction(formData: FormData) {
     "use server";
@@ -68,293 +101,133 @@ export default async function SkillDetailPage({
       category: readFormText(formData, "category"),
       domain: readFormText(formData, "domain"),
       input_types: readCommaList(formData, "inputTypes"),
-      owner: readFormText(formData, "owner") || undefined,
       status: readFormText(formData, "status") || undefined,
     });
     revalidatePath(`/skills/${skillId}`);
     revalidatePath("/skills");
   }
 
-  async function updateVersionAction(formData: FormData) {
+  async function forkProductionDraftAction(formData: FormData) {
     "use server";
 
-    const versionId = readFormText(formData, "versionId");
-    await updateGlobalSkillVersion(skillId, versionId, {
-      version_label: readFormText(formData, "versionLabel") || undefined,
-      prompt_template: readFormText(formData, "promptTemplate") || undefined,
-      scenario_taxonomy: readCommaList(formData, "scenarioTaxonomy"),
-      review_checklist: readCommaList(formData, "reviewChecklist"),
-      coverage_dimensions: readCommaList(formData, "coverageDimensions"),
-      evidence_policy: readFormText(formData, "evidencePolicy") || undefined,
-      storage_uri: readFormText(formData, "storageUri") || null,
-      change_log: readFormText(formData, "changeLog") || null,
-      release_notes: readFormText(formData, "releaseNotes") || null,
-      created_by: readFormText(formData, "createdBy") || undefined,
-      status: readFormText(formData, "status") || undefined,
+    const changeLog = readFormText(formData, "changeLog");
+    if (!changeLog) {
+      return;
+    }
+
+    const latestVersions = await listGlobalSkillVersions(skillId);
+    const currentVersions = latestVersions.kind === "success" ? latestVersions.data : [];
+    const source =
+      currentVersions.find((item) => item.status === "production") ?? currentVersions[0];
+
+    if (!source) {
+      return;
+    }
+
+    const created = await createGlobalSkillVersion(skillId, {
+      version_label: `v${currentVersions.length + 1} 草稿`,
+      prompt_template: source.promptTemplate,
+      scenario_taxonomy: source.scenarioTaxonomy,
+      review_checklist: source.reviewChecklist,
+      coverage_dimensions: source.coverageDimensions,
+      evidence_policy: source.evidencePolicy,
+      storage_uri: source.storageUri,
+      change_log: changeLog,
+      release_notes: null,
+      created_by: "workspace",
+      status: "draft",
     });
-    revalidatePath(`/skills/${skillId}`);
-    revalidatePath("/skills");
+
+    if (created.kind === "success") {
+      revalidatePath(`/skills/${skillId}`);
+      redirect(localizedHref(`/skills/${skillId}/versions/${created.data.id}`, locale));
+    }
   }
 
-  async function publishVersionAction(formData: FormData) {
-    "use server";
-
-    const versionId = readFormText(formData, "versionId");
-    await publishGlobalSkillVersion(skillId, versionId);
-    revalidatePath(`/skills/${skillId}`);
-    revalidatePath("/skills");
-  }
-
-  async function rollbackVersionAction(formData: FormData) {
-    "use server";
-
-    const versionId = readFormText(formData, "versionId");
-    await rollbackGlobalSkillVersion(skillId, versionId);
-    revalidatePath(`/skills/${skillId}`);
-    revalidatePath("/skills");
-  }
+  const forkDraftForm =
+    productionVersion !== null ? (
+      <SkillForkDraftForm action={forkProductionDraftAction} sourceLabel={productionVersion.versionLabel} />
+    ) : null;
 
   return (
     <AppShell currentPath={`/skills/${skillId}`} locale={locale} contentWidth="wide">
-      <section className="page-header">
-        <span className="eyebrow">{skill.skillKey}</span>
-        <h2>{skill.name}</h2>
-        <p>{skill.description}</p>
-      </section>
-
-      <section className="summary-grid" aria-label="Skill 详情概览">
-        <article className="summary-card">
-          <span className="eyebrow">分类</span>
-          <p className="summary-value">{skill.category}</p>
-        </article>
-        <article className="summary-card">
-          <span className="eyebrow">领域</span>
-          <p className="summary-value">{skill.domain}</p>
-        </article>
-        <article className="summary-card">
-          <span className="eyebrow">生产版本</span>
-          <p className="summary-value">{skill.currentProductionVersionLabel ?? "未发布"}</p>
-        </article>
-      </section>
-
-      <section className="data-card">
-        <div className="section-heading">
+      <section className="page-header skills-page-header skill-detail-hero">
+        <div className="skills-detail-breadcrumb">
+          <a className="table-link" href={localizedHref("/skills", locale)}>
+            ← 返回技能库
+          </a>
+        </div>
+        <div className="skill-detail-hero-main">
           <div>
-            <span className="eyebrow">Skill Metadata</span>
-            <h3>在线修改 Skill 定义</h3>
+            <span className="eyebrow">{skill.skillKey}</span>
+            <h2>{isDefaultSkillName(skill.name) ? skill.skillKey : skill.name}</h2>
+            {isMeaningfulSkillDescription(skill.description) ? <p>{skill.description}</p> : null}
           </div>
-          <p>这里维护 Skill 的基础信息。真正影响生成行为的 Prompt、taxonomy 与证据策略，建议通过新建版本来更新。</p>
-        </div>
-        <form action={updateSkillAction} className="form-grid">
-          <label className="form-field">
-            <span>名称</span>
-            <input className="field-input" name="name" defaultValue={skill.name} />
-          </label>
-          <label className="form-field">
-            <span>分类</span>
-            <input className="field-input" name="category" defaultValue={skill.category} />
-          </label>
-          <label className="form-field">
-            <span>领域</span>
-            <input className="field-input" name="domain" defaultValue={skill.domain} />
-          </label>
-          <label className="form-field">
-            <span>输入类型</span>
-            <input className="field-input" name="inputTypes" defaultValue={skill.inputTypes.join(", ")} />
-          </label>
-          <label className="form-field">
-            <span>维护者</span>
-            <input className="field-input" name="owner" defaultValue={skill.owner} />
-          </label>
-          <label className="form-field">
-            <span>状态</span>
-            <input className="field-input" name="status" defaultValue={skill.status} />
-          </label>
-          <label className="form-field">
-            <span>描述</span>
-            <textarea className="field-input" name="description" rows={4} defaultValue={skill.description} />
-          </label>
-          <button className="primary-button" type="submit">
-            保存 Skill 定义
-          </button>
-        </form>
-      </section>
-
-      <section className="data-card">
-        <div className="section-heading">
-          <div>
-            <span className="eyebrow">Update Strategy</span>
-            <h3>推荐更新方式</h3>
+          <div className="skill-detail-hero-meta">
+            <span>{formatSkillCategory(skill.category)}</span>
+            <span aria-hidden="true">·</span>
+            <span>{formatSkillDomain(skill.domain)}</span>
+            <span aria-hidden="true">·</span>
+            <span>{skill.currentProductionVersionLabel ?? "未发布"}</span>
           </div>
-          <p>成熟产品一般不直接覆盖生产 Prompt，而是走“新建草稿版本 → 在线修改 → 评审发布 → 项目逐步切换”。</p>
-        </div>
-        <div className="review-stack">
-          <article className="review-meta-card">
-            <span className="eyebrow">上传 Skills</span>
-            <p>如果你有外部 Skill 包，可以把 OSS、Git、Zip 或文档归档地址填到版本的 `Storage URI`。当前系统把它作为归档与追溯入口。</p>
-          </article>
-          <article className="review-meta-card">
-            <span className="eyebrow">更新 Skills</span>
-            <p>如果 Prompt 或规则有变化，新建一个版本草稿，再在线修改并发布，不建议直接改历史生产版本。</p>
-          </article>
-          <article className="review-meta-card">
-            <span className="eyebrow">在线修改</span>
-            <p>当前已经支持在线编辑版本内容。后续可继续扩展差异对比、审批、回滚和评测看板。</p>
-          </article>
         </div>
       </section>
 
-      <section className="data-card">
-        <div className="section-heading">
-          <div>
-            <span className="eyebrow">Versions</span>
-            <h3>版本列表与在线编辑</h3>
-          </div>
-          <p>版本是 Skills 的核心管理单元。项目绑定使用的是版本，而不是直接使用 Skill 定义。</p>
-        </div>
-        <div className="review-stack">
-          {versions.length > 0 ? (
-            versions.map((version) => (
-              <article className="data-card" key={version.id}>
-                <div className="section-heading">
-                  <div>
-                    <span className="eyebrow">v{version.versionNo}</span>
-                    <h3>{version.versionLabel}</h3>
-                  </div>
-                  <span className="status-pill">{version.status}</span>
+      <SkillDetailTabs
+        preview={
+          <section className="data-card skill-preview-card">
+            <SkillProductionPreview
+              skill={skill}
+              version={productionVersion}
+              forkDraftAction={forkDraftForm}
+            />
+          </section>
+        }
+        versions={
+          <div className="skill-versions-stack">
+            <section className="data-card">
+              <SkillVersionTimeline
+                skillId={skillId}
+                locale={locale}
+                versions={versions}
+                createDraftAction={forkDraftForm}
+              />
+            </section>
+            <section className="data-card">
+              <div className="section-heading">
+                <div>
+                  <span className="eyebrow">版本对比</span>
+                  <h3>差异查看</h3>
                 </div>
-                <form action={updateVersionAction} className="review-stack">
-                  <input type="hidden" name="versionId" value={String(version.id)} />
-                  <div className="form-grid">
-                    <label className="form-field">
-                      <span>版本标签</span>
-                      <input className="field-input" name="versionLabel" defaultValue={version.versionLabel} />
-                    </label>
-                    <label className="form-field">
-                      <span>状态</span>
-                      <input className="field-input" name="status" defaultValue={version.status} />
-                    </label>
-                    <label className="form-field">
-                      <span>维护者</span>
-                      <input className="field-input" name="createdBy" defaultValue={version.createdBy} />
-                    </label>
-                    <label className="form-field">
-                      <span>Storage URI</span>
-                      <input className="field-input" name="storageUri" defaultValue={version.storageUri ?? ""} />
-                    </label>
-                    <label className="form-field">
-                      <span>Scenario Taxonomy</span>
-                      <input
-                        className="field-input"
-                        name="scenarioTaxonomy"
-                        defaultValue={version.scenarioTaxonomy.join(", ")}
-                      />
-                    </label>
-                    <label className="form-field">
-                      <span>Review Checklist</span>
-                      <input
-                        className="field-input"
-                        name="reviewChecklist"
-                        defaultValue={version.reviewChecklist.join(", ")}
-                      />
-                    </label>
-                    <label className="form-field">
-                      <span>Coverage Dimensions</span>
-                      <input
-                        className="field-input"
-                        name="coverageDimensions"
-                        defaultValue={version.coverageDimensions.join(", ")}
-                      />
-                    </label>
-                    <label className="form-field">
-                      <span>Evidence Policy</span>
-                      <input className="field-input" name="evidencePolicy" defaultValue={version.evidencePolicy} />
-                    </label>
-                    <label className="form-field">
-                      <span>Prompt Template</span>
-                      <textarea
-                        className="field-input"
-                        name="promptTemplate"
-                        rows={8}
-                        defaultValue={version.promptTemplate}
-                      />
-                    </label>
-                    <label className="form-field">
-                      <span>Change Log</span>
-                      <textarea
-                        className="field-input"
-                        name="changeLog"
-                        rows={3}
-                        defaultValue={version.changeLog ?? ""}
-                      />
-                    </label>
-                    <label className="form-field">
-                      <span>Release Notes</span>
-                      <textarea
-                        className="field-input"
-                        name="releaseNotes"
-                        rows={3}
-                        defaultValue={version.releaseNotes ?? ""}
-                      />
-                    </label>
-                  </div>
-                  <div className="project-context-actions">
-                    <button className="button-secondary" type="submit">
-                      保存版本内容
-                    </button>
-                  </div>
-                </form>
-                {version.status === "production" ? null : (
-                  <div className="project-context-actions">
-                    <SkillVersionPublishAction
-                      action={publishVersionAction}
-                      versionId={String(version.id)}
-                      versionLabel={version.versionLabel}
-                    />
-                    <SkillVersionRollbackAction
-                      action={rollbackVersionAction}
-                      versionId={String(version.id)}
-                      versionLabel={version.versionLabel}
-                    />
-                  </div>
-                )}
-              </article>
-            ))
-          ) : (
-            <p>当前还没有版本，请先返回 Skills 列表页新增一个版本草稿。</p>
-          )}
-        </div>
-      </section>
-
-      {productionVersion ? (
-        <section className="data-card">
-          <div className="section-heading">
-            <div>
-              <span className="eyebrow">Production Snapshot</span>
-              <h3>当前生产版本摘要</h3>
+                <p>对比两个版本的提示词与证据策略差异。</p>
+              </div>
+              <SkillVersionDiff versions={versions} />
+            </section>
+          </div>
+        }
+        bindings={
+          <section className="data-card">
+            <SkillBindingsPanel locale={locale} bindings={bindings} />
+          </section>
+        }
+        evalPanel={
+          <section className="data-card">
+            <SkillEvalPanel stats={stats} versions={versions} />
+          </section>
+        }
+        settings={
+          <section className="data-card">
+            <div className="section-heading">
+              <div>
+                <span className="eyebrow">目录信息</span>
+                <h3>Skill 元数据</h3>
+              </div>
+              <p>仅维护名称、分类和适用范围。生成规则请在版本草稿中修改。</p>
             </div>
-            <p>让产品、测试和平台管理员快速理解项目实际绑定时会使用哪套规则。</p>
-          </div>
-          <div className="review-stack">
-            <article className="review-meta-card">
-              <span className="eyebrow">Prompt Template</span>
-              <p>{productionVersion.promptTemplate}</p>
-            </article>
-            <article className="review-meta-card">
-              <span className="eyebrow">Review Checklist</span>
-              <p>{productionVersion.reviewChecklist.join(" / ")}</p>
-            </article>
-            <article className="review-meta-card">
-              <span className="eyebrow">Coverage Dimensions</span>
-              <p>{productionVersion.coverageDimensions.join(" / ")}</p>
-            </article>
-            <article className="review-meta-card">
-              <span className="eyebrow">Evidence Policy</span>
-              <p>{productionVersion.evidencePolicy}</p>
-            </article>
-          </div>
-        </section>
-      ) : null}
+            <SkillSettingsForm skill={skill} updateAction={updateSkillAction} />
+          </section>
+        }
+      />
     </AppShell>
   );
 }

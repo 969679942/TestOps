@@ -2,29 +2,43 @@
 
 import { useState } from "react";
 
+import { SkillCreateForm } from "./skill-create-form";
 import { SkillCreateModal } from "./skill-create-modal";
+import { SkillImportModal } from "./skill-import-modal";
+import { SkillImportPanel } from "./skill-import-panel";
 
 type SkillsPageActionsProps = Readonly<{
-  createForm: React.ReactNode;
-  helpContent: React.ReactNode;
+  createAction: (formData: FormData) => Promise<void>;
+  importAction: (formData: FormData) => Promise<void>;
 }>;
 
-export function SkillsPageActions({ createForm, helpContent }: SkillsPageActionsProps) {
-  const [open, setOpen] = useState(false);
-  const [helpOpen, setHelpOpen] = useState(false);
+export function SkillsPageActions({ createAction, importAction }: SkillsPageActionsProps) {
+  const [createOpen, setCreateOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   return (
     <div className="skills-toolbar-actions">
-      <button className="primary-button" type="button" onClick={() => setOpen(true)}>
+      <button className="button-secondary" type="button" onClick={() => setImportOpen(true)}>
+        导入 Skill
+      </button>
+      <button className="primary-button" type="button" onClick={() => setCreateOpen(true)}>
         新建 Skill
       </button>
-      <details open={helpOpen} onToggle={(event) => setHelpOpen(event.currentTarget.open)}>
-        <summary className="button-secondary">{helpOpen ? "收起筛选" : "使用帮助"}</summary>
-        <div className="review-stack skills-help-panel">
-          {helpContent}
-        </div>
-      </details>
-      <SkillCreateModal open={open} onClose={() => setOpen(false)} form={createForm} />
+      <SkillImportModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        form={
+          <SkillImportPanel
+            importAction={importAction}
+            onSuccess={() => setImportOpen(false)}
+          />
+        }
+      />
+      <SkillCreateModal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        form={<SkillCreateForm createAction={createAction} onSuccess={() => setCreateOpen(false)} />}
+      />
     </div>
   );
 }

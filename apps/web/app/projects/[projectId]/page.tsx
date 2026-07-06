@@ -1,6 +1,7 @@
 import React from "react";
 import Link from "next/link";
 
+import { PageDescription } from "../../../components/page-description";
 import { ProjectArchiveBanner } from "../../../components/project-archive-banner";
 import { AppShell } from "../../../components/app-shell";
 import { Breadcrumbs } from "../../../components/breadcrumbs";
@@ -10,10 +11,11 @@ import { copy } from "../../../lib/copy";
 import { localizedHref, normalizeLocale, type LocaleSearchParams } from "../../../lib/i18n";
 import { translateProjectDescription, translateProjectName } from "../../../lib/project-display";
 import {
-  getProject,
-  listProjectDocuments,
+  getProjectWorkspace,
   listProjectTestCases,
 } from "../../../lib/workspace-api";
+import { listProjectGenerationTasks } from "../../../lib/api";
+import { computeProjectWorkspaceMetrics } from "../../../lib/project-workspace-metrics";
 import { loadOrThrow } from "../../../lib/server-load";
 
 type ProjectPageProps = {
@@ -35,13 +37,16 @@ export default async function ProjectWorkspacePage({
   const resolvedSearchParams = (await searchParams) ?? {};
   const locale = normalizeLocale(resolvedSearchParams.lang);
   const defaultMode = resolvedSearchParams.mode === "import" ? "import" : "generate";
-  const [project, documents, testCases] = await loadOrThrow(() =>
-    Promise.all([
-      getProject(projectId),
-      listProjectDocuments(projectId),
-      listProjectTestCases(projectId),
-    ]),
-  );
+  const { project, documents } = await loadOrThrow(() => getProjectWorkspace(projectId));
+  const [testCases, generationTasksResult] = await Promise.all([
+    loadOrThrow(() => listProjectTestCases(projectId)),
+    listProjectGenerationTasks(projectId),
+  ]);
+  const failedTasks =
+    generationTasksResult.kind === "http-error" ? [] : generationTasksResult.tasks;
+  const metrics = computeProjectWorkspaceMetrics(testCases, failedTasks);
+  const testCaseCount = project.testCaseCount;
+  const publishedCount = project.publishedCount;
   const projectDisplayName = translateProjectName(project.name, locale);
   const projectDescription =
     translateProjectDescription(project.description, locale) ?? copy.defaultProjectHint;
@@ -51,7 +56,9 @@ export default async function ProjectWorkspacePage({
       currentPath={`/projects/${projectId}`}
       locale={locale}
       project={project}
-      testCaseCount={testCases.length}
+      testCaseCount={testCaseCount}
+      pendingReviewCount={metrics.pendingReviewCount}
+      failedTaskCount={metrics.failedTaskCount}
       contentWidth="wide"
     >
       <Breadcrumbs
@@ -68,6 +75,7 @@ export default async function ProjectWorkspacePage({
             {projectDisplayName}
           </h2>
           <p>{projectDescription}</p>
+          <PageDescription page="projectWorkspace" />
         </div>
         <ProjectStatusAction
           projectId={projectId}
@@ -81,15 +89,19 @@ export default async function ProjectWorkspacePage({
         projectId={projectId}
         project={project}
         documents={documents}
-        testCases={testCases}
+        testCaseCount={testCaseCount}
+        publishedCount={publishedCount}
+        draftCount={metrics.draftCount}
+        pendingReviewCount={metrics.pendingReviewCount}
+        failedTaskCount={metrics.failedTaskCount}
         defaultMode={defaultMode}
       />
 
-      {testCases.length > 0 ? (
+      {testCaseCount > 0 ? (
         <section className="next-step-banner">
           <div>
             <span className="eyebrow">{copy.nextStepEyebrow}</span>
-            <h3>{copy.nextStepTitle(testCases.length)}</h3>
+            <h3>{copy.nextStepTitle(testCaseCount)}</h3>
             <p>{copy.nextStepHint}</p>
           </div>
           <Link

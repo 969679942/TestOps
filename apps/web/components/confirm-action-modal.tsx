@@ -91,7 +91,11 @@ export function ConfirmActionModal({
     <div
       className={`modal-backdrop ${closing ? "is-closing" : ""}`}
       role="presentation"
-      onMouseDown={handleClose}
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          handleClose();
+        }
+      }}
     >
       <dialog
         open

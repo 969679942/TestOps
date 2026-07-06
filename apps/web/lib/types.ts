@@ -136,12 +136,12 @@ export type GlobalSkillDefinitionRecord = {
 };
 
 export type GlobalSkillDefinitionCreateRecord = {
-  skill_key: string;
-  name: string;
-  description: string;
-  category: string;
-  domain: string;
-  input_types: string[];
+  skill_key?: string;
+  name?: string;
+  description?: string;
+  category?: string;
+  domain?: string;
+  input_types?: string[];
   owner?: string;
 };
 
@@ -183,6 +183,29 @@ export type GlobalSkillVersionCreateRecord = {
 };
 
 export type GlobalSkillVersionUpdateRecord = Partial<GlobalSkillVersionCreateRecord>;
+
+export type GlobalSkillProjectBindingRecord = {
+  bindingId: string | number;
+  projectId: string | number;
+  projectName: string;
+  projectCode: string;
+  bindingType: string;
+  isDefault: boolean;
+  globalSkillVersionId: string | number;
+  versionLabel: string;
+  versionStatus: string;
+  updatedAt: string;
+};
+
+export type GlobalSkillUsageStatsRecord = {
+  boundProjectCount: number;
+  generationTaskCount: number;
+  succeededGenerationCount: number;
+  failedGenerationCount: number;
+  latestGenerationAt: string | null;
+  draftVersionCount: number;
+  productionVersionLabel: string | null;
+};
 
 export type ProjectSkillBindingRecord = {
   id: string | number;

@@ -1,20 +1,34 @@
 import Link from "next/link";
 
-import { labelPriority } from "../lib/copy";
+import { labelPriority, statusLabels } from "../lib/copy";
 import type { TestCaseRecord } from "../lib/workspace-api";
 import { StatusBadge } from "./status-badge";
+import { TestCaseTableActions } from "./test-case-table-actions";
 
 type TestCaseResultsTableProps = Readonly<{
   projectId: string;
   items: TestCaseRecord[];
 }>;
 
-function formatCaseCode(id: string) {
-  return /^\\d+$/.test(id) ? `TC-${id.padStart(4, "0")}` : `TC-${id}`;
+function formatUpdatedAt(value: string | null | undefined) {
+  if (!value) {
+    return "";
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return date.toLocaleString("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
-function labelExecutionMode(testCase: TestCaseRecord) {
-  return testCase.automationFlag ? "UI 自动化" : "手工测试";
+function stepCount(testCase: TestCaseRecord) {
+  return testCase.steps?.length ?? 0;
 }
 
 export function TestCaseResultsTable({
@@ -26,43 +40,50 @@ export function TestCaseResultsTable({
       <table className="data-table case-results-table">
         <thead>
           <tr>
-            <th>名称</th>
-            <th>编号</th>
-            <th>结果</th>
-            <th>用例等级</th>
-            <th>执行方式</th>
-            <th>操作</th>
+            <th className="col-text">用例标题</th>
+            <th className="col-text">模块</th>
+            <th className="col-text">功能点</th>
+            <th className="col-text">优先级</th>
+            <th className="col-text">状态</th>
+            <th className="col-num">步骤数</th>
+            <th className="col-text">更新时间</th>
+            <th className="col-text">操作</th>
           </tr>
         </thead>
         <tbody>
           {items.map((testCase) => (
             <tr key={testCase.id}>
-              <td>
-                <div className="table-detail">
-                  <Link
-                    className="table-link"
-                    href={`/projects/${projectId}/test-cases/${testCase.id}`}
-                  >
-                    {testCase.title}
-                  </Link>
-                  <p>{testCase.module} / {testCase.feature}</p>
-                </div>
+              <td className="col-text">
+                <Link
+                  className="table-link cell-truncate"
+                  href={`/projects/${projectId}/test-cases/${testCase.id}`}
+                  title={testCase.title}
+                >
+                  {testCase.title}
+                </Link>
               </td>
-              <td>{formatCaseCode(testCase.id)}</td>
-              <td>
+              <td className="col-text">
+                {testCase.module ? (
+                  <span className="cell-truncate" title={testCase.module}>
+                    {testCase.module}
+                  </span>
+                ) : null}
+              </td>
+              <td className="col-text">
+                {testCase.feature ? (
+                  <span className="cell-truncate" title={testCase.feature}>
+                    {testCase.feature}
+                  </span>
+                ) : null}
+              </td>
+              <td className="col-text">{labelPriority(testCase.priority)}</td>
+              <td className="col-text">
                 <StatusBadge status={testCase.status} />
               </td>
-              <td>{labelPriority(testCase.priority)}</td>
-              <td>{labelExecutionMode(testCase)}</td>
-              <td>
-                <div className="table-actions">
-                  <Link
-                    className="button-ghost"
-                    href={`/projects/${projectId}/test-cases/${testCase.id}`}
-                  >
-                    查看
-                  </Link>
-                </div>
+              <td className="col-num">{stepCount(testCase)}</td>
+              <td className="col-text">{formatUpdatedAt(testCase.updatedAt)}</td>
+              <td className="col-text">
+                <TestCaseTableActions projectId={projectId} testCase={testCase} />
               </td>
             </tr>
           ))}
@@ -70,4 +91,18 @@ export function TestCaseResultsTable({
       </table>
     </div>
   );
+}
+
+export function summarizeTestCaseStatuses(items: TestCaseRecord[]) {
+  return items.reduce<Record<string, number>>((acc, item) => {
+    acc[item.status] = (acc[item.status] ?? 0) + 1;
+    return acc;
+  }, {});
+}
+
+export function formatStatusSummary(counts: Record<string, number>) {
+  return Object.entries(counts)
+    .filter(([, count]) => count > 0)
+    .map(([status, count]) => `${statusLabels[status as keyof typeof statusLabels] ?? status} ${count}`)
+    .join(" · ");
 }

@@ -1,6 +1,7 @@
 import React from "react";
 
 import { AppShell } from "../../../../components/app-shell";
+import { PageDescription } from "../../../../components/page-description";
 import { ProjectArchiveBanner } from "../../../../components/project-archive-banner";
 import { copy as uiCopy } from "../../../../lib/copy";
 import {
@@ -103,6 +104,7 @@ export default async function ProjectAutomationSchedulesPage({
         <span className="eyebrow">{pageText.eyebrow}</span>
         <h2>{pageText.title}</h2>
         <p>{pageText.description}</p>
+        <PageDescription page="automationSchedules" />
       </section>
 
       <section className="summary-grid" aria-label={pageText.summary}>

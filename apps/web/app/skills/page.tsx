@@ -1,7 +1,9 @@
 import React from "react";
+import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
 import { AppShell } from "../../components/app-shell";
+import { PageDescription } from "../../components/page-description";
 import { SkillRowActions } from "../../components/skill-row-actions";
 import { SkillsPageActions } from "../../components/skills-page-actions";
 import {
@@ -11,6 +13,24 @@ import {
   listGlobalSkillVersions,
 } from "../../lib/api";
 import { localizedHref, normalizeLocale, type LocaleSearchParams } from "../../lib/i18n";
+import {
+  formatSkillCategory,
+  formatSkillDomain,
+  formatSkillInputTypes,
+  formatSkillStatus,
+  skillFieldLabels,
+} from "../../lib/skill-copy";
+import { buildSkillCreatePayload } from "../../lib/skill-form-validation";
+import {
+  serializeSkillImportForApi,
+  type SkillMarkdownImportRecord,
+} from "../../lib/skill-markdown-import";
+import {
+  DEFAULT_SKILL_EVIDENCE_POLICY,
+  DEFAULT_SKILL_PROMPT_TEMPLATE,
+  isMeaningfulSkillDescription,
+  truncateSkillPreview,
+} from "../../lib/skill-content-utils";
 
 type SkillsPageProps = Readonly<{
   searchParams?: Promise<LocaleSearchParams & { category?: string; status?: string; q?: string }>;
@@ -51,38 +71,145 @@ export default async function SkillsPage({ searchParams }: SkillsPageProps = {})
   async function createSkillAction(formData: FormData) {
     "use server";
 
-    await createGlobalSkillLibraryItem({
-      skill_key: readFormText(formData, "skillKey"),
-      name: readFormText(formData, "name"),
-      description: readFormText(formData, "description"),
-      category: readFormText(formData, "category"),
-      domain: readFormText(formData, "domain"),
-      input_types: readCommaList(formData, "inputTypes"),
-      owner: readFormText(formData, "owner") || "workspace",
+    const result = await createGlobalSkillLibraryItem(buildSkillCreatePayload(formData));
+    if (result.kind !== "success") {
+      throw new Error(
+        result.kind === "http-error"
+          ? (result.message ?? "创建 Skill 失败。")
+          : "技能库服务暂时不可用。",
+      );
+    }
+
+    const skillId = String(result.data.id);
+    const versionResult = await createGlobalSkillVersion(skillId, {
+      version_label: "v1 草稿",
+      prompt_template: readFormText(formData, "promptTemplate") || DEFAULT_SKILL_PROMPT_TEMPLATE,
+      scenario_taxonomy: [],
+      review_checklist: ["traceable"],
+      coverage_dimensions: ["core_user_journey"],
+      evidence_policy: readFormText(formData, "evidencePolicy") || DEFAULT_SKILL_EVIDENCE_POLICY,
+      storage_uri: null,
+      change_log: "初始创建",
+      release_notes: null,
+      created_by: "workspace",
+      status: "draft",
     });
+
+    if (versionResult.kind !== "success") {
+      throw new Error(
+        versionResult.kind === "http-error"
+          ? (versionResult.message ?? "创建 Skill 版本失败。")
+          : "技能库服务暂时不可用。",
+      );
+    }
+
     revalidatePath("/skills");
+    revalidatePath(`/skills/${skillId}`);
+    redirect(localizedHref(`/skills/${skillId}/versions/${versionResult.data.id}`, locale));
   }
 
   async function createVersionAction(formData: FormData) {
     "use server";
 
     const skillId = readFormText(formData, "skillId");
-    await createGlobalSkillVersion(skillId, {
+    const result = await createGlobalSkillVersion(skillId, {
       version_label: readFormText(formData, "versionLabel") || "v1 Draft",
-      prompt_template: readFormText(formData, "promptTemplate") || "Write an evidence-based testing prompt.",
+      prompt_template: readFormText(formData, "promptTemplate") || DEFAULT_SKILL_PROMPT_TEMPLATE,
       scenario_taxonomy: readCommaList(formData, "scenarioTaxonomy"),
       review_checklist: readCommaList(formData, "reviewChecklist"),
       coverage_dimensions: readCommaList(formData, "coverageDimensions"),
-      evidence_policy:
-        readFormText(formData, "evidencePolicy") || "Only derive cases from explicit evidence and mark ambiguities.",
+      evidence_policy: readFormText(formData, "evidencePolicy") || DEFAULT_SKILL_EVIDENCE_POLICY,
       storage_uri: readFormText(formData, "storageUri") || null,
-      change_log: readFormText(formData, "changeLog") || null,
-      release_notes: readFormText(formData, "releaseNotes") || null,
-      created_by: readFormText(formData, "createdBy") || "workspace",
+      change_log: "新建版本",
+      release_notes: null,
+      created_by: "workspace",
       status: "draft",
     });
+
+    if (result.kind !== "success") {
+      throw new Error(
+        result.kind === "http-error"
+          ? (result.message ?? "创建版本失败。")
+          : "技能库服务暂时不可用。",
+      );
+    }
+
     revalidatePath("/skills");
     revalidatePath(`/skills/${skillId}`);
+  }
+
+  async function importSkillsAction(formData: FormData) {
+    "use server";
+
+    const raw = readFormText(formData, "skillsJson");
+    if (!raw) {
+      throw new Error("没有可导入的 Skill 数据。");
+    }
+
+    let records: SkillMarkdownImportRecord[];
+    try {
+      records = JSON.parse(raw) as SkillMarkdownImportRecord[];
+    } catch {
+      throw new Error("导入数据格式无效。");
+    }
+
+    if (!Array.isArray(records) || records.length === 0) {
+      throw new Error("文件中至少需要 1 条 Skill。");
+    }
+
+    let lastSkillId = "";
+    let lastVersionId = "";
+
+    for (const record of records) {
+      const payload = serializeSkillImportForApi(record);
+      const result = await createGlobalSkillLibraryItem({
+        skill_key: payload.skill_key,
+        name: payload.name,
+        description: payload.description,
+        category: payload.category,
+        domain: payload.domain,
+        input_types: payload.input_types,
+      });
+
+      if (result.kind !== "success") {
+        throw new Error(
+          result.kind === "http-error"
+            ? (result.message ?? `导入 Skill「${payload.name || payload.skill_key}」失败。`)
+            : "技能库服务暂时不可用。",
+        );
+      }
+
+      const skillId = String(result.data.id);
+      const versionResult = await createGlobalSkillVersion(skillId, {
+        version_label: "v1 草稿",
+        prompt_template: payload.prompt_template,
+        scenario_taxonomy: [],
+        review_checklist: ["traceable"],
+        coverage_dimensions: ["core_user_journey"],
+        evidence_policy: payload.evidence_policy,
+        storage_uri: null,
+        change_log: "Markdown 导入",
+        release_notes: null,
+        created_by: "workspace",
+        status: "draft",
+      });
+
+      if (versionResult.kind !== "success") {
+        throw new Error(
+          versionResult.kind === "http-error"
+            ? (versionResult.message ?? `导入 Skill 版本失败：${payload.name || payload.skill_key}。`)
+            : "技能库服务暂时不可用。",
+        );
+      }
+
+      lastSkillId = skillId;
+      lastVersionId = String(versionResult.data.id);
+    }
+
+    revalidatePath("/skills");
+    if (records.length === 1 && lastSkillId && lastVersionId) {
+      redirect(localizedHref(`/skills/${lastSkillId}/versions/${lastVersionId}`, locale));
+    }
   }
 
   const skillRows = skills
@@ -90,10 +217,31 @@ export default async function SkillsPage({ searchParams }: SkillsPageProps = {})
       const versionsResult = versionResults.find((item) => item.skillId === String(skill.id))?.versions;
       const versions = versionsResult?.kind === "success" ? versionsResult.data : [];
       const draftCount = versions.filter((version) => version.status === "draft").length;
+      const productionVersion =
+        versions.find((version) => version.status === "production") ??
+        (skill.currentProductionVersionId !== null
+          ? versions.find((version) => String(version.id) === String(skill.currentProductionVersionId))
+          : null) ??
+        versions[0] ??
+        null;
+      const editableVersion =
+        versions.find((version) => version.status === "draft") ??
+        productionVersion ??
+        versions.at(-1) ??
+        null;
+      const editHref = editableVersion
+        ? localizedHref(`/skills/${skill.id}/versions/${editableVersion.id}`, locale)
+        : localizedHref(`/skills/${skill.id}`, locale);
+      const contentPreview = editableVersion?.promptTemplate ?? productionVersion?.promptTemplate ?? "";
+
       return {
         skill,
         versions,
         draftCount,
+        productionVersion,
+        editableVersion,
+        editHref,
+        contentPreview,
       };
     })
     .filter(({ skill }) => {
@@ -117,88 +265,46 @@ export default async function SkillsPage({ searchParams }: SkillsPageProps = {})
 
   return (
     <AppShell currentPath="/skills" locale={locale} contentWidth="wide">
-      <section className="page-header">
-        <span className="eyebrow">Skills</span>
-        <h2>Skills</h2>
-        <p>平台级共享测试生成技能目录。列表页负责查找与进入，版本编辑、发布与回滚统一放到详情页处理。</p>
+      <section className="page-header skills-page-header">
+        <span className="eyebrow">技能中心</span>
+        <h2>共享技能库</h2>
+        <p>平台级测试生成技能目录。在此查找与预览 Skill，版本编辑、发布与回滚请进入详情页处理。</p>
+        <PageDescription page="skillsCenter" />
       </section>
 
       <section className="data-card skills-directory-card">
         <div className="skills-directory-toolbar">
           <div className="skills-directory-copy">
-            <span className="eyebrow">Catalog</span>
+            <span className="eyebrow">目录</span>
             <h3>Skill 目录</h3>
             <p>最近更新 · 共 {skillRows.length} 个，已发布 {publishedCount} 个，仅草稿 {draftOnlyCount} 个</p>
           </div>
-          <SkillsPageActions
-            helpContent={
-              <>
-                <p>上传方式：当前支持直接在平台创建 Skill，并在版本里登记 Git、OSS、Zip 或文档归档地址。</p>
-                <p>更新方式：不要直接覆盖生产规则，应新建版本草稿，修改后再发布，由项目按需切换绑定版本。</p>
-                <p>在线修改：目录页负责创建与进入详情，详细编辑、发布与回滚统一在 Skill 详情页完成。</p>
-              </>
-            }
-            createForm={
-              <form action={createSkillAction} className="form-grid">
-                <label className="form-field">
-                  <span>Skill Key</span>
-                  <input className="field-input" name="skillKey" placeholder="prd_rules_core_v2" />
-                </label>
-                <label className="form-field">
-                  <span>名称</span>
-                  <input className="field-input" name="name" placeholder="PRD + 业务规则增强模板" />
-                </label>
-                <label className="form-field">
-                  <span>分类</span>
-                  <input className="field-input" name="category" placeholder="core" />
-                </label>
-                <label className="form-field">
-                  <span>领域</span>
-                  <input className="field-input" name="domain" placeholder="general" />
-                </label>
-                <label className="form-field">
-                  <span>输入类型</span>
-                  <input className="field-input" name="inputTypes" placeholder="prd, business_rule, swagger" />
-                </label>
-                <label className="form-field">
-                  <span>维护者</span>
-                  <input className="field-input" name="owner" placeholder="workspace" />
-                </label>
-                <label className="form-field">
-                  <span>描述</span>
-                  <textarea
-                    className="field-input"
-                    name="description"
-                    rows={4}
-                    placeholder="说明这套 Skill 擅长覆盖哪些测试场景，以及不适合哪些系统。"
-                  />
-                </label>
-                <button className="primary-button" type="submit">
-                  新建 Skill
-                </button>
-              </form>
-            }
-          />
+          <SkillsPageActions createAction={createSkillAction} importAction={importSkillsAction} />
         </div>
 
         <form action="/skills" className="skills-filter-toolbar">
           <input type="hidden" name="lang" value={locale} />
-          <label className="form-field skills-search-field">
-            <span className="sr-only">搜索 Skill</span>
-            <input className="field-input" name="q" defaultValue={query} placeholder="搜索 Skill：名称、Key、描述、领域" />
+          <label className="form-field skills-filter-field skills-filter-search">
+            <span>搜索</span>
+            <input
+              className="field-input"
+              name="q"
+              defaultValue={query}
+              placeholder="名称、Key、描述、领域"
+            />
           </label>
-          <label className="form-field skills-filter-chip">
+          <label className="form-field skills-filter-field">
             <span>分类</span>
             <select className="field-input" name="category" defaultValue={categoryFilter}>
               <option value="all">全部分类</option>
               {categories.map((category) => (
                 <option key={category} value={category}>
-                  {category}
+                  {formatSkillCategory(category)}
                 </option>
               ))}
             </select>
           </label>
-          <label className="form-field skills-filter-chip">
+          <label className="form-field skills-filter-field">
             <span>状态</span>
             <select className="field-input" name="status" defaultValue={statusFilter}>
               <option value="all">全部状态</option>
@@ -206,41 +312,48 @@ export default async function SkillsPage({ searchParams }: SkillsPageProps = {})
               <option value="draft-only">仅草稿</option>
             </select>
           </label>
-          <details className="skills-more-filters">
-            <summary className="button-secondary">更多筛选</summary>
-            <div className="skills-more-filters-panel">
-              <label className="form-field">
-                <span>排序</span>
-                <input className="field-input" value="最近更新优先" readOnly />
-              </label>
-              <p className="helper-text">当前默认按最近更新时间排序，无需额外切换。</p>
+          <div className="skills-filter-actions">
+            <span className="skills-filter-actions-spacer" aria-hidden="true">
+              操作
+            </span>
+            <div className="skills-filter-action-row">
+              <details className="skills-more-filters">
+                <summary className="button-secondary">更多筛选</summary>
+                <div className="skills-more-filters-panel">
+                  <label className="form-field">
+                    <span>排序</span>
+                    <input className="field-input" value="最近更新优先" readOnly />
+                  </label>
+                  <p className="helper-text">当前默认按最近更新时间排序，无需额外切换。</p>
+                </div>
+              </details>
+              <button className="button-secondary" type="submit">
+                筛选
+              </button>
             </div>
-          </details>
-          <button className="button-secondary" type="submit">
-            筛选
-          </button>
+          </div>
         </form>
       </section>
 
       {skillsResult.kind === "http-error" ? (
         <section>
-          <p>Skills 暂时不可用，API 返回了错误。</p>
+          <p>技能库暂时不可用，API 返回了错误。</p>
         </section>
       ) : null}
 
       {skillsResult.kind === "unavailable" ? (
         <section>
-          <p>Skills 暂时不可用，当前无法加载共享技能库。</p>
+          <p>技能库暂时不可用，当前无法加载共享技能库。</p>
         </section>
       ) : null}
 
-      <section className="data-card">
+      <section className="data-card skills-library-card">
         <div className="section-heading">
           <div>
-            <span className="eyebrow">Library</span>
-            <h3>Skill 列表</h3>
+            <span className="eyebrow">技能列表</span>
+            <h3>全部 Skill</h3>
           </div>
-          <p>首屏优先展示可操作列表，帮助、创建和低频筛选都收纳在上方工具条中。</p>
+          <p>首屏展示可操作的技能列表；帮助、创建和筛选收纳在上方工具条。</p>
         </div>
         {skillRows.length === 0 ? (
           <article className="empty-card">
@@ -248,87 +361,65 @@ export default async function SkillsPage({ searchParams }: SkillsPageProps = {})
             <p>可以调整筛选条件，或直接创建新的共享 Skill。</p>
           </article>
         ) : (
-          <div className="table-scroll">
-            <table className="data-table">
+          <div className="table-scroll skills-table-scroll">
+            <table className="data-table skills-table">
               <thead>
                 <tr>
                   <th>Skill</th>
                   <th>分类 / 输入</th>
                   <th>状态</th>
-                  <th>当前生产版本</th>
-                  <th>草稿版本</th>
-                  <th>最近更新</th>
+                  <th>{skillFieldLabels.currentProductionVersion}</th>
+                  <th>{skillFieldLabels.draftCount}</th>
+                  <th>{skillFieldLabels.updatedAt}</th>
                   <th>操作</th>
                 </tr>
               </thead>
               <tbody>
-                {skillRows.map(({ skill, draftCount }) => (
+                {skillRows.map(({ skill, draftCount, productionVersion, editHref, contentPreview }) => (
                   <tr key={skill.id}>
-                    <td>
+                    <td className="skills-table-name">
                       <strong>{skill.name}</strong>
-                      <div>{skill.skillKey}</div>
-                      <div>{skill.description}</div>
+                      <div className="table-detail">
+                        <p>{skill.skillKey}</p>
+                        {contentPreview ? (
+                          <p className="skill-content-preview">{truncateSkillPreview(contentPreview)}</p>
+                        ) : (
+                          <p className="skill-detail-muted">尚未编写内容</p>
+                        )}
+                        {isMeaningfulSkillDescription(skill.description) ? (
+                          <p>{skill.description}</p>
+                        ) : null}
+                      </div>
                     </td>
                     <td>
-                      <div>{skill.category}</div>
-                      <div>{skill.inputTypes.join(" / ") || "-"}</div>
+                      <div>{formatSkillCategory(skill.category)}</div>
+                      <div className="table-detail">
+                        <p>{formatSkillInputTypes(skill.inputTypes)}</p>
+                      </div>
                     </td>
-                    <td>{skill.currentProductionVersionId !== null ? "生产中" : "仅草稿"}</td>
+                    <td>
+                      <span
+                        className={`status-badge ${
+                          skill.currentProductionVersionId !== null
+                            ? "status-badge--production"
+                            : "status-badge--draft"
+                        }`}
+                      >
+                        {skill.currentProductionVersionId !== null ? "已发布" : "仅草稿"}
+                      </span>
+                    </td>
                     <td>{skill.currentProductionVersionLabel ?? "未发布"}</td>
                     <td>{draftCount}</td>
                     <td>{skill.updatedAt}</td>
                     <td>
                       <SkillRowActions
                         detailHref={localizedHref(`/skills/${skill.id}`, locale)}
+                        editHref={editHref}
+                        skill={skill}
+                        skillId={String(skill.id)}
+                        productionVersion={productionVersion}
+                        createVersionAction={createVersionAction}
                         primaryLabel={skill.currentProductionVersionId === null ? "创建首个版本" : "新建版本"}
-                        form={
-                          <form action={createVersionAction} className="review-stack">
-                            <input type="hidden" name="skillId" value={String(skill.id)} />
-                            <label className="form-field">
-                              <span>版本标签</span>
-                              <input className="field-input" name="versionLabel" placeholder="v2 Draft" />
-                            </label>
-                            <label className="form-field">
-                              <span>归档地址</span>
-                              <input className="field-input" name="storageUri" placeholder="oss://skills/skill/v2.zip" />
-                            </label>
-                            <label className="form-field">
-                              <span>维护者</span>
-                              <input className="field-input" name="createdBy" placeholder="workspace" />
-                            </label>
-                            <label className="form-field">
-                              <span>Scenario Taxonomy</span>
-                              <input className="field-input" name="scenarioTaxonomy" placeholder="happy_path, recovery" />
-                            </label>
-                            <label className="form-field">
-                              <span>Review Checklist</span>
-                              <input className="field-input" name="reviewChecklist" placeholder="traceable, observable" />
-                            </label>
-                            <label className="form-field">
-                              <span>Coverage Dimensions</span>
-                              <input className="field-input" name="coverageDimensions" placeholder="core_user_journey, exception_flow" />
-                            </label>
-                            <label className="form-field">
-                              <span>Evidence Policy</span>
-                              <input className="field-input" name="evidencePolicy" placeholder="Only derive cases from explicit evidence." />
-                            </label>
-                            <label className="form-field">
-                              <span>Prompt Template</span>
-                              <textarea className="field-input" name="promptTemplate" rows={4} placeholder="Write a strict, evidence-based testing prompt here." />
-                            </label>
-                            <label className="form-field">
-                              <span>Change Log</span>
-                              <textarea className="field-input" name="changeLog" rows={2} placeholder="说明本次修改点。" />
-                            </label>
-                            <label className="form-field">
-                              <span>Release Notes</span>
-                              <textarea className="field-input" name="releaseNotes" rows={2} placeholder="说明本版适用范围。" />
-                            </label>
-                            <button className="button-secondary" type="submit">
-                              保存草稿版本
-                            </button>
-                          </form>
-                        }
                       />
                     </td>
                   </tr>

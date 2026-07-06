@@ -2,6 +2,7 @@ import React from "react";
 import { revalidatePath } from "next/cache";
 
 import { AppShell } from "../../../../components/app-shell";
+import { PageDescription } from "../../../../components/page-description";
 import { ReviewEditor } from "../../../../components/review-editor";
 import {
   addTestCaseReview,
@@ -12,6 +13,7 @@ import {
 } from "../../../../lib/api";
 import { copy, localizedHref, normalizeLocale } from "../../../../lib/i18n";
 import { translateProjectName } from "../../../../lib/project-display";
+import { countPendingReviewCases } from "../../../../lib/project-workspace-metrics";
 import type { StructuredTextField, TestCaseMutationPayload } from "../../../../lib/types";
 
 type ProjectReviewPageProps = {
@@ -130,6 +132,8 @@ export default async function ProjectReviewPage({
     testCaseList.kind === "http-error"
       ? []
       : testCaseList.items.filter((item) => item.status !== "published");
+  const pendingReviewCount =
+    testCaseList.kind === "http-error" ? 0 : countPendingReviewCases(testCaseList.items);
   const fallbackReviewItem = reviewCandidates[0] ?? null;
   const selectedItem =
     testCaseList.kind === "http-error"
@@ -236,11 +240,17 @@ export default async function ProjectReviewPage({
   }
 
   return (
-    <AppShell currentPath={`/projects/${projectId}/review`} locale={locale} project={project}>
+    <AppShell
+      currentPath={`/projects/${projectId}/review`}
+      locale={locale}
+      project={project}
+      pendingReviewCount={pendingReviewCount}
+    >
       <section className="page-header">
         <span className="eyebrow">{t.reviewPage.eyebrow}</span>
         <h2>{t.reviewPage.eyebrow}</h2>
         <p>当前项目：{projectDisplayName}。{t.reviewPage.description}</p>
+        <PageDescription page="review" />
       </section>
 
       {testCaseList.kind === "unavailable" ? (
